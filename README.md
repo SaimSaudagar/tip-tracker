@@ -1,56 +1,46 @@
-# Welcome to your Expo app 👋
+# Tip Tracker
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A tip tracker for servers and bartenders: log a shift in five seconds, see your real hourly, no ads, no account. Tip data stays on the phone.
 
-## Get started
+Built with Expo (SDK 58), Expo Router and `expo-sqlite`.
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Run it
 
 ```bash
-npm run reset-project
+npm install
+npm start
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+Scan the QR code with **Expo Go** on your phone (iOS or Android), or press `w` to open it in a browser.
 
-### Other setup steps
+```bash
+npm run web
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+The web version is for development only. It stores data in the browser.
 
-## Learn more
+## Check it
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+npm test
+npm run typecheck
+npm run lint
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Where things are
 
-## Join the community
+| Path | What it holds |
+|---|---|
+| `src/app/(tabs)/index.tsx` | Home: this week, month and year, recent shifts |
+| `src/app/(tabs)/calendar.tsx` | Month calendar with daily tips; log a shift for any past day |
+| `src/app/(tabs)/settings.tsx` | Jobs and positions, week start, CSV export and import |
+| `src/app/log-shift.tsx` | Quick log and edit screen (`?id=…` edits, `?date=…` starts on a day) |
+| `src/app/position.tsx` | Position editor: wage and tip-out rule |
+| `src/app/import.tsx` | CSV import with column matching, preview and duplicate skipping |
+| `src/lib/` | Pure money, time, date, shift, calendar and CSV logic, with tests in `__tests__/` |
+| `src/lib/files.ts` / `files.web.ts` | Share sheet on phones, browser download on web |
+| `src/db/migrations.ts` | Database schema, applied with `PRAGMA user_version` |
+| `src/db/repo.ts` | All SQL queries |
+| `src/db/use-db-query.ts` | Hook that reloads a query when data changes |
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+See `AGENTS.md` for the conventions (money in cents, local date strings, append-only migrations).

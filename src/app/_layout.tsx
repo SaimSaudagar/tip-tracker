@@ -1,18 +1,26 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { SQLiteProvider } from 'expo-sqlite';
 import { useColorScheme } from 'react-native';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import { DATABASE_NAME, migrateDbIfNeeded } from '@/db/migrations';
 
-SplashScreen.preventAutoHideAsync();
+export { ErrorBoundary } from 'expo-router';
 
-export default function TabLayout() {
+export default function RootLayout() {
   const colorScheme = useColorScheme();
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
+      <SQLiteProvider
+        databaseName={DATABASE_NAME}
+        onInit={migrateDbIfNeeded}
+        options={{ enableChangeListener: true }}>
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="log-shift" options={{ presentation: 'modal', title: 'Log shift' }} />
+          <Stack.Screen name="position" options={{ presentation: 'modal', title: 'Position' }} />
+          <Stack.Screen name="import" options={{ presentation: 'modal', title: 'Import shifts' }} />
+        </Stack>
+      </SQLiteProvider>
     </ThemeProvider>
   );
 }

@@ -1,0 +1,362 @@
+import type { SQLiteDatabase } from 'expo-sqlite';
+
+import type { ISODate, Weekday } from '@/lib/dates';
+import type { ShiftAmounts, TipOutRule } from '@/lib/shift-math';
+
+export type Position = {
+  id: number;
+  jobId: number;
+  jobName: string;
+  name: string;
+  hourlyWageCents: number;
+  tipOutRule: TipOutRule;
+  /** Cents for a fixed rule, basis points for percentage rules. */
+  tipOutValue: number;
+};
+
+export type Shift = ShiftAmounts & {
+  id: number;
+  positionId: number;
+  positionName: string;
+  jobName: string;
+  date: ISODate;
+  salesCents: number | null;
+  notes: string | null;
+};
+
+export type ShiftInput = Omit<Shift, 'id' | 'positionName' | 'jobName'> & { id?: number };
+
+type PositionRow = {
+  id: number;
+  job_id: number;
+  job_name: string;
+  name: string;
+  hourly_wage_cents: number;
+  tipout_rule: TipOutRule;
+  tipout_value: number;
+};
+
+type ShiftRow = {
+  id: number;
+  position_id: number;
+  position_name: string;
+  job_name: string;
+  date: string;
+  minutes_worked: number;
+  hourly_wage_cents: number;
+  cash_tips_cents: number;
+  card_tips_cents: number;
+  tip_in_cents: number;
+  tip_out_cents: number;
+  service_charge_cents: number;
+  sales_cents: number | null;
+  notes: string | null;
+};
+
+const toPosition = (r: PositionRow): Position => ({
+  id: r.id,
+  jobId: r.job_id,
+  jobName: r.job_name,
+  name: r.name,
+  hourlyWageCents: r.hourly_wage_cents,
+  tipOutRule: r.tipout_rule,
+  tipOutValue: r.tipout_value,
+});
+
+const toShift = (r: ShiftRow): Shift => ({
+  id: r.id,
+  positionId: r.position_id,
+  positionName: r.position_name,
+  jobName: r.job_name,
+  date: r.date,
+  minutesWorked: r.minutes_worked,
+  hourlyWageCents: r.hourly_wage_cents,
+  cashTipsCents: r.cash_tips_cents,
+  cardTipsCents: r.card_tips_cents,
+  tipInCents: r.tip_in_cents,
+  tipOutCents: r.tip_out_cents,
+  serviceChargeCents: r.service_charge_cents,
+  salesCents: r.sales_cents,
+  notes: r.notes,
+});
+
+const SHIFT_SELECT = `
+  SELECT s.id, s.position_id, p.name AS position_name, j.name AS job_name, s.date,
+         s.minutes_worked, s.hourly_wage_cents, s.cash_tips_cents, s.card_tips_cents,
+         s.tip_in_cents, s.tip_out_cents, s.service_charge_cents, s.sales_cents, s.notes
+  FROM shifts s
+  JOIN positions p ON p.id = s.position_id
+  JOIN jobs j ON j.id = p.job_id
+`;
+
+export async function listPositions(db: SQLiteDatabase): Promise<Position[]> {
+  const rows = await db.getAllAsync<PositionRow>(`
+    SELECT p.id, p.job_id, j.name AS job_name, p.name, p.hourly_wage_cents, p.tipout_rule, p.tipout_value
+    FROM positions p
+    JOIN jobs j ON j.id = p.job_id
+    WHERE p.archived_at IS NULL AND j.archived_at IS NULL
+    ORDER BY j.created_at, j.id, p.created_at, p.id
+  `);
+  return rows.map(toPosition);
+}
+
+export async function getShift(db: SQLiteDatabase, id: number): Promise<Shift | null> {
+  const row = await db.getFirstAsync<ShiftRow>(`${SHIFT_SELECT} WHERE s.id = ?`, id);
+  return row ? toShift(row) : null;
+}
+
+export async function getLatestShift(db: SQLiteDatabase): Promise<Shift | null> {
+  const row = await db.getFirstAsync<ShiftRow>(`${SHIFT_SELECT} ORDER BY s.date DESC, s.id DESC LIMIT 1`);
+  return row ? toShift(row) : null;
+}
+
+export async function listShiftsBetween(db: SQLiteDatabase, start: ISODate, end: ISODate): Promise<Shift[]> {
+  const rows = await db.getAllAsync<ShiftRow>(
+    `${SHIFT_SELECT} WHERE s.date BETWEEN ? AND ? ORDER BY s.date DESC, s.id DESC`,
+    start,
+    end,
+  );
+  return rows.map(toShift);
+}
+
+export async function listRecentShifts(db: SQLiteDatabase, limit: number): Promise<Shift[]> {
+  const rows = await db.getAllAsync<ShiftRow>(`${SHIFT_SELECT} ORDER BY s.date DESC, s.id DESC LIMIT ?`, limit);
+  return rows.map(toShift);
+}
+
+/** Inserts a new shift, or updates it when `id` is set. Returns the shift's id. */
+export async function saveShift(db: SQLiteDatabase, s: ShiftInput): Promise<number> {
+  const values = [
+    s.positionId,
+    s.date,
+    s.minutesWorked,
+    s.hourlyWageCents,
+    s.cashTipsCents,
+    s.cardTipsCents,
+    s.tipInCents,
+    s.tipOutCents,
+    s.serviceChargeCents,
+    s.salesCents,
+    s.notes,
+  ];
+
+  if (s.id !== undefined) {
+    await db.runAsync(
+      `UPDATE shifts SET position_id = ?, date = ?, minutes_worked = ?, hourly_wage_cents = ?,
+         cash_tips_cents = ?, card_tips_cents = ?, tip_in_cents = ?, tip_out_cents = ?,
+         service_charge_cents = ?, sales_cents = ?, notes = ?, updated_at = datetime('now')
+       WHERE id = ?`,
+      ...values,
+      s.id,
+    );
+    return s.id;
+  }
+
+  const result = await db.runAsync(
+    `INSERT INTO shifts (position_id, date, minutes_worked, hourly_wage_cents, cash_tips_cents,
+       card_tips_cents, tip_in_cents, tip_out_cents, service_charge_cents, sales_cents, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ...values,
+  );
+  return result.lastInsertRowId;
+}
+
+export async function deleteShift(db: SQLiteDatabase, id: number): Promise<void> {
+  await db.runAsync('DELETE FROM shifts WHERE id = ?', id);
+}
+
+export async function listAllShifts(db: SQLiteDatabase): Promise<Shift[]> {
+  const rows = await db.getAllAsync<ShiftRow>(`${SHIFT_SELECT} ORDER BY s.date, s.id`);
+  return rows.map(toShift);
+}
+
+export async function getWeekStart(db: SQLiteDatabase): Promise<Weekday> {
+  const row = await db.getFirstAsync<{ value: string }>("SELECT value FROM settings WHERE key = 'week_start'");
+  const n = Number(row?.value ?? 0);
+  return (n >= 0 && n <= 6 ? n : 0) as Weekday;
+}
+
+export async function setWeekStart(db: SQLiteDatabase, weekStart: Weekday): Promise<void> {
+  await db.runAsync(
+    "INSERT INTO settings (key, value) VALUES ('week_start', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+    String(weekStart),
+  );
+}
+
+// ---- Jobs and positions ----
+
+export type PositionInput = {
+  id?: number;
+  jobName: string;
+  name: string;
+  hourlyWageCents: number;
+  tipOutRule: TipOutRule;
+  tipOutValue: number;
+};
+
+export async function listJobNames(db: SQLiteDatabase): Promise<string[]> {
+  const rows = await db.getAllAsync<{ name: string }>(
+    'SELECT name FROM jobs WHERE archived_at IS NULL ORDER BY created_at, id',
+  );
+  return rows.map((r) => r.name);
+}
+
+export async function getPosition(db: SQLiteDatabase, id: number): Promise<Position | null> {
+  const row = await db.getFirstAsync<PositionRow>(
+    `SELECT p.id, p.job_id, j.name AS job_name, p.name, p.hourly_wage_cents, p.tipout_rule, p.tipout_value
+     FROM positions p JOIN jobs j ON j.id = p.job_id WHERE p.id = ?`,
+    id,
+  );
+  return row ? toPosition(row) : null;
+}
+
+/** Finds a job by name (ignoring case), reviving it if archived, or creates it. */
+async function findOrCreateJob(db: SQLiteDatabase, name: string): Promise<number> {
+  const existing = await db.getFirstAsync<{ id: number }>(
+    'SELECT id FROM jobs WHERE lower(name) = lower(?) ORDER BY archived_at IS NOT NULL, id LIMIT 1',
+    name,
+  );
+  if (existing) {
+    await db.runAsync('UPDATE jobs SET archived_at = NULL WHERE id = ?', existing.id);
+    return existing.id;
+  }
+  return (await db.runAsync('INSERT INTO jobs (name) VALUES (?)', name)).lastInsertRowId;
+}
+
+/** Archives jobs that no longer have any active positions. */
+async function archiveEmptyJobs(db: SQLiteDatabase) {
+  await db.runAsync(`
+    UPDATE jobs SET archived_at = datetime('now')
+    WHERE archived_at IS NULL
+      AND NOT EXISTS (SELECT 1 FROM positions p WHERE p.job_id = jobs.id AND p.archived_at IS NULL)
+  `);
+}
+
+export async function savePosition(db: SQLiteDatabase, input: PositionInput): Promise<number> {
+  let id = input.id;
+  await db.withTransactionAsync(async () => {
+    const jobId = await findOrCreateJob(db, input.jobName.trim());
+    const values = [jobId, input.name.trim(), input.hourlyWageCents, input.tipOutRule, input.tipOutValue];
+    if (id !== undefined) {
+      await db.runAsync(
+        'UPDATE positions SET job_id = ?, name = ?, hourly_wage_cents = ?, tipout_rule = ?, tipout_value = ? WHERE id = ?',
+        ...values,
+        id,
+      );
+    } else {
+      id = (
+        await db.runAsync(
+          'INSERT INTO positions (job_id, name, hourly_wage_cents, tipout_rule, tipout_value) VALUES (?, ?, ?, ?, ?)',
+          ...values,
+        )
+      ).lastInsertRowId;
+    }
+    await archiveEmptyJobs(db);
+  });
+  return id!;
+}
+
+/**
+ * Removes a position from the app. Positions with logged shifts are archived so
+ * history keeps its labels; unused ones are deleted. The last position can't be removed.
+ */
+export async function removePosition(db: SQLiteDatabase, id: number): Promise<'archived' | 'deleted'> {
+  const active = await db.getFirstAsync<{ n: number }>(
+    'SELECT COUNT(*) AS n FROM positions WHERE archived_at IS NULL',
+  );
+  if ((active?.n ?? 0) <= 1) throw new Error('Keep at least one position to log shifts against.');
+
+  const used = await db.getFirstAsync<{ n: number }>('SELECT COUNT(*) AS n FROM shifts WHERE position_id = ?', id);
+  const outcome = (used?.n ?? 0) > 0 ? 'archived' : 'deleted';
+  await db.withTransactionAsync(async () => {
+    if (outcome === 'archived') {
+      await db.runAsync("UPDATE positions SET archived_at = datetime('now') WHERE id = ?", id);
+    } else {
+      await db.runAsync('DELETE FROM positions WHERE id = ?', id);
+    }
+    await archiveEmptyJobs(db);
+  });
+  return outcome;
+}
+
+// ---- Import ----
+
+export type ImportShift = Omit<ShiftInput, 'id' | 'positionId'> & {
+  jobName: string | null;
+  positionName: string | null;
+};
+
+/**
+ * Imports shifts in one transaction. Rows naming a job or position are filed under
+ * it (created if needed); others go to `fallback`. A row matching an existing shift's
+ * date, position, tips and hours is skipped, so importing the same file twice is harmless.
+ */
+export async function importShifts(
+  db: SQLiteDatabase,
+  shifts: ImportShift[],
+  fallback: Position,
+  { useImportedWage }: { useImportedWage: boolean },
+): Promise<{ imported: number; duplicates: number }> {
+  let imported = 0;
+  let duplicates = 0;
+  const positionCache = new Map<string, { id: number; wage: number }>();
+
+  await db.withTransactionAsync(async () => {
+    for (const s of shifts) {
+      const jobName = s.jobName ?? fallback.jobName;
+      const positionName = s.positionName ?? fallback.name;
+      const key = `${jobName.toLowerCase()}\u0000${positionName.toLowerCase()}`;
+
+      let position = positionCache.get(key);
+      if (!position) {
+        if (!s.jobName && !s.positionName) {
+          position = { id: fallback.id, wage: fallback.hourlyWageCents };
+        } else {
+          const jobId = await findOrCreateJob(db, jobName);
+          const found = await db.getFirstAsync<{ id: number; hourly_wage_cents: number }>(
+            'SELECT id, hourly_wage_cents FROM positions WHERE job_id = ? AND lower(name) = lower(?) ORDER BY archived_at IS NOT NULL, id LIMIT 1',
+            jobId,
+            positionName,
+          );
+          if (found) {
+            await db.runAsync('UPDATE positions SET archived_at = NULL WHERE id = ?', found.id);
+            position = { id: found.id, wage: found.hourly_wage_cents };
+          } else {
+            const created = await db.runAsync(
+              'INSERT INTO positions (job_id, name, hourly_wage_cents) VALUES (?, ?, ?)',
+              jobId,
+              positionName,
+              useImportedWage ? s.hourlyWageCents : 0,
+            );
+            position = { id: created.lastInsertRowId, wage: useImportedWage ? s.hourlyWageCents : 0 };
+          }
+        }
+        positionCache.set(key, position);
+      }
+
+      const duplicate = await db.getFirstAsync<{ id: number }>(
+        `SELECT id FROM shifts WHERE position_id = ? AND date = ? AND minutes_worked = ?
+           AND cash_tips_cents = ? AND card_tips_cents = ? AND tip_out_cents = ? LIMIT 1`,
+        position.id,
+        s.date,
+        s.minutesWorked,
+        s.cashTipsCents,
+        s.cardTipsCents,
+        s.tipOutCents,
+      );
+      if (duplicate) {
+        duplicates++;
+        continue;
+      }
+
+      await saveShift(db, {
+        ...s,
+        positionId: position.id,
+        hourlyWageCents: useImportedWage ? s.hourlyWageCents : position.wage,
+      });
+      imported++;
+    }
+  });
+
+  return { imported, duplicates };
+}

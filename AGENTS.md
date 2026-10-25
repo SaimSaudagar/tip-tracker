@@ -34,6 +34,18 @@ Run lint and typecheck before declaring any task done.
 Use EAS to build, sign, and submit the app in the cloud (`eas build`, `eas submit`) and to ship over-the-air updates (`eas update`) — no local Xcode or Android Studio required. Run EAS CLI as `bunx eas-cli <command>` in Bun projects, or `npx eas-cli@latest <command>` otherwise; substitute that for bare `eas` in docs examples.
 Docs: https://docs.expo.dev/eas/index.md
 
+## Tip tracker conventions
+
+- **Money is integer cents** everywhere (database, state, math). Percentages are basis points (1% = 100). Parse user input with `parseMoney` / `parsePercent` and format with `formatMoney` from `src/lib/money.ts`. Never use floats for money.
+- **Time worked is whole minutes.** Use `parseDuration` / `formatDuration` from `src/lib/duration.ts`.
+- **Dates are local `YYYY-MM-DD` strings** (`src/lib/dates.ts`). Never convert shift dates through UTC or `Date#toISOString`.
+- **Business math lives in pure functions** in `src/lib/` with tests in `src/lib/__tests__/*-test.ts`. Screens call these functions; they don't do their own arithmetic.
+- **Database:** `expo-sqlite`, opened by `SQLiteProvider` in `src/app/_layout.tsx`. Schema changes go in a new entry at the end of `MIGRATIONS` in `src/db/migrations.ts` and never edit an entry that has shipped. All SQL lives in `src/db/repo.ts`. Screens read data with `useDbQuery` (reloads on database change and on focus).
+- **Shifts store the hourly wage they were logged with**, so changing a position's wage never rewrites past earnings.
+- **Service charges / auto-gratuity are kept separate from tips** because they don't count as voluntary tips for tax reporting.
+- **No ads, no accounts, no tip data sent off the device.** Don't add analytics events that include amounts.
+- Run `npm test`, `npm run typecheck` and `npm run lint` before declaring a task done.
+
 ## Rules
 
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.

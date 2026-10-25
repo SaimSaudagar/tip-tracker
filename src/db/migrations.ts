@@ -1,0 +1,92 @@
+import { Platform } from 'react-native';
+import type { SQLiteDatabase } from 'expo-sqlite';
+
+/**
+ * Schema changes are append-only: add a new entry to MIGRATIONS and never edit
+ * one that has shipped. PRAGMA user_version records how many have run.
+ */
+const MIGRATIONS: string[] = [
+  // 1: jobs, positions, shifts, tip-outs and settings, plus a starter job.
+  `
+  CREATE TABLE jobs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    color TEXT,
+    archived_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE positions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    hourly_wage_cents INTEGER NOT NULL DEFAULT 0 CHECK (hourly_wage_cents >= 0),
+    tipout_rule TEXT NOT NULL DEFAULT 'none'
+      CHECK (tipout_rule IN ('none', 'fixed', 'pct_tips', 'pct_sales')),
+    -- cents for 'fixed', basis points for the percentage rules
+    tipout_value INTEGER NOT NULL DEFAULT 0 CHECK (tipout_value >= 0),
+    archived_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE shifts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    position_id INTEGER NOT NULL REFERENCES positions(id),
+    date TEXT NOT NULL, -- local YYYY-MM-DD
+    start_time TEXT,    -- local HH:MM, optional
+    end_time TEXT,
+    break_minutes INTEGER NOT NULL DEFAULT 0,
+    minutes_worked INTEGER NOT NULL DEFAULT 0 CHECK (minutes_worked >= 0),
+    -- wage copied from the position when logged, so later raises don't rewrite history
+    hourly_wage_cents INTEGER NOT NULL DEFAULT 0,
+    cash_tips_cents INTEGER NOT NULL DEFAULT 0,
+    card_tips_cents INTEGER NOT NULL DEFAULT 0,
+    tip_in_cents INTEGER NOT NULL DEFAULT 0,
+    tip_out_cents INTEGER NOT NULL DEFAULT 0,
+    service_charge_cents INTEGER NOT NULL DEFAULT 0,
+    sales_cents INTEGER,
+    covers INTEGER,
+    notes TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX shifts_date_idx ON shifts(date);
+
+  -- who tips were paid out to, for the IRS-style daily tip record
+  CREATE TABLE tipouts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    shift_id INTEGER NOT NULL REFERENCES shifts(id) ON DELETE CASCADE,
+    recipient_name TEXT NOT NULL,
+    amount_cents INTEGER NOT NULL CHECK (amount_cents >= 0)
+  );
+
+  CREATE TABLE settings (
+    key TEXT PRIMARY KEY NOT NULL,
+    value TEXT NOT NULL
+  );
+
+  INSERT INTO jobs (name) VALUES ('My job');
+  INSERT INTO positions (job_id, name) VALUES (last_insert_rowid(), 'Server');
+  INSERT INTO settings (key, value) VALUES ('week_start', '0');
+  `,
+];
+
+export const DATABASE_NAME = 'tips.db';
+
+export async function migrateDbIfNeeded(db: SQLiteDatabase) {
+  await db.execAsync('PRAGMA foreign_keys = ON;');
+  if (Platform.OS !== 'web') await db.execAsync('PRAGMA journal_mode = WAL;');
+
+  const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
+  let version = row?.user_version ?? 0;
+
+  while (version < MIGRATIONS.length) {
+    const sql = MIGRATIONS[version];
+    const next = version + 1;
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(sql);
+      await db.execAsync(`PRAGMA user_version = ${next}`);
+    });
+    version = next;
+  }
+}
