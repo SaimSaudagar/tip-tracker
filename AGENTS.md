@@ -48,6 +48,7 @@ Docs: https://docs.expo.dev/eas/index.md
 - **Reminders** are planned by the pure `planReminders` (one-off dates, skipping days that already have a shift) and scheduled by `src/lib/notify.ts`. `ReminderSync` in the root layout re-plans whenever shifts or settings change, so screens never schedule notifications themselves.
 - **Platform splits** use `.web.ts` files (`files`, `notify`). Keep both files' exports identical.
 - **Legal text** in `src/constants/legal.ts` must match `docs/privacy-policy.md` and `docs/terms-of-use.md`.
+- **Backups** copy every table column listed in `BACKUP_COLUMNS` (`src/lib/backup.ts`). When a migration adds a column, add it there too; a test compares the list against the schema and fails if they differ. Settings that describe the device (`pro_override`, `last_backup_at`) are never backed up or restored.
 - Run `npm test`, `npm run typecheck` and `npm run lint` before declaring a task done.
 
 ## Rules

@@ -7,6 +7,7 @@ import type { ISODate } from '@/lib/dates';
 import { minutesToInput, parseDuration } from '@/lib/duration';
 import { centsToInput, parseMoney } from '@/lib/money';
 import { computeShift, type ShiftAmounts } from '@/lib/shift-math';
+import { describeTipOuts, type TipOutEntry } from '@/lib/tipouts';
 
 export type ExportShift = ShiftAmounts & {
   date: ISODate;
@@ -14,6 +15,7 @@ export type ExportShift = ShiftAmounts & {
   positionName: string;
   salesCents: number | null;
   notes: string | null;
+  tipOuts?: TipOutEntry[];
 };
 
 export const EXPORT_HEADERS = [
@@ -32,6 +34,7 @@ export const EXPORT_HEADERS = [
   'Wages',
   'Total earned',
   'Notes',
+  'Tipped out to',
 ] as const;
 
 const money = (cents: number) => (cents === 0 ? '0' : centsToInput(cents));
@@ -55,6 +58,7 @@ export function shiftsToCsv(shifts: ExportShift[]): string {
       money(t.wagesCents),
       money(t.totalCents),
       s.notes ?? '',
+      describeTipOuts(s.tipOuts ?? []),
     ];
   });
   return toCsv([[...EXPORT_HEADERS], ...rows]);

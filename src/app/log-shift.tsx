@@ -1,9 +1,10 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/button';
+import { Chip } from '@/components/chip';
 import { MoneyField } from '@/components/money-field';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -12,19 +13,22 @@ import {
   deleteShift,
   getLatestShift,
   getShift,
+  getShiftTipOuts,
   listPositions,
-  saveShift,
+  recentTipOutNames,
+  saveShiftWithTipOuts,
   type Position,
   type Shift,
 } from '@/db/repo';
 import { useTheme } from '@/hooks/use-theme';
 import { confirmDestructive } from '@/lib/confirm';
-import { maybeAskForReview } from '@/lib/review-prompt';
-import { usePro } from '@/purchases/pro-context';
 import { addDays, formatDayLabel, todayISO } from '@/lib/dates';
 import { minutesToInput, parseDuration } from '@/lib/duration';
 import { centsToInput, formatMoney, formatPercent, parseMoney } from '@/lib/money';
+import { maybeAskForReview } from '@/lib/review-prompt';
 import { calcTipOut, computeShift } from '@/lib/shift-math';
+import { parseTipOutDrafts, type TipOutDraft } from '@/lib/tipouts';
+import { usePro } from '@/purchases/pro-context';
 
 type Form = {
   date: string;
@@ -93,23 +97,34 @@ export default function LogShiftScreen() {
   const [tipOutEdited, setTipOutEdited] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [tipOutRows, setTipOutRows] = useState<TipOutDraft[]>([]);
+  const [recentNames, setRecentNames] = useState<string[]>([]);
+  const nextRowKey = useRef(0);
+
+  const newRow = (name = '', amount = ''): TipOutDraft => ({ key: `row-${nextRowKey.current++}`, name, amount });
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [all, existing, latest] = await Promise.all([
+      const [all, existing, latest, names, existingTipOuts] = await Promise.all([
         listPositions(db),
         shiftId !== undefined ? getShift(db, shiftId) : null,
         shiftId === undefined ? getLatestShift(db) : null,
+        recentTipOutNames(db, 6),
+        shiftId !== undefined ? getShiftTipOuts(db, shiftId) : [],
       ]);
       if (cancelled) return;
       setPositions(all);
+      setRecentNames(names);
       if (shiftId !== undefined) {
         if (!existing) {
           setMissing(true);
         } else {
           setOriginal(existing);
           setForm(formFromShift(existing));
+          setTipOutRows(
+            existingTipOuts.map((t, i) => ({ key: `saved-${i}`, name: t.name, amount: centsToInput(t.amountCents) })),
+          );
           setTipOutEdited(true);
           setShowMore(
             existing.tipInCents + existing.tipOutCents + existing.serviceChargeCents > 0 ||
@@ -153,8 +168,17 @@ export default function LogShiftScreen() {
           salesCents: form.sales.trim() === '' ? null : sales,
         })
       : null;
-  const usingAutoTipOut = autoTipOut !== null && !tipOutEdited;
-  const tipOut = usingAutoTipOut ? autoTipOut : parseMoney(form.tipOut);
+  // Naming who you tipped out replaces the single tip-out amount with their total.
+  const namedTipOuts = parseTipOutDrafts(tipOutRows);
+  const usingNames = tipOutRows.some((r) => r.name.trim() !== '' || r.amount.trim() !== '');
+  const usingAutoTipOut = !usingNames && autoTipOut !== null && !tipOutEdited;
+  const tipOut = usingNames
+    ? namedTipOuts.valid
+      ? namedTipOuts.totalCents
+      : null
+    : usingAutoTipOut
+      ? autoTipOut
+      : parseMoney(form.tipOut);
 
   // Keep the wage that was saved with the shift unless the user moves it to another position.
   const hourlyWageCents =
@@ -185,14 +209,18 @@ export default function LogShiftScreen() {
     if (!amounts || form.positionId === null || !canSave) return;
     setSaving(true);
     try {
-      await saveShift(db, {
-        id: shiftId,
-        positionId: form.positionId,
-        date: form.date,
-        ...amounts,
-        salesCents: form.sales.trim() === '' ? null : sales,
-        notes: form.notes.trim() || null,
-      });
+      await saveShiftWithTipOuts(
+        db,
+        {
+          id: shiftId,
+          positionId: form.positionId,
+          date: form.date,
+          ...amounts,
+          salesCents: form.sales.trim() === '' ? null : sales,
+          notes: form.notes.trim() || null,
+        },
+        namedTipOuts.entries,
+      );
       close();
       if (shiftId === undefined) {
         maybeAskForReview(db).catch((e) => console.warn('Review prompt failed', e));
@@ -347,18 +375,27 @@ export default function LogShiftScreen() {
               <MoneyField
                 label="Tip-out paid"
                 prefix="$"
-                value={usingAutoTipOut ? centsToInput(autoTipOut) : form.tipOut}
+                value={
+                  usingNames
+                    ? centsToInput(namedTipOuts.totalCents)
+                    : usingAutoTipOut
+                      ? centsToInput(autoTipOut)
+                      : form.tipOut
+                }
+                editable={!usingNames}
                 onChangeText={(v) => {
                   setTipOutEdited(true);
                   set('tipOut')(v);
                 }}
-                error={tipOut === null ? MONEY_ERROR : null}
+                error={!usingNames && tipOut === null ? MONEY_ERROR : null}
                 hint={
-                  usingAutoTipOut && position
-                    ? `Auto: ${describeRule(position)}`
-                    : hasRule && !isPro && position
-                      ? `Pro fills this in: ${describeRule(position)}`
-                      : 'To bussers, bar, hosts'
+                  usingNames
+                    ? `Total for ${namedTipOuts.entries.length} ${namedTipOuts.entries.length === 1 ? 'person' : 'people'}`
+                    : usingAutoTipOut && position
+                      ? `Auto: ${describeRule(position)}`
+                      : hasRule && !isPro && position
+                        ? `Pro fills this in: ${describeRule(position)}`
+                        : 'To bussers, bar, hosts'
                 }
               />
               <MoneyField
@@ -370,6 +407,71 @@ export default function LogShiftScreen() {
                 hint="Tip share or pool"
               />
             </View>
+
+            <View style={styles.names}>
+              <ThemedText type="small" themeColor="textSecondary">
+                Tipped out to (optional, for your IRS tip record)
+              </ThemedText>
+              {tipOutRows.map((row) => (
+                <View key={row.key} style={styles.nameRow}>
+                  <TextInput
+                    value={row.name}
+                    onChangeText={(name) =>
+                      setTipOutRows((rows) => rows.map((r) => (r.key === row.key ? { ...r, name } : r)))
+                    }
+                    placeholder="Name or role"
+                    placeholderTextColor={theme.textSecondary}
+                    accessibilityLabel="Tipped out to"
+                    maxLength={40}
+                    style={[styles.nameInput, { backgroundColor: theme.backgroundElement, color: theme.text }]}
+                  />
+                  <TextInput
+                    value={row.amount}
+                    onChangeText={(amount) =>
+                      setTipOutRows((rows) => rows.map((r) => (r.key === row.key ? { ...r, amount } : r)))
+                    }
+                    placeholder="$0"
+                    placeholderTextColor={theme.textSecondary}
+                    accessibilityLabel={`Amount for ${row.name || 'this person'}`}
+                    inputMode="decimal"
+                    keyboardType="decimal-pad"
+                    style={[styles.amountInput, { backgroundColor: theme.backgroundElement, color: theme.text }]}
+                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Remove ${row.name || 'this person'}`}
+                    onPress={() => setTipOutRows((rows) => rows.filter((r) => r.key !== row.key))}
+                    hitSlop={8}
+                    style={styles.removeName}>
+                    <ThemedText themeColor="textSecondary">✕</ThemedText>
+                  </Pressable>
+                </View>
+              ))}
+              {usingNames && !namedTipOuts.valid ? (
+                <ThemedText type="small" style={{ color: theme.danger }}>
+                  Give each person a name and an amount.
+                </ThemedText>
+              ) : null}
+              <View style={styles.chips}>
+                {recentNames
+                  .filter((name) => !tipOutRows.some((r) => r.name.trim().toLowerCase() === name.toLowerCase()))
+                  .map((name) => (
+                    <Chip
+                      key={name}
+                      label={`+ ${name}`}
+                      accessibilityLabel={`Add ${name}`}
+                      selected={false}
+                      onPress={() => setTipOutRows((rows) => [...rows, newRow(name)])}
+                    />
+                  ))}
+                <Chip
+                  label="+ Add person"
+                  selected={false}
+                  onPress={() => setTipOutRows((rows) => [...rows, newRow()])}
+                />
+              </View>
+            </View>
+
             <View style={styles.row}>
               <MoneyField
                 label="Service charges"
@@ -504,6 +606,33 @@ const styles = StyleSheet.create({
   },
   notesWrapper: {
     gap: Spacing.one,
+  },
+  names: {
+    gap: Spacing.two,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  nameInput: {
+    flex: 2,
+    minWidth: 0,
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    minHeight: 48,
+    fontSize: 16,
+  },
+  amountInput: {
+    flex: 1,
+    minWidth: 0,
+    borderRadius: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    minHeight: 48,
+    fontSize: 16,
+  },
+  removeName: {
+    paddingHorizontal: Spacing.one,
   },
   notes: {
     borderRadius: Spacing.three,

@@ -67,7 +67,22 @@ describe('export', () => {
       '13.85', // 6.5h × $2.13, rounded
       '224.35',
       'Patio, "big" party',
+      '',
     ]);
+  });
+
+  it('lists who tips were paid out to', () => {
+    const [, row] = parseCsv(
+      shiftsToCsv([
+        exportShift({
+          tipOuts: [
+            { name: 'Maria', amountCents: 1000 },
+            { name: 'Bar', amountCents: 500 },
+          ],
+        }),
+      ]),
+    );
+    expect(row[row.length - 1]).toBe('Maria $10.00, Bar $5.00');
   });
 
   it('round-trips through import', () => {

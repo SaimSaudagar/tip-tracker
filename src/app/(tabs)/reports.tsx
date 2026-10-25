@@ -8,7 +8,7 @@ import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing, TopTabInset } from '@/constants/theme';
-import { listShiftsBetween } from '@/db/repo';
+import { listShiftsBetween, listTipOutsBetween } from '@/db/repo';
 import { useDbQuery } from '@/db/use-db-query';
 import { useTheme } from '@/hooks/use-theme';
 import { shiftMonth } from '@/lib/calendar';
@@ -18,6 +18,7 @@ import { sharePdf } from '@/lib/files';
 import { formatMoney } from '@/lib/money';
 import { formatShortDate } from '@/lib/reminders-plan';
 import { buildMonthlyReport, buildYearSummary, monthlyReportHtml, yearSummaryHtml } from '@/lib/reports';
+import { combineTipOuts, describeTipOuts } from '@/lib/tipouts';
 import { usePro } from '@/purchases/pro-context';
 
 export default function ReportsScreen() {
@@ -44,12 +45,14 @@ function Reports({ linkedMonth }: { linkedMonth: string | null }) {
     async (db: SQLiteDatabase) => {
       const m = monthRange(month);
       const y = yearRange(`${year}-01-01`);
-      const [monthShifts, yearShifts] = await Promise.all([
+      const [monthShifts, yearShifts, tipOuts] = await Promise.all([
         listShiftsBetween(db, m.start, m.end),
         listShiftsBetween(db, y.start, y.end),
+        listTipOutsBetween(db, m.start, m.end),
       ]);
+      const withNames = monthShifts.map((s) => ({ ...s, tipOuts: tipOuts.get(s.id) ?? [] }));
       return {
-        report: buildMonthlyReport(monthShifts, month),
+        report: buildMonthlyReport(withNames, month),
         summary: buildYearSummary(yearShifts, `${year}-01-01`),
       };
     },
@@ -110,6 +113,11 @@ function Reports({ linkedMonth }: { linkedMonth: string | null }) {
                 <Line label="Card tips" value={formatMoney(job.totals.cardCents)} />
                 {job.totals.tipInCents > 0 ? <Line label="From coworkers" value={formatMoney(job.totals.tipInCents)} /> : null}
                 {job.totals.tipOutCents > 0 ? <Line label="Paid out" value={`−${formatMoney(job.totals.tipOutCents)}`} /> : null}
+                {job.rows.some((r) => r.tipOuts?.length) ? (
+                  <ThemedText type="small" themeColor="textSecondary">
+                    Paid out to: {describeTipOuts(combineTipOuts(job.rows.map((r) => r.tipOuts ?? [])))}
+                  </ThemedText>
+                ) : null}
                 {job.totals.serviceChargeCents > 0 ? (
                   <Line label="Service charges (not tips)" value={formatMoney(job.totals.serviceChargeCents)} />
                 ) : null}

@@ -51,6 +51,18 @@ describe('monthly employer report', () => {
     expect(report.jobs[1].mustReport).toBe(false); // $15
   });
 
+  it('includes who tips were paid out to', () => {
+    const html = monthlyReportHtml(
+      buildMonthlyReport(
+        [shift({ cashTipsCents: 10000, tipOutCents: 1500, tipOuts: [{ name: 'Maria <busser>', amountCents: 1500 }] })],
+        '2026-10-01',
+      ),
+      '2026-10-26',
+    );
+    expect(html).toContain('Paid out to');
+    expect(html).toContain('Maria &lt;busser&gt; $15.00');
+  });
+
   it('renders printable HTML with escaped names', () => {
     const html = monthlyReportHtml(buildMonthlyReport([shift({ jobName: 'Bob <b>&</b> Co', cashTipsCents: 2500 })], '2026-10-01'), '2026-10-26');
     expect(html).toContain('Bob &lt;b&gt;&amp;&lt;/b&gt; Co');

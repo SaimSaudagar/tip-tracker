@@ -7,8 +7,15 @@ import { formatDuration } from '@/lib/duration';
 import { formatMoney } from '@/lib/money';
 import { employerReportDueDate } from '@/lib/reminders-plan';
 import { computeShift, type ShiftAmounts } from '@/lib/shift-math';
+import { describeTipOuts, type TipOutEntry } from '@/lib/tipouts';
 
-export type ReportShift = ShiftAmounts & { date: ISODate; jobName: string; positionName: string };
+export type ReportShift = ShiftAmounts & {
+  date: ISODate;
+  jobName: string;
+  positionName: string;
+  /** Who tips were paid out to, when recorded. */
+  tipOuts?: TipOutEntry[];
+};
 
 export type TipTotals = {
   cashCents: number;
@@ -136,6 +143,7 @@ const STYLE = `
   th, td { text-align: right; padding: 5px 6px; border-bottom: 1px solid #ddd; }
   th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
   tfoot td { font-weight: bold; border-top: 2px solid #111; }
+  th.names, td.names { text-align: left; font-size: 10px; }
   .note { margin-top: 24px; font-size: 10px; color: #555; }
 `;
 
@@ -153,7 +161,8 @@ export function monthlyReportHtml(report: MonthlyReport, preparedOn: ISODate): s
       .map(
         (r) => `<tr><td>${escapeHtml(r.date)}</td><td>${escapeHtml(r.positionName)}</td>
         <td>${formatMoney(r.cashTipsCents)}</td><td>${formatMoney(r.cardTipsCents)}</td>
-        <td>${formatMoney(r.tipInCents)}</td><td>${formatMoney(r.tipOutCents)}</td><td>${formatMoney(r.netTipsCents)}</td></tr>`,
+        <td>${formatMoney(r.tipInCents)}</td><td>${formatMoney(r.tipOutCents)}</td>
+        <td class="names">${escapeHtml(describeTipOuts(r.tipOuts ?? []))}</td><td>${formatMoney(r.netTipsCents)}</td></tr>`,
       )
       .join('');
     const t = job.totals;
@@ -164,11 +173,11 @@ export function monthlyReportHtml(report: MonthlyReport, preparedOn: ISODate): s
           : `Under $20 this month: no report to this employer is required, but tips are still income.`
       }</p>
       <table>
-        <thead><tr><th>Date</th><th>Position</th><th>Cash tips</th><th>Card tips</th><th>From coworkers</th><th>Paid out</th><th>Net tips</th></tr></thead>
+        <thead><tr><th>Date</th><th>Position</th><th>Cash tips</th><th>Card tips</th><th>From coworkers</th><th>Paid out</th><th class="names">Paid out to</th><th>Net tips</th></tr></thead>
         <tbody>${rows}</tbody>
         <tfoot><tr><td>Total</td><td>${t.shiftCount} shift${t.shiftCount === 1 ? '' : 's'}</td>
           <td>${formatMoney(t.cashCents)}</td><td>${formatMoney(t.cardCents)}</td><td>${formatMoney(t.tipInCents)}</td>
-          <td>${formatMoney(t.tipOutCents)}</td><td>${formatMoney(t.netTipsCents)}</td></tr></tfoot>
+          <td>${formatMoney(t.tipOutCents)}</td><td></td><td>${formatMoney(t.netTipsCents)}</td></tr></tfoot>
       </table>
       ${t.serviceChargeCents > 0 ? `<p class="muted">Service charges (not tips): ${formatMoney(t.serviceChargeCents)}</p>` : ''}`;
   });

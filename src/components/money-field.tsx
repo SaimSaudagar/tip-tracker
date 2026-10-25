@@ -61,6 +61,7 @@ export function MoneyField({ label, prefix, suffix, hint, error, ...inputProps }
 const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
+    minWidth: 0, // lets two fields share a row; web inputs otherwise keep a ~270px intrinsic width
     gap: Spacing.one,
   },
   box: {
@@ -77,6 +78,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    minWidth: 0,
     fontSize: 22,
     fontWeight: 600,
     paddingVertical: Spacing.two,

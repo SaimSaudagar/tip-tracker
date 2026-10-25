@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import * as DocumentPicker from 'expo-document-picker';
 import { useRouter } from 'expo-router';
 import { useSQLiteContext, type SQLiteDatabase } from 'expo-sqlite';
 import { useCallback, useState, type ReactNode } from 'react';
@@ -10,12 +11,25 @@ import { Chip } from '@/components/chip';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing, TopTabInset } from '@/constants/theme';
-import { getSettings, getWeekStart, listAllShifts, listPositions, setWeekStart, type Position } from '@/db/repo';
+import {
+  getSettings,
+  getWeekStart,
+  listAllShifts,
+  listPositions,
+  listTipOutsBetween,
+  setSetting,
+  setWeekStart,
+  type Position,
+} from '@/db/repo';
+import { createBackup, restoreBackup } from '@/db/backup';
+import { SCHEMA_VERSION } from '@/db/migrations';
 import { readReminderSettings, saveReminderSettings } from '@/db/settings';
 import { useDbQuery } from '@/db/use-db-query';
 import { useTheme } from '@/hooks/use-theme';
-import { todayISO, type Weekday } from '@/lib/dates';
-import { shareCsvFile } from '@/lib/files';
+import { parseBackup } from '@/lib/backup';
+import { confirmDestructive } from '@/lib/confirm';
+import { formatDayLabel, toISODate, todayISO, type Weekday } from '@/lib/dates';
+import { CSV, JSON_FILE, readPickedFile, shareTextFile } from '@/lib/files';
 import { formatMoney, formatPercent } from '@/lib/money';
 import { notificationsSupported, requestNotificationPermission } from '@/lib/notify';
 import { FREE_POSITION_LIMIT } from '@/lib/pro';
@@ -52,6 +66,7 @@ export default function SettingsScreen() {
   const { isPro, setSimulatedPro } = usePro();
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [reminderMessage, setReminderMessage] = useState<string | null>(null);
+  const [backupMessage, setBackupMessage] = useState<{ text: string; error?: boolean } | null>(null);
 
   const load = useCallback(async (database: SQLiteDatabase) => {
     const [positions, weekStart, settings] = await Promise.all([
@@ -59,7 +74,12 @@ export default function SettingsScreen() {
       getWeekStart(database),
       getSettings(database),
     ]);
-    return { positions, weekStart, reminders: readReminderSettings(settings) };
+    return {
+      positions,
+      weekStart,
+      reminders: readReminderSettings(settings),
+      lastBackup: settings.last_backup_at ?? null,
+    };
   }, []);
   const { data } = useDbQuery(load);
   const reminders = data?.reminders;
@@ -96,10 +116,57 @@ export default function SettingsScreen() {
         setExportMessage('No shifts to export yet.');
         return;
       }
-      await shareCsvFile(`tips-${todayISO()}.csv`, shiftsToCsv(shifts));
+      const tipOuts = await listTipOutsBetween(db, '0000-01-01', '9999-12-31');
+      await shareTextFile(
+        `tips-${todayISO()}.csv`,
+        shiftsToCsv(shifts.map((s) => ({ ...s, tipOuts: tipOuts.get(s.id) ?? [] }))),
+        CSV,
+      );
       setExportMessage(`Exported ${shifts.length} shift${shifts.length === 1 ? '' : 's'}.`);
     } catch (e) {
       setExportMessage(`Export failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
+  const backUp = async () => {
+    setBackupMessage(null);
+    try {
+      const backup = await createBackup(db);
+      const today = todayISO();
+      await shareTextFile(`tip-tracker-backup-${today}.json`, JSON.stringify(backup), JSON_FILE);
+      await setSetting(db, 'last_backup_at', today);
+      const count = backup.tables.shifts.length;
+      setBackupMessage({ text: `Backed up ${count} shift${count === 1 ? '' : 's'}. Keep the file somewhere safe, like iCloud Drive or Google Drive.` });
+    } catch (e) {
+      setBackupMessage({ text: `Backup failed: ${e instanceof Error ? e.message : String(e)}`, error: true });
+    }
+  };
+
+  const restore = async () => {
+    setBackupMessage(null);
+    const picked = await DocumentPicker.getDocumentAsync({
+      type: ['application/json', 'text/plain', 'application/octet-stream'],
+      copyToCacheDirectory: true,
+    });
+    if (picked.canceled || !picked.assets?.[0]) return;
+    try {
+      const parsed = parseBackup(await readPickedFile(picked.assets[0]), SCHEMA_VERSION);
+      if (!parsed.ok) {
+        setBackupMessage({ text: parsed.error, error: true });
+        return;
+      }
+      const count = parsed.backup.tables.shifts.length;
+      const made = formatDayLabel(toISODate(new Date(parsed.backup.exportedAt)), todayISO());
+      const ok = await confirmDestructive(
+        'Replace everything on this phone?',
+        `This backup from ${made} has ${count} shift${count === 1 ? '' : 's'}. Everything currently in the app will be replaced by it.`,
+        'Replace',
+      );
+      if (!ok) return;
+      await restoreBackup(db, parsed.backup);
+      setBackupMessage({ text: `Restored ${count} shift${count === 1 ? '' : 's'} from ${made}.` });
+    } catch (e) {
+      setBackupMessage({ text: `Restore failed, nothing was changed: ${e instanceof Error ? e.message : String(e)}`, error: true });
     }
   };
 
@@ -236,6 +303,24 @@ export default function SettingsScreen() {
               Your tips are stored only on this phone and included in your phone’s regular backups. No account, no
               ads.
             </ThemedText>
+            <View style={[styles.backupCard, { backgroundColor: theme.backgroundElement }]}>
+              <ThemedText type="smallBold">Full backup</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {data?.lastBackup
+                  ? `Last backup: ${formatDayLabel(data.lastBackup, todayISO())}`
+                  : 'Not backed up yet. One file holds every shift, position and setting, so you can move to a new phone.'}
+              </ThemedText>
+              <Button title="Back up now" onPress={backUp} />
+              <Button title="Restore from a backup" variant="secondary" onPress={restore} />
+              {backupMessage ? (
+                <ThemedText
+                  type="small"
+                  style={{ color: backupMessage.error ? theme.danger : theme.textSecondary }}
+                  accessibilityLiveRegion="polite">
+                  {backupMessage.text}
+                </ThemedText>
+              ) : null}
+            </View>
             <Button title="Export all shifts (CSV)" variant="secondary" onPress={exportCsv} />
             {exportMessage ? (
               <ThemedText type="small" themeColor="textSecondary" accessibilityLiveRegion="polite">
@@ -326,6 +411,11 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
+  },
+  backupCard: {
+    borderRadius: Spacing.three,
+    padding: Spacing.three,
+    gap: Spacing.two,
   },
   proCard: {
     borderRadius: Spacing.three,

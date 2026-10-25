@@ -41,7 +41,9 @@ npm run lint
 | `src/app/paywall.tsx` | Pro paywall (contextual headline, plans, one-time exit offer) |
 | `src/purchases/pro-context.tsx` | Who has Pro; simulated in development until RevenueCat is connected |
 | `src/lib/reminders-plan.ts` / `notify.ts` | Reminder planning (pure, tested) and local notification scheduling |
-| `docs/` | Privacy policy, terms of use and store listing drafts |
+| `src/db/backup.ts` / `src/lib/backup.ts` | Full JSON backup and restore (validated, one transaction) |
+| `src/lib/tipouts.ts` | Names of coworkers tipped out, for the IRS daily tip record |
+| `docs/` | Privacy policy, terms of use, store listing drafts and the TikTok/Instagram content plan |
 | `src/app/log-shift.tsx` | Quick log and edit screen (`?id=…` edits, `?date=…` starts on a day) |
 | `src/app/position.tsx` | Position editor: wage and tip-out rule |
 | `src/app/import.tsx` | CSV import with column matching, preview and duplicate skipping |

@@ -5,7 +5,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
  * Schema changes are append-only: add a new entry to MIGRATIONS and never edit
  * one that has shipped. PRAGMA user_version records how many have run.
  */
-const MIGRATIONS: string[] = [
+export const MIGRATIONS: string[] = [
   // 1: jobs, positions, shifts, tip-outs and settings, plus a starter job.
   `
   CREATE TABLE jobs (
@@ -77,6 +77,7 @@ const MIGRATIONS: string[] = [
 ];
 
 export const DATABASE_NAME = 'tips.db';
+export const SCHEMA_VERSION = MIGRATIONS.length;
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
   await db.execAsync('PRAGMA foreign_keys = ON;');

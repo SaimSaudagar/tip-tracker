@@ -2,6 +2,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import type { ISODate, Weekday } from '@/lib/dates';
 import type { ShiftAmounts, TipOutRule } from '@/lib/shift-math';
+import type { TipOutEntry } from '@/lib/tipouts';
 
 export type Position = {
   id: number;
@@ -159,6 +160,67 @@ export async function saveShift(db: SQLiteDatabase, s: ShiftInput): Promise<numb
     ...values,
   );
   return result.lastInsertRowId;
+}
+
+/** Saves a shift and, when `tipOuts` is given, replaces who its tips were paid out to. */
+export async function saveShiftWithTipOuts(
+  db: SQLiteDatabase,
+  shift: ShiftInput,
+  tipOuts: TipOutEntry[] | null,
+): Promise<number> {
+  let id = shift.id;
+  await db.withTransactionAsync(async () => {
+    id = await saveShift(db, shift);
+    if (tipOuts === null) return;
+    await db.runAsync('DELETE FROM tipouts WHERE shift_id = ?', id);
+    for (const t of tipOuts) {
+      await db.runAsync(
+        'INSERT INTO tipouts (shift_id, recipient_name, amount_cents) VALUES (?, ?, ?)',
+        id,
+        t.name,
+        t.amountCents,
+      );
+    }
+  });
+  return id!;
+}
+
+export async function getShiftTipOuts(db: SQLiteDatabase, shiftId: number): Promise<TipOutEntry[]> {
+  const rows = await db.getAllAsync<{ recipient_name: string; amount_cents: number }>(
+    'SELECT recipient_name, amount_cents FROM tipouts WHERE shift_id = ? ORDER BY id',
+    shiftId,
+  );
+  return rows.map((r) => ({ name: r.recipient_name, amountCents: r.amount_cents }));
+}
+
+/** Tip-out names for every shift in a date range, keyed by shift id. */
+export async function listTipOutsBetween(
+  db: SQLiteDatabase,
+  start: ISODate,
+  end: ISODate,
+): Promise<Map<number, TipOutEntry[]>> {
+  const rows = await db.getAllAsync<{ shift_id: number; recipient_name: string; amount_cents: number }>(
+    `SELECT t.shift_id, t.recipient_name, t.amount_cents
+     FROM tipouts t JOIN shifts s ON s.id = t.shift_id
+     WHERE s.date BETWEEN ? AND ? ORDER BY t.id`,
+    start,
+    end,
+  );
+  const byShift = new Map<number, TipOutEntry[]>();
+  for (const r of rows) {
+    byShift.set(r.shift_id, [...(byShift.get(r.shift_id) ?? []), { name: r.recipient_name, amountCents: r.amount_cents }]);
+  }
+  return byShift;
+}
+
+/** Most recently used tip-out names, for one-tap entry. */
+export async function recentTipOutNames(db: SQLiteDatabase, limit: number): Promise<string[]> {
+  const rows = await db.getAllAsync<{ name: string }>(
+    `SELECT recipient_name AS name FROM tipouts
+     GROUP BY lower(recipient_name) ORDER BY MAX(id) DESC LIMIT ?`,
+    limit,
+  );
+  return rows.map((r) => r.name);
 }
 
 export async function deleteShift(db: SQLiteDatabase, id: number): Promise<void> {
