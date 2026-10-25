@@ -4,15 +4,18 @@ import { useEffect, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/button';
+import { Chip } from '@/components/chip';
 import { MoneyField } from '@/components/money-field';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { getPosition, listJobNames, listPositions, removePosition, savePosition } from '@/db/repo';
+import { getPosition, listJobNames, listPositions, removePosition, savePosition, type Position } from '@/db/repo';
 import { useTheme } from '@/hooks/use-theme';
 import { confirmDestructive } from '@/lib/confirm';
 import { bpsToInput, centsToInput, formatMoney, parseMoney, parsePercent } from '@/lib/money';
+import { freeLimitViolation } from '@/lib/pro';
 import { calcTipOut, type TipOutRule } from '@/lib/shift-math';
+import { usePro } from '@/purchases/pro-context';
 
 const RULES: { value: TipOutRule; label: string }[] = [
   { value: 'none', label: 'None' },
@@ -30,6 +33,7 @@ export default function PositionScreen() {
   const db = useSQLiteContext();
   const router = useRouter();
   const theme = useTheme();
+  const { isPro } = usePro();
 
   const [name, setName] = useState('');
   const [jobName, setJobName] = useState('');
@@ -37,7 +41,7 @@ export default function PositionScreen() {
   const [rule, setRule] = useState<TipOutRule>('none');
   const [ruleValue, setRuleValue] = useState('');
   const [jobNames, setJobNames] = useState<string[]>([]);
-  const [positionCount, setPositionCount] = useState(0);
+  const [positions, setPositions] = useState<Position[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -45,14 +49,14 @@ export default function PositionScreen() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [existing, jobs, positions] = await Promise.all([
+      const [existing, jobs, active] = await Promise.all([
         positionId !== undefined ? getPosition(db, positionId) : null,
         listJobNames(db),
         listPositions(db),
       ]);
       if (cancelled) return;
       setJobNames(jobs);
-      setPositionCount(positions.length);
+      setPositions(active);
       if (existing) {
         setName(existing.name);
         setJobName(existing.jobName);
@@ -81,6 +85,11 @@ export default function PositionScreen() {
 
   const save = async () => {
     if (!canSave) return;
+    const violation = isPro ? null : freeLimitViolation(positions, { id: positionId, jobName });
+    if (violation) {
+      router.push({ pathname: '/paywall', params: { reason: violation } });
+      return;
+    }
     setSaving(true);
     try {
       await savePosition(db, {
@@ -186,6 +195,11 @@ export default function PositionScreen() {
               />
             ))}
           </View>
+          {!isPro && rule !== 'none' ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              Pro fills this tip-out in on every shift automatically. On the free plan you enter it yourself.
+            </ThemedText>
+          ) : null}
         </View>
 
         {rule !== 'none' ? (
@@ -207,7 +221,7 @@ export default function PositionScreen() {
         {error ? <ThemedText style={{ color: theme.danger }}>{error}</ThemedText> : null}
 
         <Button title={saving ? 'Saving…' : 'Save position'} onPress={save} disabled={!canSave} />
-        {positionId !== undefined && positionCount > 1 ? (
+        {positionId !== undefined && positions.length > 1 ? (
           <Button title="Remove position" variant="danger" onPress={remove} />
         ) : null}
       </ScrollView>
@@ -233,22 +247,6 @@ function TextField({
         {...props}
       />
     </View>
-  );
-}
-
-function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
-  const theme = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      style={[styles.chip, { backgroundColor: selected ? theme.tint : theme.backgroundElement }]}>
-      <ThemedText type="small" style={{ color: selected ? theme.onTint : theme.text }}>
-        {label}
-      </ThemedText>
-    </Pressable>
   );
 }
 
@@ -280,10 +278,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.two,
-  },
-  chip: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.four,
   },
 });

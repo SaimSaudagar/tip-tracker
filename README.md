@@ -17,7 +17,9 @@ Scan the QR code with **Expo Go** on your phone (iOS or Android), or press `w` t
 npm run web
 ```
 
-The web version is for development only. It stores data in the browser.
+The web version is for development only. It stores data in the browser, and reminders and the share sheet only work on phones.
+
+In development builds, turn on **Settings → Developer: simulate Pro** to try Pro features before RevenueCat is connected.
 
 ## Check it
 
@@ -33,7 +35,13 @@ npm run lint
 |---|---|
 | `src/app/(tabs)/index.tsx` | Home: this week, month and year, recent shifts |
 | `src/app/(tabs)/calendar.tsx` | Month calendar with daily tips; log a shift for any past day |
-| `src/app/(tabs)/settings.tsx` | Jobs and positions, week start, CSV export and import |
+| `src/app/(tabs)/reports.tsx` | Monthly employer tip report and year-end summary (PDF) |
+| `src/app/(tabs)/settings.tsx` | Pro status, positions, reminders, week start, CSV export and import, legal |
+| `src/app/onboarding.tsx` | First-run setup: role, workplace, wage, tip-out, week start, reminder |
+| `src/app/paywall.tsx` | Pro paywall (contextual headline, plans, one-time exit offer) |
+| `src/purchases/pro-context.tsx` | Who has Pro; simulated in development until RevenueCat is connected |
+| `src/lib/reminders-plan.ts` / `notify.ts` | Reminder planning (pure, tested) and local notification scheduling |
+| `docs/` | Privacy policy, terms of use and store listing drafts |
 | `src/app/log-shift.tsx` | Quick log and edit screen (`?id=…` edits, `?date=…` starts on a day) |
 | `src/app/position.tsx` | Position editor: wage and tip-out rule |
 | `src/app/import.tsx` | CSV import with column matching, preview and duplicate skipping |

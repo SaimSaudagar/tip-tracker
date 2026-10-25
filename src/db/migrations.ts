@@ -69,6 +69,11 @@ const MIGRATIONS: string[] = [
   INSERT INTO positions (job_id, name) VALUES (last_insert_rowid(), 'Server');
   INSERT INTO settings (key, value) VALUES ('week_start', '0');
   `,
+  // 2: onboarding. Anyone who already logged shifts has effectively onboarded.
+  `
+  INSERT OR IGNORE INTO settings (key, value)
+    SELECT 'onboarded', '1' WHERE EXISTS (SELECT 1 FROM shifts);
+  `,
 ];
 
 export const DATABASE_NAME = 'tips.db';

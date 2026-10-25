@@ -177,10 +177,33 @@ export async function getWeekStart(db: SQLiteDatabase): Promise<Weekday> {
 }
 
 export async function setWeekStart(db: SQLiteDatabase, weekStart: Weekday): Promise<void> {
+  await setSetting(db, 'week_start', String(weekStart));
+}
+
+export async function getSettings(db: SQLiteDatabase): Promise<Record<string, string>> {
+  const rows = await db.getAllAsync<{ key: string; value: string }>('SELECT key, value FROM settings');
+  return Object.fromEntries(rows.map((r) => [r.key, r.value]));
+}
+
+export async function setSetting(db: SQLiteDatabase, key: string, value: string): Promise<void> {
   await db.runAsync(
-    "INSERT INTO settings (key, value) VALUES ('week_start', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-    String(weekStart),
+    'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+    key,
+    value,
   );
+}
+
+export async function countShifts(db: SQLiteDatabase): Promise<number> {
+  return (await db.getFirstAsync<{ n: number }>('SELECT COUNT(*) AS n FROM shifts'))?.n ?? 0;
+}
+
+export async function listLoggedDates(db: SQLiteDatabase, start: ISODate, end: ISODate): Promise<Set<ISODate>> {
+  const rows = await db.getAllAsync<{ date: string }>(
+    'SELECT DISTINCT date FROM shifts WHERE date BETWEEN ? AND ?',
+    start,
+    end,
+  );
+  return new Set(rows.map((r) => r.date));
 }
 
 // ---- Jobs and positions ----

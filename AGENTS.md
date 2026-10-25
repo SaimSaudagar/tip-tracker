@@ -44,6 +44,10 @@ Docs: https://docs.expo.dev/eas/index.md
 - **Shifts store the hourly wage they were logged with**, so changing a position's wage never rewrites past earnings.
 - **Service charges / auto-gratuity are kept separate from tips** because they don't count as voluntary tips for tax reporting.
 - **No ads, no accounts, no tip data sent off the device.** Don't add analytics events that include amounts.
+- **Free vs. Pro** lives in `src/lib/pro.ts` (limits) and `src/purchases/pro-context.tsx` (`usePro()`). Logging, history, the calendar, monthly totals, export and import are always free. Never hide a user's own entries behind the paywall. RevenueCat isn't connected yet: development builds simulate purchases with the `pro_override` setting; replace the marked functions in `pro-context.tsx` when adding it.
+- **Reminders** are planned by the pure `planReminders` (one-off dates, skipping days that already have a shift) and scheduled by `src/lib/notify.ts`. `ReminderSync` in the root layout re-plans whenever shifts or settings change, so screens never schedule notifications themselves.
+- **Platform splits** use `.web.ts` files (`files`, `notify`). Keep both files' exports identical.
+- **Legal text** in `src/constants/legal.ts` must match `docs/privacy-policy.md` and `docs/terms-of-use.md`.
 - Run `npm test`, `npm run typecheck` and `npm run lint` before declaring a task done.
 
 ## Rules

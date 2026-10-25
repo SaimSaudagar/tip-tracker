@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { useCallback } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
@@ -16,6 +16,7 @@ import { buildDashboardPeriods, dashboardLoadRange, type Period } from '@/lib/da
 import { formatMonthYear, formatRange, todayISO } from '@/lib/dates';
 import { formatDuration } from '@/lib/duration';
 import { formatMoney } from '@/lib/money';
+import { usePro } from '@/purchases/pro-context';
 
 const RECENT_LIMIT = 8;
 
@@ -24,6 +25,7 @@ const hourly = (cents: number | null) => (cents === null ? '—' : `${formatMone
 export default function DashboardScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const { isPro } = usePro();
   const today = todayISO();
 
   const load = useCallback(
@@ -78,7 +80,25 @@ export default function DashboardScreen() {
 
           <View style={styles.cards}>
             <PeriodCard title={formatMonthYear(today)} period={data?.periods.month} />
-            <PeriodCard title={today.slice(0, 4)} period={data?.periods.year} />
+            {isPro ? (
+              <PeriodCard title={today.slice(0, 4)} period={data?.periods.year} />
+            ) : (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`See your ${today.slice(0, 4)} totals with Pro`}
+                onPress={() => router.push({ pathname: '/paywall', params: { reason: 'year' } })}
+                style={[styles.card, { backgroundColor: theme.tintSoft }]}>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {today.slice(0, 4)}
+                </ThemedText>
+                <ThemedText type="smallBold" style={[styles.cardAmount, { color: theme.tint }]}>
+                  Your year
+                </ThemedText>
+                <ThemedText type="small" style={{ color: theme.tint }}>
+                  See it with Pro ›
+                </ThemedText>
+              </Pressable>
+            )}
           </View>
 
           <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>

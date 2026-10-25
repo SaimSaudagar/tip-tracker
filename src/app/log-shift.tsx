@@ -19,6 +19,8 @@ import {
 } from '@/db/repo';
 import { useTheme } from '@/hooks/use-theme';
 import { confirmDestructive } from '@/lib/confirm';
+import { maybeAskForReview } from '@/lib/review-prompt';
+import { usePro } from '@/purchases/pro-context';
 import { addDays, formatDayLabel, todayISO } from '@/lib/dates';
 import { minutesToInput, parseDuration } from '@/lib/duration';
 import { centsToInput, formatMoney, formatPercent, parseMoney } from '@/lib/money';
@@ -78,6 +80,7 @@ export default function LogShiftScreen() {
   const db = useSQLiteContext();
   const router = useRouter();
   const theme = useTheme();
+  const { isPro } = usePro();
   const today = todayISO();
   // The calendar opens this screen for a specific past day; anything else starts on today.
   const startDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date) && date <= today ? date : today;
@@ -140,9 +143,10 @@ export default function LogShiftScreen() {
   const serviceCharge = parseMoney(form.serviceCharge);
   const sales = parseMoney(form.sales);
 
-  // A position's tip-out rule fills the tip-out until the user types their own amount.
+  // With Pro, a position's tip-out rule fills the tip-out until the user types their own amount.
+  const hasRule = !!position && position.tipOutRule !== 'none';
   const autoTipOut =
-    position && position.tipOutRule !== 'none' && cash !== null && card !== null && sales !== null
+    isPro && position && hasRule && cash !== null && card !== null && sales !== null
       ? calcTipOut(position.tipOutRule, position.tipOutValue, {
           cashTipsCents: cash,
           cardTipsCents: card,
@@ -190,6 +194,9 @@ export default function LogShiftScreen() {
         notes: form.notes.trim() || null,
       });
       close();
+      if (shiftId === undefined) {
+        maybeAskForReview(db).catch((e) => console.warn('Review prompt failed', e));
+      }
     } finally {
       setSaving(false);
     }
@@ -346,7 +353,13 @@ export default function LogShiftScreen() {
                   set('tipOut')(v);
                 }}
                 error={tipOut === null ? MONEY_ERROR : null}
-                hint={usingAutoTipOut && position ? `Auto: ${describeRule(position)}` : 'To bussers, bar, hosts'}
+                hint={
+                  usingAutoTipOut && position
+                    ? `Auto: ${describeRule(position)}`
+                    : hasRule && !isPro && position
+                      ? `Pro fills this in: ${describeRule(position)}`
+                      : 'To bussers, bar, hosts'
+                }
               />
               <MoneyField
                 label="Tips from coworkers"
