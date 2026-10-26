@@ -10,7 +10,7 @@ import { ListGroup } from '@/components/list-group';
 import { ShiftRow } from '@/components/shift-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Radius, Spacing, TopTabInset } from '@/constants/theme';
+import { MaxContentWidth, Radius, Spacing, TopTabInset } from '@/constants/theme';
 import { getWeekStart, listShiftsBetween } from '@/db/repo';
 import { useDbQuery } from '@/db/use-db-query';
 import { useTheme } from '@/hooks/use-theme';
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
   content: {
     padding: Spacing.three,
     paddingTop: Spacing.three + TopTabInset,
-    paddingBottom: Spacing.five + BottomTabInset,
+    paddingBottom: Spacing.five,
     gap: Spacing.three,
     width: '100%',
     maxWidth: MaxContentWidth,

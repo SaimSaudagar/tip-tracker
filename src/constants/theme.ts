@@ -96,6 +96,10 @@ export const NumberFont = {
   fontVariant: ['tabular-nums'],
 } as const;
 
+/**
+ * Rough tab bar height, only for overlays drawn outside the tabs (the toast). Tab screens
+ * use the safe area instead, which knows the real height on every device.
+ */
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 /** On web, native tabs fall back to a floating bar at the top of the screen. */
 export const TopTabInset = Platform.select({ web: 64 }) ?? 0;

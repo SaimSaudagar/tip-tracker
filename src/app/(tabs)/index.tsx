@@ -11,7 +11,7 @@ import { ProgressRing } from '@/components/progress-ring';
 import { ShiftRow } from '@/components/shift-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Radius, Spacing, TopTabInset } from '@/constants/theme';
+import { MaxContentWidth, Radius, Spacing, TopTabInset } from '@/constants/theme';
 import { getWeekStart, getWeeklyGoal, listRecentShifts, listShiftsBetween } from '@/db/repo';
 import { useDbQuery } from '@/db/use-db-query';
 import { useTheme } from '@/hooks/use-theme';
@@ -61,7 +61,9 @@ export default function HomeScreen() {
 
   return (
     <ThemedView style={styles.screen}>
-      <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
+      {/* The bottom edge keeps the pinned Log shift button above the tab bar: on iOS the
+          tab's safe area includes the bar, and on Android the tab content already ends above it. */}
+      <SafeAreaView style={styles.screen} edges={['top', 'left', 'right', 'bottom']}>
         <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
           <View style={styles.header}>
             <ThemedText type="smallBold" themeColor="textSecondary">
@@ -346,7 +348,7 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.two,
-    paddingBottom: Spacing.three + BottomTabInset,
+    paddingBottom: Spacing.three,
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',

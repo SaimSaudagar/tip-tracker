@@ -8,7 +8,7 @@ import { Button } from '@/components/button';
 import { ListGroup } from '@/components/list-group';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing, TopTabInset } from '@/constants/theme';
+import { MaxContentWidth, Spacing, TopTabInset } from '@/constants/theme';
 import {
   listJobShiftsBetween,
   listPaychecks,
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
   content: {
     padding: Spacing.three,
     paddingTop: Spacing.three + TopTabInset,
-    paddingBottom: Spacing.five + BottomTabInset,
+    paddingBottom: Spacing.five,
     gap: Spacing.four,
     width: '100%',
     maxWidth: MaxContentWidth,
