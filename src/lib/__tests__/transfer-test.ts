@@ -43,6 +43,7 @@ const exportShift = (overrides: Partial<ExportShift> = {}): ExportShift => ({
   tipOutCents: 1500,
   serviceChargeCents: 2500,
   salesCents: 95000,
+  covers: 18,
   notes: 'Patio, "big" party',
   ...overrides,
 });
@@ -63,6 +64,7 @@ describe('export', () => {
       '15',
       '25',
       '950',
+      '18',
       '185.50', // 80 + 120.50 - 15
       '13.85', // 6.5h × $2.13, rounded
       '224.35',
@@ -86,7 +88,7 @@ describe('export', () => {
   });
 
   it('round-trips through import', () => {
-    const shifts = [exportShift(), exportShift({ date: '2026-10-26', salesCents: null, notes: null, minutesWorked: 0 })];
+    const shifts = [exportShift(), exportShift({ date: '2026-10-26', salesCents: null, covers: null, notes: null, minutesWorked: 0 })];
     const [header, ...rows] = parseCsv(shiftsToCsv(shifts));
     const { drafts, skipped } = buildImportDrafts(rows, guessMapping(header));
     expect(skipped).toEqual([]);
@@ -101,6 +103,7 @@ describe('export', () => {
         tipOutCents: s.tipOutCents,
         serviceChargeCents: s.serviceChargeCents,
         salesCents: s.salesCents,
+        covers: s.covers,
         jobName: s.jobName,
         positionName: s.positionName,
         notes: s.notes,

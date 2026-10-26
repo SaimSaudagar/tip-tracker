@@ -8,7 +8,7 @@ export const BACKUP_FORMAT = 'tip-tracker-backup';
 export const BACKUP_VERSION = 1;
 
 /** Settings that describe this phone, not your data, so they aren't backed up or restored. */
-export const DEVICE_ONLY_SETTINGS = ['pro_override', 'last_backup_at'];
+export const DEVICE_ONLY_SETTINGS = ['pro_override', 'trial_ends_at', 'last_backup_at'];
 
 type Value = string | number | null;
 export type Row = Record<string, Value>;

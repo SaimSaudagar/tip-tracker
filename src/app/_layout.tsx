@@ -1,13 +1,16 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { addDatabaseChangeListener, SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import { useEffect } from 'react';
-import { AppState, Platform, StyleSheet, useColorScheme, View } from 'react-native';
+import { AppState, Platform, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ToastHost } from '@/components/toast';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { DATABASE_NAME, migrateDbIfNeeded } from '@/db/migrations';
+import { getSettings } from '@/db/repo';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { applyAppearance, parseAppearance } from '@/lib/appearance';
 import { useNotificationRouting } from '@/lib/notify';
 import { syncReminders } from '@/lib/sync-reminders';
 import { ProProvider, usePro } from '@/purchases/pro-context';
@@ -28,6 +31,7 @@ export default function RootLayout() {
         onInit={migrateDbIfNeeded}
         options={{ enableChangeListener: true }}>
         <ProProvider>
+          <AppearanceSync />
           <ReminderSync />
           <NotificationRouting />
           <Stack>
@@ -37,6 +41,7 @@ export default function RootLayout() {
             <Stack.Screen name="position" options={{ presentation: 'modal', title: 'Position' }} />
             <Stack.Screen name="import" options={{ presentation: 'modal', title: 'Import shifts' }} />
             <Stack.Screen name="paycheck" options={{ presentation: 'modal', title: 'Paycheck' }} />
+            <Stack.Screen name="tip-pool" options={{ presentation: 'modal', title: 'Tip pool' }} />
             <Stack.Screen name="paywall" options={{ presentation: 'modal', headerShown: false }} />
             <Stack.Screen name="legal" options={{ presentation: 'modal', title: '' }} />
           </Stack>
@@ -45,6 +50,29 @@ export default function RootLayout() {
       </SQLiteProvider>
     </ThemeProvider>
   );
+}
+
+/** Applies the light/dark choice from Settings at launch and whenever it changes. */
+function AppearanceSync() {
+  const db = useSQLiteContext();
+
+  useEffect(() => {
+    let active = true;
+    const load = () =>
+      getSettings(db).then((settings) => {
+        if (active) applyAppearance(parseAppearance(settings.appearance));
+      });
+    load();
+    const subscription = addDatabaseChangeListener((event) => {
+      if (event.tableName === 'settings') load();
+    });
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, [db]);
+
+  return null;
 }
 
 /** Keeps scheduled reminders in step with shifts and settings, and rolls the window forward each time the app opens. */

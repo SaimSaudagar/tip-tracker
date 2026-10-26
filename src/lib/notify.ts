@@ -4,6 +4,7 @@ import { useRouter, type Href } from 'expo-router';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 
+import { track } from '@/lib/analytics';
 import type { PlannedNotification } from '@/lib/reminders-plan';
 
 /** Identifier prefixes for notifications this app schedules (see planReminders). */
@@ -91,6 +92,7 @@ export function useNotificationRouting() {
     const url = response?.notification.request.content.data?.url;
     if (response?.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER || typeof url !== 'string') return;
     Notifications.clearLastNotificationResponse();
+    track({ name: 'reminder_opened', kind: response.notification.request.identifier.split('-')[0] });
     router.push(url as Href);
   }, [response, router]);
 }

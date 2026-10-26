@@ -1,75 +1,39 @@
 /**
  * Who has Pro, and how to buy it.
  *
- * RevenueCat isn't connected yet (it needs the App Store, Play Console and
- * RevenueCat accounts). Until then, development builds simulate a purchase by
- * setting the `pro_override` setting, and release builds report purchases as
- * unavailable. When RevenueCat is added, replace `loadIsPro`, `purchase` and
- * `restore` with Purchases.getCustomerInfo / purchasePackage / restorePurchases,
- * and read plan prices from the current offering instead of PLANS.
+ * With a RevenueCat key for this platform (see revenuecat.ts), Pro comes from the `pro`
+ * entitlement and purchases go through the App Store or Google Play. Without one,
+ * development builds simulate a purchase with the `pro_override` setting and release
+ * builds report purchases as unavailable. The "simulate Pro" switch works either way.
  */
-import { addDatabaseChangeListener, useSQLiteContext } from 'expo-sqlite';
+import { addDatabaseChangeListener, useSQLiteContext, type SQLiteDatabase } from 'expo-sqlite';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-import { getSettings, setSetting } from '@/db/repo';
+import { getSettings, removeSetting, setSetting } from '@/db/repo';
+import { todayISO, type ISODate } from '@/lib/dates';
+import { buildPlans, PAYWALL_PLAN_IDS, type Plan, type PlanId, type StorePrice } from '@/lib/plans';
+import { trialEndDate } from '@/lib/reminders-plan';
+import {
+  configureRevenueCat,
+  isPurchaseCancelled,
+  packageFor,
+  pricesFrom,
+  proStatusFrom,
+  Purchases,
+  revenueCatEnabled,
+} from '@/purchases/revenuecat';
 
-export type PlanId = 'annual' | 'monthly' | 'lifetime' | 'annual_month_trial';
+export type { Plan, PlanId } from '@/lib/plans';
 
-export type Plan = {
-  id: PlanId;
-  title: string;
-  price: string;
-  /** Shown under the price on the paywall. */
-  detail: string;
-  /** Fine print next to the buy button. */
-  terms: string;
-  cta: string;
-  badge?: string;
-};
-
-export const PLANS: Plan[] = [
-  {
-    id: 'annual',
-    title: 'Yearly',
-    price: '$24.99/year',
-    detail: '14 days free, then $2.08/month',
-    terms: 'No payment now. We’ll remind you 2 days before your trial ends. Then $24.99 a year, renewing until you cancel in Settings.',
-    cta: 'Start my free 14 days',
-    badge: 'Best value',
-  },
-  {
-    id: 'monthly',
-    title: 'Monthly',
-    price: '$3.99/month',
-    detail: 'No trial. Cancel anytime.',
-    terms: '$3.99 a month, renewing until you cancel in Settings.',
-    cta: 'Subscribe for $3.99/month',
-  },
-  {
-    id: 'lifetime',
-    title: 'Lifetime',
-    price: '$49.99 once',
-    detail: 'Pay once, keep Pro forever.',
-    terms: 'One-time purchase. No subscription.',
-    cta: 'Buy Pro for $49.99',
-  },
-];
-
-/** Offered once, to people who close the paywall at the end of onboarding. */
-export const EXIT_OFFER: Plan = {
-  id: 'annual_month_trial',
-  title: 'Yearly',
-  price: '$24.99/year',
-  detail: '1 month free, then $24.99/year',
-  terms: 'No payment now. We’ll remind you 2 days before your trial ends. Then $24.99 a year, renewing until you cancel in Settings.',
-  cta: 'Try Pro free for a month',
-};
-
-export type PurchaseResult = 'purchased' | 'cancelled' | 'unavailable';
+export type PurchaseResult = 'purchased' | 'cancelled' | 'unavailable' | 'failed';
 
 type ProState = {
   isPro: boolean;
   ready: boolean;
+  /** The main paywall's plans, in order, with store prices once they've loaded. */
+  plans: Plan[];
+  /** The one-time longer-trial offer for people leaving the onboarding paywall. */
+  exitOffer: Plan;
   purchase: (plan: PlanId) => Promise<PurchaseResult>;
   restore: () => Promise<boolean>;
   /** Development only: turn simulated Pro on or off. */
@@ -78,18 +42,29 @@ type ProState = {
 
 const ProContext = createContext<ProState | null>(null);
 
+/** Remembers when a running free trial ends, so a reminder can go out 2 days before. */
+async function saveTrialEnd(db: SQLiteDatabase, trialEndsOn: ISODate | null) {
+  const current = (await getSettings(db)).trial_ends_at ?? null;
+  if (current === trialEndsOn) return;
+  if (trialEndsOn) await setSetting(db, 'trial_ends_at', trialEndsOn);
+  else await removeSetting(db, 'trial_ends_at');
+}
+
 export function ProProvider({ children }: { children: ReactNode }) {
   const db = useSQLiteContext();
-  const [isPro, setIsPro] = useState(false);
-  const [ready, setReady] = useState(false);
+  const [simulatedPro, setSimulatedProState] = useState(false);
+  const [storePro, setStorePro] = useState(false);
+  const [settingsReady, setSettingsReady] = useState(false);
+  const [storeReady, setStoreReady] = useState(!revenueCatEnabled);
+  const [prices, setPrices] = useState<Partial<Record<PlanId, StorePrice>>>({});
 
   useEffect(() => {
     let active = true;
     const refresh = () =>
       getSettings(db).then((settings) => {
         if (!active) return;
-        setIsPro(settings.pro_override === '1');
-        setReady(true);
+        setSimulatedProState(settings.pro_override === '1');
+        setSettingsReady(true);
       });
     refresh();
     const subscription = addDatabaseChangeListener((event) => {
@@ -101,32 +76,90 @@ export function ProProvider({ children }: { children: ReactNode }) {
     };
   }, [db]);
 
+  useEffect(() => {
+    if (!revenueCatEnabled) return;
+    let active = true;
+    configureRevenueCat();
+    const apply = (info: Parameters<typeof proStatusFrom>[0]) => {
+      if (!active) return;
+      const status = proStatusFrom(info);
+      setStorePro(status.isPro);
+      setStoreReady(true);
+      saveTrialEnd(db, status.trialEndsOn).catch((e) => console.warn('Could not save trial end', e));
+    };
+    Purchases.getCustomerInfo()
+      .then(apply)
+      .catch((e) => {
+        console.warn('Could not load purchases', e);
+        if (active) setStoreReady(true);
+      });
+    Purchases.getOfferings()
+      .then((offerings) => {
+        if (active) setPrices(pricesFrom(offerings));
+      })
+      .catch((e) => console.warn('Could not load prices', e));
+    Purchases.addCustomerInfoUpdateListener(apply);
+    return () => {
+      active = false;
+      Purchases.removeCustomerInfoUpdateListener(apply);
+    };
+  }, [db]);
+
   const setSimulatedPro = useCallback(
     async (on: boolean) => {
-      await setSetting(db, 'pro_override', on ? '1' : '0');
+      await db.withTransactionAsync(async () => {
+        await setSetting(db, 'pro_override', on ? '1' : '0');
+        if (!on && !revenueCatEnabled) await removeSetting(db, 'trial_ends_at');
+      });
     },
     [db],
   );
 
   const purchase = useCallback(
-    async (_plan: PlanId): Promise<PurchaseResult> => {
-      if (!__DEV__) return 'unavailable';
-      await setSimulatedPro(true);
-      return 'purchased';
+    async (plan: PlanId): Promise<PurchaseResult> => {
+      if (!revenueCatEnabled) {
+        if (!__DEV__) return 'unavailable';
+        await setSimulatedPro(true);
+        await saveTrialEnd(db, trialEndDate(todayISO(), plan));
+        return 'purchased';
+      }
+      try {
+        const pkg = packageFor(await Purchases.getOfferings(), plan);
+        if (!pkg) return 'unavailable';
+        const { customerInfo } = await Purchases.purchasePackage(pkg);
+        const status = proStatusFrom(customerInfo);
+        setStorePro(status.isPro);
+        await saveTrialEnd(db, status.trialEndsOn);
+        return status.isPro ? 'purchased' : 'failed';
+      } catch (e) {
+        if (isPurchaseCancelled(e)) return 'cancelled';
+        console.warn('Purchase failed', e);
+        return 'failed';
+      }
     },
-    [setSimulatedPro],
+    [db, setSimulatedPro],
   );
 
   const restore = useCallback(async () => {
-    const pro = (await getSettings(db)).pro_override === '1';
-    setIsPro(pro);
-    return pro;
+    if (!revenueCatEnabled) return (await getSettings(db)).pro_override === '1';
+    const status = proStatusFrom(await Purchases.restorePurchases());
+    setStorePro(status.isPro);
+    await saveTrialEnd(db, status.trialEndsOn);
+    return status.isPro;
   }, [db]);
 
-  const value = useMemo(
-    () => ({ isPro, ready, purchase, restore, setSimulatedPro }),
-    [isPro, ready, purchase, restore, setSimulatedPro],
-  );
+  const value = useMemo(() => {
+    const all = buildPlans(prices);
+    return {
+      isPro: storePro || simulatedPro,
+      ready: settingsReady && storeReady,
+      plans: PAYWALL_PLAN_IDS.map((id) => all[id]),
+      exitOffer: all.annual_month_trial,
+      purchase,
+      restore,
+      setSimulatedPro,
+    };
+  }, [storePro, simulatedPro, settingsReady, storeReady, prices, purchase, restore, setSimulatedPro]);
   return <ProContext.Provider value={value}>{children}</ProContext.Provider>;
 }
 

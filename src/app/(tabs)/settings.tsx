@@ -3,16 +3,19 @@ import * as DocumentPicker from 'expo-document-picker';
 import { useRouter } from 'expo-router';
 import { useSQLiteContext, type SQLiteDatabase } from 'expo-sqlite';
 import { useCallback, useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
 import { Chip } from '@/components/chip';
 import { MoneyField } from '@/components/money-field';
+import { showToast } from '@/components/toast';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { SUPPORT_EMAIL } from '@/constants/app';
 import { MaxContentWidth, Spacing, TopTabInset } from '@/constants/theme';
 import {
+  deleteAllData,
   getSettings,
   getWeekStart,
   getWeeklyGoal,
@@ -29,10 +32,13 @@ import { SCHEMA_VERSION } from '@/db/migrations';
 import { readReminderSettings, saveReminderSettings } from '@/db/settings';
 import { useDbQuery } from '@/db/use-db-query';
 import { useTheme } from '@/hooks/use-theme';
+import { track } from '@/lib/analytics';
+import { APPEARANCE_OPTIONS, parseAppearance, type AppearancePreference } from '@/lib/appearance';
 import { parseBackup } from '@/lib/backup';
 import { confirmDestructive } from '@/lib/confirm';
 import { formatDayLabel, toISODate, todayISO, type Weekday } from '@/lib/dates';
 import { CSV, JSON_FILE, readPickedFile, shareTextFile } from '@/lib/files';
+import { haptic } from '@/lib/haptics';
 import { centsToInput, formatMoney, formatPercent, parseMoney } from '@/lib/money';
 import { notificationsSupported, requestNotificationPermission, scheduleTestReminder } from '@/lib/notify';
 import { FREE_POSITION_LIMIT } from '@/lib/pro';
@@ -66,7 +72,8 @@ export default function SettingsScreen() {
   const theme = useTheme();
   const router = useRouter();
   const db = useSQLiteContext();
-  const { isPro, setSimulatedPro } = usePro();
+  const { isPro, restore: restorePurchases, setSimulatedPro } = usePro();
+  const [proMessage, setProMessage] = useState<string | null>(null);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [reminderMessage, setReminderMessage] = useState<string | null>(null);
   const [testMessage, setTestMessage] = useState<string | null>(null);
@@ -85,6 +92,7 @@ export default function SettingsScreen() {
       weeklyGoal,
       reminders: readReminderSettings(settings),
       lastBackup: settings.last_backup_at ?? null,
+      appearance: parseAppearance(settings.appearance),
     };
   }, []);
   const { data } = useDbQuery(load);
@@ -129,6 +137,7 @@ export default function SettingsScreen() {
         CSV,
       );
       setExportMessage(`Exported ${shifts.length} shift${shifts.length === 1 ? '' : 's'}.`);
+      track({ name: 'report_exported', type: 'csv' });
     } catch (e) {
       setExportMessage(`Export failed: ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -141,6 +150,7 @@ export default function SettingsScreen() {
       const today = todayISO();
       await shareTextFile(`tip-tracker-backup-${today}.json`, JSON.stringify(backup), JSON_FILE);
       await setSetting(db, 'last_backup_at', today);
+      track({ name: 'report_exported', type: 'backup' });
       const count = backup.tables.shifts.length;
       setBackupMessage({ text: `Backed up ${count} shift${count === 1 ? '' : 's'}. Keep the file somewhere safe, like iCloud Drive or Google Drive.` });
     } catch (e) {
@@ -176,6 +186,37 @@ export default function SettingsScreen() {
     }
   };
 
+  const restorePro = async () => {
+    setProMessage(null);
+    try {
+      setProMessage((await restorePurchases()) ? 'Pro restored. Thanks for your support!' : 'No previous purchase found for this account.');
+    } catch (e) {
+      setProMessage(`Couldn’t restore purchases: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
+  const eraseEverything = async () => {
+    const ok = await confirmDestructive(
+      'Delete all data?',
+      'Every shift, position, paycheck and setting on this phone will be erased, and the app will start over. This can’t be undone, so back up first if you might want them later.',
+      'Delete everything',
+    );
+    if (!ok) return;
+    await deleteAllData(db);
+    haptic.destructive();
+    showToast({ title: 'All data deleted' });
+  };
+
+  const contactSupport = () => {
+    const subject = encodeURIComponent('Tip Tracker support');
+    const body = encodeURIComponent(
+      `\n\n—\nTip Tracker ${Constants.expoConfig?.version ?? ''} on ${Platform.OS} ${String(Platform.Version)}`,
+    );
+    Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`).catch(() =>
+      showToast({ title: 'No email app found', detail: `Write to ${SUPPORT_EMAIL}` }),
+    );
+  };
+
   return (
     <ThemedView style={styles.screen}>
       <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
@@ -191,11 +232,21 @@ export default function SettingsScreen() {
                 ? 'Thanks for supporting an app with no ads. Manage your subscription in your App Store or Google Play account.'
                 : 'Reports for your employer and tax time, automatic tip-outs, every job you work, and your year at a glance.'}
             </ThemedText>
-            {!isPro ? <Button title="See Pro" onPress={() => showPaywall('settings')} /> : null}
+            {!isPro ? (
+              <>
+                <Button title="See Pro" onPress={() => showPaywall('settings')} />
+                <Button title="Restore purchases" variant="secondary" onPress={restorePro} />
+              </>
+            ) : null}
+            {proMessage ? (
+              <ThemedText type="small" themeColor="textSecondary" accessibilityLiveRegion="polite">
+                {proMessage}
+              </ThemedText>
+            ) : null}
             {__DEV__ ? (
               <ToggleRow
                 label="Developer: simulate Pro"
-                hint="Development builds only, until RevenueCat is connected."
+                hint="Development builds only: turns Pro on without buying it."
                 value={isPro}
                 onValueChange={(on) => setSimulatedPro(on)}
               />
@@ -313,22 +364,29 @@ export default function SettingsScreen() {
 
           <Section title="WEEK STARTS ON">
             <View style={styles.segment}>
-              {WEEK_STARTS.map(({ value, label }) => {
-                const selected = data?.weekStart === value;
-                return (
-                  <Pressable
-                    key={value}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Week starts on ${label}`}
-                    accessibilityState={{ selected }}
-                    onPress={() => setWeekStart(db, value)}
-                    style={[styles.segmentItem, { backgroundColor: selected ? theme.tint : theme.backgroundElement }]}>
-                    <ThemedText type="smallBold" style={{ color: selected ? theme.onTint : theme.text }}>
-                      {label}
-                    </ThemedText>
-                  </Pressable>
-                );
-              })}
+              {WEEK_STARTS.map(({ value, label }) => (
+                <SegmentItem
+                  key={value}
+                  label={label}
+                  accessibilityLabel={`Week starts on ${label}`}
+                  selected={data?.weekStart === value}
+                  onPress={() => setWeekStart(db, value)}
+                />
+              ))}
+            </View>
+          </Section>
+
+          <Section title="APPEARANCE">
+            <View style={styles.segment}>
+              {APPEARANCE_OPTIONS.map(({ value, label }) => (
+                <SegmentItem
+                  key={value}
+                  label={label}
+                  accessibilityLabel={`Appearance: ${label}`}
+                  selected={data?.appearance === value}
+                  onPress={() => setSetting(db, 'appearance', value satisfies AppearancePreference)}
+                />
+              ))}
             </View>
           </Section>
 
@@ -362,11 +420,17 @@ export default function SettingsScreen() {
               </ThemedText>
             ) : null}
             <Button title="Import from another app (CSV)" variant="secondary" onPress={() => router.push('/import')} />
+            <Button title="Delete all data" variant="danger" onPress={eraseEverything} />
+          </Section>
+
+          <Section title="TOOLS">
+            <LinkRow label="Tip pool calculator" onPress={() => router.push('/tip-pool')} />
           </Section>
 
           <Section title="ABOUT">
             <LinkRow label="Privacy policy" onPress={() => router.push({ pathname: '/legal', params: { doc: 'privacy' } })} />
             <LinkRow label="Terms of use" onPress={() => router.push({ pathname: '/legal', params: { doc: 'terms' } })} />
+            {SUPPORT_EMAIL ? <LinkRow label="Contact support" onPress={contactSupport} /> : null}
           </Section>
 
           <ThemedText type="small" themeColor="textSecondary" style={styles.version}>
@@ -440,6 +504,25 @@ function ToggleRow(props: {
         trackColor={{ true: theme.tint }}
       />
     </View>
+  );
+}
+
+function SegmentItem(props: { label: string; accessibilityLabel: string; selected: boolean; onPress: () => void }) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={props.accessibilityLabel}
+      accessibilityState={{ selected: props.selected }}
+      onPress={() => {
+        if (!props.selected) haptic.selection();
+        props.onPress();
+      }}
+      style={[styles.segmentItem, { backgroundColor: props.selected ? theme.tint : theme.backgroundElement }]}>
+      <ThemedText type="smallBold" style={{ color: props.selected ? theme.onTint : theme.text }}>
+        {props.label}
+      </ThemedText>
+    </Pressable>
   );
 }
 

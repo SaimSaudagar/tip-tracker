@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,8 +10,9 @@ import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { getSettings, setSetting } from '@/db/repo';
 import { useTheme } from '@/hooks/use-theme';
+import { track } from '@/lib/analytics';
 import type { PaywallReason } from '@/lib/pro';
-import { EXIT_OFFER, PLANS, usePro, type Plan, type PlanId } from '@/purchases/pro-context';
+import { usePro, type Plan, type PlanId } from '@/purchases/pro-context';
 
 const HEADLINES: Record<PaywallReason, string> = {
   onboarding: 'Track every tip. No ads. Ever.',
@@ -38,14 +39,24 @@ export default function PaywallScreen() {
   const router = useRouter();
   const db = useSQLiteContext();
   const theme = useTheme();
-  const { purchase, restore } = usePro();
+  const { purchase, restore, plans, exitOffer: exitPlan } = usePro();
 
   const [selected, setSelected] = useState<PlanId>('annual');
   const [exitOffer, setExitOffer] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const plan: Plan = exitOffer ? EXIT_OFFER : (PLANS.find((p) => p.id === selected) ?? PLANS[0]);
+  useEffect(() => track({ name: 'paywall_viewed', placement: reason }), [reason]);
+  useEffect(() => {
+    if (exitOffer) track({ name: 'paywall_viewed', placement: 'exit_offer' });
+  }, [exitOffer]);
+
+  const plan: Plan = exitOffer ? exitPlan : (plans.find((p) => p.id === selected) ?? plans[0]);
+
+  const dismiss = () => {
+    track({ name: 'paywall_dismissed', placement: exitOffer ? 'exit_offer' : reason });
+    close();
+  };
 
   const close = () => {
     if (reason === 'onboarding' || !router.canGoBack()) router.replace('/');
@@ -62,7 +73,7 @@ export default function PaywallScreen() {
         return;
       }
     }
-    close();
+    dismiss();
   };
 
   const buy = async () => {
@@ -70,8 +81,15 @@ export default function PaywallScreen() {
     setMessage(null);
     try {
       const result = await purchase(plan.id);
-      if (result === 'purchased') close();
-      else if (result === 'unavailable') setMessage('Purchases aren’t available yet. Please try again later.');
+      if (result === 'purchased') {
+        const trial = plan.id === 'annual' || plan.id === 'annual_month_trial';
+        track({ name: trial ? 'trial_started' : 'purchase_completed', product: plan.id });
+        close();
+      } else if (result === 'unavailable') {
+        setMessage('Purchases aren’t available yet. Please try again later.');
+      } else if (result === 'failed') {
+        setMessage('The purchase didn’t go through. Please try again.');
+      }
     } finally {
       setBusy(false);
     }
@@ -83,6 +101,8 @@ export default function PaywallScreen() {
     try {
       if (await restore()) close();
       else setMessage('No previous purchase found for this account.');
+    } catch (e) {
+      setMessage(`Couldn’t restore purchases: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setBusy(false);
     }
@@ -123,7 +143,7 @@ export default function PaywallScreen() {
 
           {!exitOffer ? (
             <View style={styles.plans} accessibilityRole="radiogroup">
-              {PLANS.map((p) => {
+              {plans.map((p) => {
                 const isSelected = p.id === selected;
                 return (
                   <Pressable
@@ -176,7 +196,7 @@ export default function PaywallScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={exitOffer ? 'No thanks, use the free plan' : 'Continue with free plan'}
-            onPress={close}
+            onPress={dismiss}
             hitSlop={8}
             style={styles.freeLink}>
             <ThemedText type="smallBold" style={[styles.center, { color: theme.tint }]}>

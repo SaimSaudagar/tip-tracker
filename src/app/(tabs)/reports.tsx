@@ -18,6 +18,7 @@ import {
 } from '@/db/repo';
 import { useDbQuery } from '@/db/use-db-query';
 import { useTheme } from '@/hooks/use-theme';
+import { track } from '@/lib/analytics';
 import { shiftMonth } from '@/lib/calendar';
 import { formatDayLabel, formatRange, monthRange, todayISO, yearRange } from '@/lib/dates';
 import { formatDuration } from '@/lib/duration';
@@ -32,13 +33,14 @@ import { usePro } from '@/purchases/pro-context';
 const PAYCHECK_LIMIT = 12;
 
 export default function ReportsScreen() {
-  const { month } = useLocalSearchParams<{ month?: string }>();
+  const { month, year } = useLocalSearchParams<{ month?: string; year?: string }>();
   const linked = month && /^\d{4}-\d{2}-\d{2}$/.test(month) ? month : null;
-  // A report-reminder link (?month=…) starts the screen fresh on that month.
-  return <Reports key={linked ?? 'default'} linkedMonth={linked} />;
+  const linkedYear = year && /^\d{4}$/.test(year) ? year : null;
+  // A report-reminder link (?month=…) or the tax-season card (?year=…) starts the screen fresh there.
+  return <Reports key={`${linked ?? 'month'}-${linkedYear ?? 'year'}`} linkedMonth={linked} linkedYear={linkedYear} />;
 }
 
-function Reports({ linkedMonth }: { linkedMonth: string | null }) {
+function Reports({ linkedMonth, linkedYear }: { linkedMonth: string | null; linkedYear: string | null }) {
   const theme = useTheme();
   const router = useRouter();
   const { isPro } = usePro();
@@ -48,7 +50,7 @@ function Reports({ linkedMonth }: { linkedMonth: string | null }) {
   const [month, setMonth] = useState(() =>
     linkedMonth ? shiftMonth(linkedMonth, 0) : shiftMonth(today, Number(today.slice(8)) <= 10 ? -1 : 0),
   );
-  const [year, setYear] = useState(today.slice(0, 4));
+  const [year, setYear] = useState(linkedYear && linkedYear <= today.slice(0, 4) ? linkedYear : today.slice(0, 4));
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(
@@ -82,10 +84,11 @@ function Reports({ linkedMonth }: { linkedMonth: string | null }) {
 
   const showPaywall = () => router.push({ pathname: '/paywall', params: { reason: 'reports' } });
 
-  const share = async (html: string, fileName: string) => {
+  const share = async (html: string, fileName: string, type: 'monthly_pdf' | 'year_pdf') => {
     setError(null);
     try {
       await sharePdf(html, fileName);
+      track({ name: 'report_exported', type });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -153,7 +156,7 @@ function Reports({ linkedMonth }: { linkedMonth: string | null }) {
                 title={isPro ? 'Share PDF for your employer' : 'Share PDF for your employer · Pro'}
                 variant={isPro ? 'primary' : 'secondary'}
                 onPress={() =>
-                  isPro ? share(monthlyReportHtml(report, today), `tip-report-${month.slice(0, 7)}.pdf`) : showPaywall()
+                  isPro ? share(monthlyReportHtml(report, today), `tip-report-${month.slice(0, 7)}.pdf`, 'monthly_pdf') : showPaywall()
                 }
               />
             ) : null}
@@ -205,7 +208,7 @@ function Reports({ linkedMonth }: { linkedMonth: string | null }) {
                 </View>
                 <Button
                   title="Share year-end PDF"
-                  onPress={() => share(yearSummaryHtml(summary, today), `tip-summary-${year}.pdf`)}
+                  onPress={() => share(yearSummaryHtml(summary, today), `tip-summary-${year}.pdf`, 'year_pdf')}
                 />
               </>
             ) : null}

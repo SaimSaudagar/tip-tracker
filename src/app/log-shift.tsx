@@ -12,6 +12,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import {
+  countShifts,
   deleteShift,
   getLatestShift,
   getShift,
@@ -27,6 +28,7 @@ import {
   type ShiftPeriod,
 } from '@/db/repo';
 import { useTheme } from '@/hooks/use-theme';
+import { track } from '@/lib/analytics';
 import { confirmDestructive } from '@/lib/confirm';
 import { celebrationFor } from '@/lib/celebration';
 import { monthRange, todayISO, weekRange } from '@/lib/dates';
@@ -39,7 +41,7 @@ import {
   periodForStart,
 } from '@/lib/duration';
 import { haptic } from '@/lib/haptics';
-import { centsToInput, formatMoney, formatPercent, parseMoney } from '@/lib/money';
+import { centsToInput, formatMoney, formatPercent, parseCount, parseMoney } from '@/lib/money';
 import { maybeAskForReview } from '@/lib/review-prompt';
 import { calcTipOut, computeShift, summarize } from '@/lib/shift-math';
 import { parseTipOutDrafts, type TipOutDraft } from '@/lib/tipouts';
@@ -58,6 +60,7 @@ type Form = {
   tipOut: string;
   serviceCharge: string;
   sales: string;
+  covers: string;
   notes: string;
 };
 
@@ -74,6 +77,7 @@ const blankForm = (date: string): Form => ({
   tipOut: '',
   serviceCharge: '',
   sales: '',
+  covers: '',
   notes: '',
 });
 
@@ -90,6 +94,7 @@ const formFromShift = (s: Shift): Form => ({
   tipOut: centsToInput(s.tipOutCents),
   serviceCharge: centsToInput(s.serviceChargeCents),
   sales: s.salesCents === null ? '' : centsToInput(s.salesCents),
+  covers: s.covers === null ? '' : String(s.covers),
   notes: s.notes ?? '',
 });
 
@@ -103,7 +108,7 @@ function describeRule(p: Position) {
 }
 
 export default function LogShiftScreen() {
-  const { id, date } = useLocalSearchParams<{ id?: string; date?: string }>();
+  const { id, date, tipIn: linkedTipIn } = useLocalSearchParams<{ id?: string; date?: string; tipIn?: string }>();
   const shiftId = id ? Number(id) : undefined;
   const db = useSQLiteContext();
   const router = useRouter();
@@ -112,6 +117,8 @@ export default function LogShiftScreen() {
   const today = todayISO();
   // The calendar opens this screen for a specific past day; anything else starts on today.
   const startDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date) && date <= today ? date : today;
+  // The tip pool calculator opens this screen with your share as tips from coworkers.
+  const startTipIn = linkedTipIn && parseMoney(linkedTipIn) ? linkedTipIn : '';
 
   const [positions, setPositions] = useState<Position[]>([]);
   const [original, setOriginal] = useState<Shift | null>(null);
@@ -157,6 +164,7 @@ export default function LogShiftScreen() {
           setShowMore(
             existing.tipInCents + existing.tipOutCents + existing.serviceChargeCents > 0 ||
               existing.salesCents !== null ||
+              existing.covers !== null ||
               !!existing.notes ||
               !!existing.startTime,
           );
@@ -168,15 +176,17 @@ export default function LogShiftScreen() {
           ...blankForm(startDate),
           positionId: lastPosition?.id ?? all[0]?.id ?? null,
           hours: latest && lastPosition ? minutesToInput(latest.minutesWorked) : '',
+          tipIn: startTipIn,
         });
         setPeriod(latest?.period ?? null);
+        if (startTipIn) setShowMore(true);
       }
       setLoaded(true);
     })();
     return () => {
       cancelled = true;
     };
-  }, [db, shiftId, startDate]);
+  }, [db, shiftId, startDate, startTipIn]);
 
   const set = (key: keyof Form) => (value: string) => setForm((f) => ({ ...f, [key]: value }));
   const position = positions.find((p) => p.id === form.positionId) ?? null;
@@ -196,6 +206,7 @@ export default function LogShiftScreen() {
   const tipIn = parseMoney(form.tipIn);
   const serviceCharge = parseMoney(form.serviceCharge);
   const sales = parseMoney(form.sales);
+  const covers = parseCount(form.covers);
 
   // With Pro, a position's tip-out rule fills the tip-out until the user types their own amount.
   const hasRule = !!position && position.tipOutRule !== 'none';
@@ -224,7 +235,7 @@ export default function LogShiftScreen() {
     original && original.positionId === form.positionId ? original.hourlyWageCents : (position?.hourlyWageCents ?? 0);
 
   const values = [minutes, cash, card, tipIn, tipOut, serviceCharge, sales];
-  const valid = values.every((v) => v !== null) && timesValid && form.positionId !== null;
+  const valid = values.every((v) => v !== null) && covers !== null && timesValid && form.positionId !== null;
   const amounts = valid
     ? {
         minutesWorked: minutes!,
@@ -260,12 +271,14 @@ export default function LogShiftScreen() {
           breakMinutes: usingTimes ? breakMinutes! : 0,
           period: effectivePeriod,
           salesCents: form.sales.trim() === '' ? null : sales,
+          covers: form.covers.trim() === '' ? null : covers,
           notes: form.notes.trim() || null,
         },
         namedTipOuts.entries,
       );
       haptic.success();
       if (shiftId === undefined) {
+        countShifts(db).then((nth) => track({ name: 'shift_logged', nth }), () => {});
         await celebrate(savedId);
       } else {
         showToast({ title: 'Changes saved' });
@@ -601,6 +614,18 @@ export default function LogShiftScreen() {
                 hint="Optional"
               />
             </View>
+            <View style={styles.row}>
+              <MoneyField
+                label="Covers"
+                value={form.covers}
+                onChangeText={set('covers')}
+                inputMode="numeric"
+                keyboardType="number-pad"
+                error={covers === null ? 'Enter a whole number' : null}
+                hint="Guests served (optional)"
+              />
+              <View style={styles.rowSpacer} />
+            </View>
             <View style={styles.notesWrapper}>
               <ThemedText type="small" themeColor="textSecondary">
                 Notes
@@ -730,6 +755,9 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     gap: Spacing.three,
+  },
+  rowSpacer: {
+    flex: 1,
   },
   moreToggle: {
     paddingVertical: Spacing.one,

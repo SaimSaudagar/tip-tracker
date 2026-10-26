@@ -9,6 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { importShifts, listPositions, type Position } from '@/db/repo';
+import { track } from '@/lib/analytics';
 import { useTheme } from '@/hooks/use-theme';
 import { parseCsv } from '@/lib/csv';
 import { formatDayLabel, todayISO } from '@/lib/dates';
@@ -80,6 +81,7 @@ export default function ImportScreen() {
         useImportedWage: mapping.wage !== null,
       });
       setResult({ imported, duplicates, skipped: preview.skipped.length });
+      track({ name: 'import_completed', rows: imported });
     } catch (e) {
       setError(`Import failed, nothing was saved: ${e instanceof Error ? e.message : String(e)}`);
     } finally {

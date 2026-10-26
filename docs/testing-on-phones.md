@@ -58,13 +58,15 @@ Tick each one off, and note anything that looks wrong.
 - [ ] The paywall appears. Tap ✕: the “1 month free” offer appears once. Tap “No thanks”.
 
 **Layout**
-- [ ] The tab bar (Home, Calendar, Reports, Settings) is at the **bottom** and doesn’t cover the **Log shift** button.
+- [ ] The tab bar (Home, Calendar, Insights, Reports, Settings) is at the **bottom** and doesn’t cover the **Log shift** button.
 - [ ] Nothing is hidden behind the notch, the Dynamic Island or the Android status bar.
 - [ ] Switch the phone to dark mode: every screen stays readable.
+- [ ] Settings → **Appearance → Dark**, then **Light**, then **Automatic**: every screen and the tab bar follow straight away, and the choice is still there after closing and reopening the app.
 
 **Logging**
 - [ ] Log a shift: the number keyboard opens; the keyboard doesn’t cover the field you’re typing in.
-- [ ] Open “Tip-outs, service charges & more”, add two people under “Tipped out to”, and save.
+- [ ] Open “Tip-outs, service charges & more”, add two people under “Tipped out to”, enter **Covers** (say 20), and save.
+- [ ] Edit that shift: the covers are still there.
 - [ ] Home, Calendar and Reports all show the shift.
 - [ ] Edit the shift, then delete one with the native “Delete this shift?” dialog.
 - [ ] Close the app completely (swipe it away), reopen it from Expo Go: your data is still there.
@@ -73,6 +75,14 @@ Tick each one off, and note anything that looks wrong.
 - [ ] Settings → turn on **Developer: simulate Pro**.
 - [ ] Log shift: with a tip-out rule set, the tip-out fills itself in (“Auto: …”).
 - [ ] Reports → **Share PDF for your employer**: the share sheet opens with a PDF. Open or preview it and check it looks right. Do the same with **Share year-end PDF**.
+
+- [ ] Insights: a **Tips per guest** card appears once a shift has covers.
+- [ ] Settings → **See Pro** → **Start my free 14 days**: Pro turns on (simulated, nothing is charged).
+
+**Tools**
+- [ ] Settings → **Tip pool calculator**: enter $300, you 6 hrs, a coworker 4 hrs. It shows $180 and $120.
+- [ ] **Share the split** opens the share sheet with the text.
+- [ ] **Log my $180.00 in a shift** opens Log shift with “Tips from coworkers” filled in.
 
 **Reminders**
 - [ ] Settings → **Developer: test reminder in 1 minute**, then leave the app or lock the phone.
@@ -83,6 +93,7 @@ Tick each one off, and note anything that looks wrong.
 - [ ] Settings → **Back up now**: the share sheet opens. Save the file to Files (iPhone) or Drive (Android).
 - [ ] **Restore from a backup**: pick that file. You’re asked to confirm, then it says “Restored N shifts”.
 - [ ] **Export all shifts (CSV)**, save it, then **Import from another app (CSV)** with the same file: it reports the shifts as already in the app and skips them.
+- [ ] **Delete all data** (back up first): after confirming, the app starts over at onboarding. Restoring the backup brings everything back.
 
 ## 6. Reporting problems
 

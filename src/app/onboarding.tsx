@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,6 +13,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { listPositions, savePosition, setSetting, setWeekStart } from '@/db/repo';
 import { saveReminderSettings } from '@/db/settings';
 import { useTheme } from '@/hooks/use-theme';
+import { track } from '@/lib/analytics';
 import type { Weekday } from '@/lib/dates';
 import { parseMoney, parsePercent } from '@/lib/money';
 import { notificationsSupported, requestNotificationPermission } from '@/lib/notify';
@@ -46,6 +47,8 @@ export default function OnboardingScreen() {
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => track({ name: 'onboarding_step_viewed', step: step + 1 }), [step]);
+
   const wageCents = parseMoney(wage);
   const isPercent = rule === 'pct_tips' || rule === 'pct_sales';
   const ruleCents = rule === 'none' ? 0 : isPercent ? parsePercent(ruleValue) : parseMoney(ruleValue);
@@ -68,6 +71,7 @@ export default function OnboardingScreen() {
       await setWeekStart(db, weekStart);
       await saveReminderSettings(db, { ...DEFAULT_REMINDERS, enabled: allowed, time: reminderTime });
       await setSetting(db, 'onboarded', '1');
+      track({ name: 'onboarding_completed', reminders: allowed });
       router.replace({ pathname: '/paywall', params: { reason: 'onboarding' } });
     } catch (e) {
       setNotice(`Something went wrong: ${e instanceof Error ? e.message : String(e)}`);

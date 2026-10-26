@@ -3,10 +3,27 @@ import {
   centsToInput,
   formatMoney,
   formatPercent,
+  parseCount,
   parseMoney,
   parsePercent,
   percentOf,
 } from '@/lib/money';
+
+describe('parseCount', () => {
+  it.each([
+    ['', 0],
+    ['0', 0],
+    ['42', 42],
+    [' 1,200 ', 1200],
+    ['9999', 9999],
+  ])('parses %p as %p', (input, count) => {
+    expect(parseCount(input)).toBe(count);
+  });
+
+  it.each(['4.5', '-3', 'abc', '10000', '1e3'])('rejects %p', (input) => {
+    expect(parseCount(input)).toBeNull();
+  });
+});
 
 describe('parseMoney', () => {
   it.each([

@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import type { SQLiteDatabase } from 'expo-sqlite';
+import { useSQLiteContext, type SQLiteDatabase } from 'expo-sqlite';
 import { useCallback } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,10 +12,25 @@ import { ShiftRow } from '@/components/shift-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Radius, Spacing, TopTabInset } from '@/constants/theme';
-import { getWeekStart, getWeeklyGoal, listRecentShifts, listShiftsBetween } from '@/db/repo';
+import {
+  countShiftsBetween,
+  getSettings,
+  getWeekStart,
+  getWeeklyGoal,
+  listRecentShifts,
+  listShiftsBetween,
+  setSetting,
+} from '@/db/repo';
 import { useDbQuery } from '@/db/use-db-query';
 import { useTheme } from '@/hooks/use-theme';
-import { buildDashboardPeriods, buildWeekBars, dashboardLoadRange, goalProgress, type Period } from '@/lib/dashboard';
+import {
+  buildDashboardPeriods,
+  buildWeekBars,
+  dashboardLoadRange,
+  goalProgress,
+  taxSeasonYear,
+  type Period,
+} from '@/lib/dashboard';
 import { addDays, formatMonthYear, formatRange, todayISO, weekRange } from '@/lib/dates';
 import { formatDuration } from '@/lib/duration';
 import { formatChange, percentChange } from '@/lib/insights';
@@ -30,12 +45,16 @@ const hourly = (cents: number | null) => (cents === null ? '—' : `${formatMone
 export default function HomeScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const db = useSQLiteContext();
   const { isPro } = usePro();
   const today = todayISO();
 
   const load = useCallback(
     async (db: SQLiteDatabase) => {
-      const [weekStart, goalCents] = await Promise.all([getWeekStart(db), getWeeklyGoal(db)]);
+      const [weekStart, goalCents, settings] = await Promise.all([getWeekStart(db), getWeeklyGoal(db), getSettings(db)]);
+      const taxYear = taxSeasonYear(today, settings.tax_card_dismissed ?? null);
+      // Only offer last year's summary when there's something in it.
+      const taxYearShifts = taxYear ? await countShiftsBetween(db, `${taxYear}-01-01`, `${taxYear}-12-31`) : 0;
       const range = dashboardLoadRange(today, weekStart);
       const [shifts, recent] = await Promise.all([
         listShiftsBetween(db, range.start, range.end),
@@ -48,6 +67,7 @@ export default function HomeScreen() {
         lastWeekTotalCents: summarizeRange(shifts, lastWeek).totalCents,
         goalCents,
         recent,
+        taxYear: taxYearShifts > 0 ? taxYear : null,
       };
     },
     [today],
@@ -111,6 +131,31 @@ export default function HomeScreen() {
               <HeroStat label="Real hourly" value={week ? hourly(week.summary.realHourlyCents) : '—'} />
             </View>
           </View>
+
+          {data?.taxYear ? (
+            <View style={[styles.card, styles.taxCard, { backgroundColor: theme.tintSoft }]}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Your ${data.taxYear} tip summary is ready. Open reports`}
+                onPress={() => router.push({ pathname: '/reports', params: { year: data.taxYear! } })}
+                style={styles.taxText}>
+                <ThemedText type="smallBold">Your {data.taxYear} tip summary is ready</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  Tips, service charges and wages for the whole year, for tax time.
+                </ThemedText>
+                <ThemedText type="smallBold" style={{ color: theme.tint }}>
+                  See it in Reports ›
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss"
+                hitSlop={12}
+                onPress={() => setSetting(db, 'tax_card_dismissed', data.taxYear!)}>
+                <ThemedText themeColor="textSecondary">✕</ThemedText>
+              </Pressable>
+            </View>
+          ) : null}
 
           {data && !noShiftsYet ? (
             <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
@@ -301,6 +346,14 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
     padding: Spacing.three,
     gap: Spacing.three,
+  },
+  taxCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  taxText: {
+    flex: 1,
+    gap: Spacing.half,
   },
   cardHeader: {
     flexDirection: 'row',

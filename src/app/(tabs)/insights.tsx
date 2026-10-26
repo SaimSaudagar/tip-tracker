@@ -183,6 +183,16 @@ export default function InsightsScreen() {
                   </ThemedText>
                 )}
               </Card>
+
+              {insights.tipsPerCover ? (
+                <Card title="Tips per guest">
+                  <ThemedText type="amount">{formatMoney(insights.tipsPerCover.cents)}</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    Cash and card tips per cover, across {insights.tipsPerCover.shifts} shift
+                    {insights.tipsPerCover.shifts === 1 ? '' : 's'} with covers logged.
+                  </ThemedText>
+                </Card>
+              ) : null}
             </>
           ) : null}
         </ScrollView>

@@ -1,5 +1,5 @@
 import { celebrationFor } from '@/lib/celebration';
-import { buildWeekBars, dashboardLoadRange, goalProgress } from '@/lib/dashboard';
+import { buildWeekBars, dashboardLoadRange, goalProgress, taxSeasonYear } from '@/lib/dashboard';
 import { formatClock, minutesBetween, parseClockTime, periodForStart } from '@/lib/duration';
 import { buildInsights, formatChange, insightsLoadRange, percentChange, type InsightShift } from '@/lib/insights';
 import { comparePaycheck } from '@/lib/paychecks';
@@ -10,6 +10,7 @@ const shift = (date: string, overrides: Partial<InsightShift> = {}): InsightShif
   date,
   period: null,
   salesCents: null,
+  covers: null,
   positionName: 'Server',
   minutesWorked: 300,
   hourlyWageCents: 0,
@@ -96,6 +97,20 @@ describe('insights', () => {
     expect(insights.tipRateOfSales).toEqual({ bps: 2000, shifts: 2 }); // $600 / $3,000
   });
 
+  it('works out tips per guest only from shifts with covers', () => {
+    expect(insights.tipsPerCover).toBeNull();
+    const withCovers = buildInsights(
+      [
+        shift('2026-10-23', { cashTipsCents: 20000, cardTipsCents: 10000, covers: 40 }),
+        shift('2026-10-22', { cashTipsCents: 9000, covers: 20 }),
+        shift('2026-10-21', { cashTipsCents: 50000 }),
+      ],
+      today,
+      1,
+    );
+    expect(withCovers.tipsPerCover).toEqual({ cents: 650, shifts: 2 }); // $390 / 60 guests
+  });
+
   it('compares month-to-date with the same days last month', () => {
     expect(insights.monthToDate.dayOfMonth).toBe(26);
     expect(insights.monthToDate.thisMonth.shiftCount).toBe(5);
@@ -126,6 +141,19 @@ describe('home week chart and goal', () => {
     expect(goalProgress(50000, 100000)).toBe(0.5);
     expect(goalProgress(150000, 100000)).toBe(1);
     expect(goalProgress(50000, null)).toBeNull();
+  });
+});
+
+describe('tax-season card', () => {
+  it.each([
+    ['2027-01-02', null, '2026'],
+    ['2027-04-30', null, '2026'],
+    ['2027-05-01', null, null],
+    ['2026-10-26', null, null],
+    ['2027-02-14', '2026', null],
+    ['2027-02-14', '2025', '2026'],
+  ])('on %p with %p dismissed offers %p', (day, dismissed, year) => {
+    expect(taxSeasonYear(day, dismissed)).toBe(year);
   });
 });
 

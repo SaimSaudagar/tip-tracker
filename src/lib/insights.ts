@@ -19,6 +19,7 @@ export type InsightShift = ShiftAmounts & {
   date: ISODate;
   period: 'am' | 'pm' | null;
   salesCents: number | null;
+  covers: number | null;
   positionName: string;
 };
 
@@ -40,6 +41,8 @@ export type Insights = {
   bestShifts: ShiftHighlight[];
   weeklyTrend: WeekPoint[];
   tipRateOfSales: { bps: number; shifts: number } | null;
+  /** Cash and card tips per guest, over shifts where covers were entered. */
+  tipsPerCover: { cents: number; shifts: number } | null;
   monthToDate: { thisMonth: PeriodSummary; lastMonth: PeriodSummary; dayOfMonth: number };
 };
 
@@ -92,6 +95,11 @@ export function buildInsights(shifts: InsightShift[], today: ISODate, weekStart:
   const tipsTotal = withSales.reduce((sum, s) => sum + s.cashTipsCents + s.cardTipsCents, 0);
   const tipRateOfSales = withSales.length > 0 ? { bps: Math.round((tipsTotal * 10_000) / salesTotal), shifts: withSales.length } : null;
 
+  const withCovers = shifts.filter((s) => s.covers !== null && s.covers > 0);
+  const coversTotal = withCovers.reduce((sum, s) => sum + s.covers!, 0);
+  const coverTips = withCovers.reduce((sum, s) => sum + s.cashTipsCents + s.cardTipsCents, 0);
+  const tipsPerCover = withCovers.length > 0 ? { cents: Math.round(coverTips / coversTotal), shifts: withCovers.length } : null;
+
   // Compare the same number of days so early-month numbers aren't unfairly small.
   const dayOfMonth = fromISODate(today).getDate();
   const thisMonth = monthRange(today);
@@ -117,6 +125,7 @@ export function buildInsights(shifts: InsightShift[], today: ISODate, weekStart:
     bestShifts,
     weeklyTrend,
     tipRateOfSales,
+    tipsPerCover,
     monthToDate,
   };
 }

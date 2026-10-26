@@ -1,4 +1,4 @@
-import { DEFAULT_REMINDERS, employerReportDueDate, formatTime, planReminders } from '@/lib/reminders-plan';
+import { DEFAULT_REMINDERS, employerReportDueDate, formatTime, planReminders, trialEndDate } from '@/lib/reminders-plan';
 
 // Mon Oct 26, 2026, 3:00 PM local
 const now = new Date(2026, 9, 26, 15, 0);
@@ -65,6 +65,26 @@ describe('report reminders', () => {
     expect(employerReportDueDate('2026-09-01')).toBe('2026-10-12'); // Oct 10 is a Saturday
     expect(employerReportDueDate('2026-04-01')).toBe('2026-05-11'); // May 10 is a Sunday
     expect(employerReportDueDate('2026-12-01')).toBe('2027-01-11'); // Jan 10, 2027 is a Sunday
+  });
+});
+
+describe('trial reminder', () => {
+  it('reminds two days before the trial ends, even with other reminders off', () => {
+    const plans = planReminders({ now, settings: DEFAULT_REMINDERS, loggedDates: new Set(), trialEndsOn: '2026-11-09' });
+    expect(plans).toHaveLength(1);
+    expect(plans[0]).toMatchObject({ id: 'trial-2026-11-09', title: 'Your free trial ends Nov 9', url: '/settings' });
+    expect(plans[0].fireAt).toEqual(new Date(2026, 10, 7, 10, 0));
+  });
+
+  it('skips a reminder that would already be in the past', () => {
+    expect(planReminders({ now, settings: DEFAULT_REMINDERS, loggedDates: new Set(), trialEndsOn: '2026-10-28' })).toEqual([]);
+  });
+
+  it('works out when a trial started today ends', () => {
+    expect(trialEndDate('2026-10-26', 'annual')).toBe('2026-11-09');
+    expect(trialEndDate('2026-10-26', 'annual_month_trial')).toBe('2026-11-25');
+    expect(trialEndDate('2026-10-26', 'monthly')).toBeNull();
+    expect(trialEndDate('2026-10-26', 'lifetime')).toBeNull();
   });
 });
 

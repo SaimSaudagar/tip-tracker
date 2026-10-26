@@ -30,10 +30,12 @@ export type Shift = ShiftAmounts & {
   breakMinutes: number;
   period: ShiftPeriod | null;
   salesCents: number | null;
+  /** Guests served, when the user entered it. */
+  covers: number | null;
   notes: string | null;
 };
 
-type ShiftTimes = 'startTime' | 'endTime' | 'breakMinutes' | 'period';
+type ShiftTimes = 'startTime' | 'endTime' | 'breakMinutes' | 'period' | 'covers';
 
 export type ShiftInput = Omit<Shift, 'id' | 'positionName' | 'jobName' | ShiftTimes> &
   Partial<Pick<Shift, ShiftTimes>> & { id?: number };
@@ -66,6 +68,7 @@ type ShiftRow = {
   tip_out_cents: number;
   service_charge_cents: number;
   sales_cents: number | null;
+  covers: number | null;
   notes: string | null;
 };
 
@@ -97,13 +100,14 @@ const toShift = (r: ShiftRow): Shift => ({
   tipOutCents: r.tip_out_cents,
   serviceChargeCents: r.service_charge_cents,
   salesCents: r.sales_cents,
+  covers: r.covers,
   notes: r.notes,
 });
 
 const SHIFT_SELECT = `
   SELECT s.id, s.position_id, p.name AS position_name, j.name AS job_name, s.date,
          s.start_time, s.end_time, s.break_minutes, s.period, s.minutes_worked, s.hourly_wage_cents, s.cash_tips_cents, s.card_tips_cents,
-         s.tip_in_cents, s.tip_out_cents, s.service_charge_cents, s.sales_cents, s.notes
+         s.tip_in_cents, s.tip_out_cents, s.service_charge_cents, s.sales_cents, s.covers, s.notes
   FROM shifts s
   JOIN positions p ON p.id = s.position_id
   JOIN jobs j ON j.id = p.job_id
@@ -162,6 +166,7 @@ export async function saveShift(db: SQLiteDatabase, s: ShiftInput): Promise<numb
     s.endTime ?? null,
     s.breakMinutes ?? 0,
     s.period ?? null,
+    s.covers ?? null,
   ];
 
   if (s.id !== undefined) {
@@ -169,7 +174,7 @@ export async function saveShift(db: SQLiteDatabase, s: ShiftInput): Promise<numb
       `UPDATE shifts SET position_id = ?, date = ?, minutes_worked = ?, hourly_wage_cents = ?,
          cash_tips_cents = ?, card_tips_cents = ?, tip_in_cents = ?, tip_out_cents = ?,
          service_charge_cents = ?, sales_cents = ?, notes = ?, start_time = ?, end_time = ?,
-         break_minutes = ?, period = ?, updated_at = datetime('now')
+         break_minutes = ?, period = ?, covers = ?, updated_at = datetime('now')
        WHERE id = ?`,
       ...values,
       s.id,
@@ -180,8 +185,8 @@ export async function saveShift(db: SQLiteDatabase, s: ShiftInput): Promise<numb
   const result = await db.runAsync(
     `INSERT INTO shifts (position_id, date, minutes_worked, hourly_wage_cents, cash_tips_cents,
        card_tips_cents, tip_in_cents, tip_out_cents, service_charge_cents, sales_cents, notes,
-       start_time, end_time, break_minutes, period)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       start_time, end_time, break_minutes, period, covers)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ...values,
   );
   return result.lastInsertRowId;
@@ -280,8 +285,35 @@ export async function setSetting(db: SQLiteDatabase, key: string, value: string)
   );
 }
 
+export async function removeSetting(db: SQLiteDatabase, key: string): Promise<void> {
+  await db.runAsync('DELETE FROM settings WHERE key = ?', key);
+}
+
+/** Settings about purchases and one-time prompts, which survive "Delete all data". */
+const KEPT_ON_ERASE = ['pro_override', 'trial_ends_at', 'exit_offer_shown', 'review_asked_on'];
+
+/**
+ * Erases every job, position, shift, tip-out, paycheck and setting, leaving the
+ * starter job a new install has. Without the onboarded flag the app returns to onboarding.
+ */
+export async function deleteAllData(db: SQLiteDatabase): Promise<void> {
+  const kept = KEPT_ON_ERASE.map(() => '?').join(', ');
+  await db.withTransactionAsync(async () => {
+    await db.execAsync('DELETE FROM tipouts; DELETE FROM paychecks; DELETE FROM shifts; DELETE FROM positions; DELETE FROM jobs;');
+    await db.runAsync(`DELETE FROM settings WHERE key NOT IN (${kept})`, ...KEPT_ON_ERASE);
+    const job = await db.runAsync("INSERT INTO jobs (name) VALUES ('My job')");
+    await db.runAsync("INSERT INTO positions (job_id, name) VALUES (?, 'Server')", job.lastInsertRowId);
+    await setSetting(db, 'week_start', '0');
+  });
+}
+
 export async function countShifts(db: SQLiteDatabase): Promise<number> {
   return (await db.getFirstAsync<{ n: number }>('SELECT COUNT(*) AS n FROM shifts'))?.n ?? 0;
+}
+
+export async function countShiftsBetween(db: SQLiteDatabase, start: ISODate, end: ISODate): Promise<number> {
+  const row = await db.getFirstAsync<{ n: number }>('SELECT COUNT(*) AS n FROM shifts WHERE date BETWEEN ? AND ?', start, end);
+  return row?.n ?? 0;
 }
 
 export async function listLoggedDates(db: SQLiteDatabase, start: ISODate, end: ISODate): Promise<Set<ISODate>> {

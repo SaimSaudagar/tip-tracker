@@ -21,6 +21,17 @@ The web version is for development only. It stores data in the browser, and remi
 
 In development builds, turn on **Settings → Developer: simulate Pro** to try Pro features before RevenueCat is connected.
 
+## Purchases (RevenueCat)
+
+Without RevenueCat keys the app simulates Pro in development (**Settings → Developer: simulate Pro**) and shows "purchases aren't available" in release builds. To turn on real purchases, put the public SDK keys from the RevenueCat dashboard in a `.env.local` file (see `.env.example`):
+
+```bash
+EXPO_PUBLIC_REVENUECAT_IOS_KEY=appl_...
+EXPO_PUBLIC_REVENUECAT_ANDROID_KEY=goog_...
+```
+
+In Expo Go, RevenueCat runs in Preview API Mode with mock purchases. Real purchases need a development or store build. `docs/launch-checklist.md` lists the dashboard setup the code expects.
+
 ## Check it
 
 ```bash
@@ -33,21 +44,27 @@ npm run lint
 
 | Path | What it holds |
 |---|---|
-| `src/app/(tabs)/index.tsx` | Home: this week with goal ring and day-by-day chart, month and year, recent shifts |
+| `src/app/(tabs)/index.tsx` | Home: this week with goal ring and day-by-day chart, month and year, recent shifts, tax-season card (Jan–Apr) |
 | `src/app/(tabs)/calendar.tsx` | Month calendar with daily tips; log a shift for any past day |
-| `src/app/(tabs)/insights.tsx` | Pro insights: best day, lunch vs dinner, 12-week trend, best shifts, tips vs sales |
+| `src/app/(tabs)/insights.tsx` | Pro insights: best day, lunch vs dinner, 12-week trend, best shifts, tips vs sales, tips per guest |
 | `src/app/(tabs)/reports.tsx` | Monthly employer tip report, year-end summary (PDF) and paychecks |
-| `src/app/(tabs)/settings.tsx` | Pro status, positions, reminders, weekly goal, week start, backup, CSV export and import, legal |
+| `src/app/(tabs)/settings.tsx` | Pro status and restore, positions, reminders, weekly goal, week start, appearance, backup, CSV export and import, delete all data, tools, legal, support |
 | `src/app/onboarding.tsx` | First-run setup: role, workplace, wage, tip-out, week start, reminder |
 | `src/app/paywall.tsx` | Pro paywall (contextual headline, plans, one-time exit offer) |
-| `src/purchases/pro-context.tsx` | Who has Pro; simulated in development until RevenueCat is connected |
+| `src/purchases/pro-context.tsx` | Who has Pro, plans with store prices, purchase and restore; simulated in development without a RevenueCat key |
+| `src/purchases/revenuecat.ts` | RevenueCat setup: keys, entitlement and offering names, trial end from the entitlement |
+| `src/lib/plans.ts` | Paywall plan text, with the store's price strings when they've loaded |
+| `src/app/tip-pool.tsx` / `src/lib/tip-pool.ts` | Tip pool calculator: split by hours or equally, exact to the cent |
+| `src/lib/appearance.ts` | Light / dark / automatic choice, applied app-wide |
+| `src/lib/analytics.ts` | The launch plan's funnel events; nothing is sent until a service is connected |
+| `src/constants/app.ts` | Support email (the Settings row is hidden while it's empty) |
 | `src/lib/reminders-plan.ts` / `notify.ts` | Reminder planning (pure, tested) and local notification scheduling |
 | `src/db/backup.ts` / `src/lib/backup.ts` | Full JSON backup and restore (validated, one transaction) |
 | `src/lib/tipouts.ts` | Names of coworkers tipped out, for the IRS daily tip record |
 | `src/lib/insights.ts` / `paychecks.ts` / `celebration.ts` | Insights, paycheck comparison and the after-save highlight (pure, tested) |
 | `src/components/` | Shared UI: button, chip, bar chart, progress ring, toast, list group, date stepper, money field |
-| `docs/` | Privacy policy, terms of use, store listing drafts and the TikTok/Instagram content plan |
-| `src/app/log-shift.tsx` | Quick log and edit screen (`?id=…` edits, `?date=…` starts on a day); optional start/end times and lunch/dinner tag |
+| `docs/` | Privacy policy, terms of use, store listing drafts, the TikTok/Instagram content plan, phone testing and the launch checklist |
+| `src/app/log-shift.tsx` | Quick log and edit screen (`?id=…` edits, `?date=…` starts on a day, `?tipIn=…` prefills a tip-pool share); optional start/end times, lunch/dinner tag and covers |
 | `src/app/paycheck.tsx` | Add or edit a paycheck and compare it with the shifts in its pay period |
 | `src/app/position.tsx` | Position editor: wage and tip-out rule |
 | `src/app/import.tsx` | CSV import with column matching, preview and duplicate skipping |

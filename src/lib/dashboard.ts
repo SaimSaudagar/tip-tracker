@@ -44,6 +44,17 @@ export function buildWeekBars<T extends ShiftAmounts & { date: ISODate }>(
   });
 }
 
+/**
+ * During tax season (January to April), the year whose tip summary Home offers,
+ * unless the user has dismissed that year's card. Otherwise null.
+ */
+export function taxSeasonYear(today: ISODate, dismissedYear: string | null): string | null {
+  const month = Number(today.slice(5, 7));
+  if (month > 4) return null;
+  const year = String(Number(today.slice(0, 4)) - 1);
+  return year === dismissedYear ? null : year;
+}
+
 /** Share of the weekly goal reached, 0–1, or null without a goal. */
 export function goalProgress(totalCents: number, goalCents: number | null): number | null {
   if (goalCents === null || goalCents <= 0) return null;

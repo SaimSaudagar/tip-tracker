@@ -70,15 +70,30 @@ export function formatShortDate(iso: ISODate): string {
   return `${SHORT_MONTHS[d.getMonth()]} ${d.getDate()}`;
 }
 
+/** Free-trial length per plan id: 14 days on the yearly plan, a month on the one-time exit offer. */
+const TRIAL_DAYS: Record<string, number> = { annual: 14, annual_month_trial: 30 };
+
+/** The last day of a trial started on `startedOn`, or null for plans without one. */
+export function trialEndDate(startedOn: ISODate, planId: string): ISODate | null {
+  const days = TRIAL_DAYS[planId];
+  return days ? addDays(startedOn, days) : null;
+}
+
+/** How many days before a free trial ends the app reminds you, as the paywall promises. */
+export const TRIAL_REMINDER_DAYS = 2;
+
 export function planReminders({
   now,
   settings,
   loggedDates,
+  trialEndsOn = null,
   horizonDays = 14,
 }: {
   now: Date;
   settings: ReminderSettings;
   loggedDates: Set<ISODate>;
+  /** Last day of a free trial, when one is running. Its reminder doesn't depend on the settings. */
+  trialEndsOn?: ISODate | null;
   horizonDays?: number;
 }): PlannedNotification[] {
   const plans: PlannedNotification[] = [];
@@ -118,6 +133,19 @@ export function planReminders({
         title: `Your ${monthName} tip report is ready`,
         body: `Tips of $20 or more a month must be reported to your employer by ${formatShortDate(due)}.`,
         url: `/reports?month=${reportMonth}`,
+      });
+    }
+  }
+
+  if (trialEndsOn) {
+    const fireAt = at(addDays(trialEndsOn, -TRIAL_REMINDER_DAYS), 10, 0);
+    if (fireAt > now) {
+      plans.push({
+        id: `trial-${trialEndsOn}`,
+        fireAt,
+        title: `Your free trial ends ${formatShortDate(trialEndsOn)}`,
+        body: 'Pro renews automatically after that. To stop it, cancel in your App Store or Google Play subscriptions before then.',
+        url: '/settings',
       });
     }
   }

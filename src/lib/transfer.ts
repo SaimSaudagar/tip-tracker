@@ -5,7 +5,7 @@
 import { toCsv } from '@/lib/csv';
 import type { ISODate } from '@/lib/dates';
 import { minutesToInput, parseDuration } from '@/lib/duration';
-import { centsToInput, parseMoney } from '@/lib/money';
+import { centsToInput, parseCount, parseMoney } from '@/lib/money';
 import { computeShift, type ShiftAmounts } from '@/lib/shift-math';
 import { describeTipOuts, type TipOutEntry } from '@/lib/tipouts';
 
@@ -14,6 +14,7 @@ export type ExportShift = ShiftAmounts & {
   jobName: string;
   positionName: string;
   salesCents: number | null;
+  covers?: number | null;
   notes: string | null;
   tipOuts?: TipOutEntry[];
 };
@@ -30,6 +31,7 @@ export const EXPORT_HEADERS = [
   'Tip-out',
   'Service charges',
   'Sales',
+  'Covers',
   'Net tips',
   'Wages',
   'Total earned',
@@ -54,6 +56,7 @@ export function shiftsToCsv(shifts: ExportShift[]): string {
       money(s.tipOutCents),
       money(s.serviceChargeCents),
       s.salesCents === null ? '' : money(s.salesCents),
+      s.covers == null ? '' : String(s.covers),
       money(t.netTipsCents),
       money(t.wagesCents),
       money(t.totalCents),
@@ -76,6 +79,7 @@ export const IMPORT_FIELDS = [
   { key: 'tipOut', label: 'Tip-out' },
   { key: 'serviceCharge', label: 'Service charges' },
   { key: 'sales', label: 'Sales' },
+  { key: 'covers', label: 'Covers (guests)' },
   { key: 'job', label: 'Job' },
   { key: 'position', label: 'Position' },
   { key: 'notes', label: 'Notes' },
@@ -96,6 +100,7 @@ const FIELD_PATTERNS: [ImportField, RegExp][] = [
   ['wage', /wage|rate|per hour|hourly pay/],
   ['hours', /^hours?|hrs|time worked|duration/],
   ['sales', /sales/],
+  ['covers', /covers|guests|^heads$/],
   ['tips', /^(tips?|total tips|tip total|tips earned|amount)$/],
   ['job', /^(job|employer|restaurant|workplace|company)$/],
   ['position', /^(position|role|job title)$/],
@@ -145,6 +150,7 @@ export type ImportDraft = ShiftAmounts & {
   jobName: string | null;
   positionName: string | null;
   salesCents: number | null;
+  covers: number | null;
   notes: string | null;
 };
 
@@ -171,6 +177,7 @@ export function buildImportDrafts(rows: string[][], mapping: ImportMapping, firs
     }
 
     const minutes = parseDuration(cell('hours'));
+    const covers = parseCount(cell('covers'));
     const values = {
       cash: amount('cash'),
       card: amount('card'),
@@ -182,8 +189,8 @@ export function buildImportDrafts(rows: string[][], mapping: ImportMapping, firs
       sales: amount('sales'),
     };
     const bad = Object.entries(values).find(([, v]) => v === null);
-    if (bad || minutes === null) {
-      const field = bad ? bad[0] : 'hours';
+    if (bad || minutes === null || covers === null) {
+      const field = bad ? bad[0] : minutes === null ? 'hours' : 'covers';
       const label = IMPORT_FIELDS.find((f) => f.key === field)?.label ?? field;
       skipped.push({ line, reason: `Unreadable ${label.toLowerCase()} "${cell(field as ImportField)}"` });
       return;
@@ -200,6 +207,7 @@ export function buildImportDrafts(rows: string[][], mapping: ImportMapping, firs
       tipOutCents: values.tipOut!,
       serviceChargeCents: values.serviceCharge!,
       salesCents: cell('sales') === '' ? null : values.sales,
+      covers: cell('covers') === '' ? null : covers,
       jobName: cell('job') || null,
       positionName: cell('position') || null,
       notes: cell('notes') || null,

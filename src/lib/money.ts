@@ -62,6 +62,14 @@ export function formatPercent(bps: number): string {
   return `${bpsToInput(bps) || '0'}%`;
 }
 
+/** Parses a whole count such as covers ("42"). Empty is 0; anything else, or over 9,999, is null. */
+export function parseCount(input: string): number | null {
+  const cleaned = input.replace(/[,\s]/g, '');
+  if (cleaned === '') return 0;
+  if (!/^\d{1,4}$/.test(cleaned)) return null;
+  return Number(cleaned);
+}
+
 /** A percentage of an amount, rounded to the nearest cent. */
 export function percentOf(cents: number, bps: number): number {
   return Math.round((cents * bps) / MAX_BPS);
