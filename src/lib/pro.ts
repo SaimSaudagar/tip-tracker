@@ -7,7 +7,7 @@ import { addDays, type ISODate } from '@/lib/dates';
 export const FREE_JOB_LIMIT = 1;
 export const FREE_POSITION_LIMIT = 2;
 
-export type PaywallReason = 'jobs' | 'positions' | 'tipout' | 'year' | 'reports' | 'onboarding' | 'settings';
+export type PaywallReason = 'jobs' | 'positions' | 'tipout' | 'year' | 'reports' | 'insights' | 'onboarding' | 'settings';
 
 export type PositionLike = { id: number; jobName: string };
 

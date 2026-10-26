@@ -1,8 +1,9 @@
 import { Pressable, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { haptic } from '@/lib/haptics';
 
 type Props = {
   label: string;
@@ -22,8 +23,15 @@ export function Chip({ label, selected, onPress, accessibilityLabel, background 
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ selected }}
-      onPress={onPress}
-      style={[styles.chip, { backgroundColor: selected ? theme.tint : idle }]}>
+      onPress={() => {
+        if (!selected) haptic.selection();
+        onPress();
+      }}
+      hitSlop={4}
+      style={({ pressed }) => [
+        styles.chip,
+        { backgroundColor: selected ? theme.tint : idle, opacity: pressed ? 0.75 : 1 },
+      ]}>
       <ThemedText type="small" style={{ color: selected ? theme.onTint : theme.text }}>
         {label}
       </ThemedText>
@@ -35,6 +43,8 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
-    borderRadius: Spacing.four,
+    borderRadius: Radius.full,
+    minHeight: 36,
+    justifyContent: 'center',
   },
 });

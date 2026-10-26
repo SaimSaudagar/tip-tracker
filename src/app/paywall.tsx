@@ -21,13 +21,15 @@ const HEADLINES: Record<PaywallReason, string> = {
   tipout: 'Let Pro do your tip-out math',
   year: 'See your whole year',
   reports: 'Tip reports, ready when you need them',
+  insights: 'Find out which shifts pay best',
 };
 
 const BENEFITS = [
   'Year-end tip summary for tax time',
   'Monthly tip report for your employer, with a reminder before the 10th',
   'Unlimited jobs and positions, with automatic tip-outs',
-  'Your year at a glance: totals, real hourly and trends',
+  'Insights: your best days, lunch vs dinner, and 12-week trends',
+  'Your year at a glance: totals and real hourly',
 ];
 
 export default function PaywallScreen() {

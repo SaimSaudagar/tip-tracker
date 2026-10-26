@@ -69,6 +69,33 @@ export const Spacing = {
   six: 64,
 } as const;
 
+export const Radius = {
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  full: 9999,
+} as const;
+
+/** boxShadow strings; use on light surfaces only (dark mode relies on contrast). */
+export const Shadows = {
+  card: '0 1px 2px rgba(0, 0, 0, 0.06)',
+  raised: '0 8px 24px rgba(0, 0, 0, 0.16)',
+} as const;
+
+export const Motion = {
+  /** Press feedback, chip changes. */
+  fast: 120,
+  /** Toasts and other enter/exit transitions. */
+  base: 250,
+} as const;
+
+/** Money and stats: the rounded system face, with digits that line up in columns. */
+export const NumberFont = {
+  fontFamily: Fonts?.rounded,
+  fontVariant: ['tabular-nums'],
+} as const;
+
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 /** On web, native tabs fall back to a floating bar at the top of the screen. */
 export const TopTabInset = Platform.select({ web: 64 }) ?? 0;

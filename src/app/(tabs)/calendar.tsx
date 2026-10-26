@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
+import { ListGroup } from '@/components/list-group';
 import { ShiftRow } from '@/components/shift-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -140,7 +141,7 @@ export default function CalendarScreen() {
             </ThemedText>
           ) : null}
 
-          <View style={styles.list}>
+          <ListGroup>
             {dayShifts.map((shift) => (
               <ShiftRow
                 key={shift.id}
@@ -149,7 +150,7 @@ export default function CalendarScreen() {
                 onPress={() => router.push({ pathname: '/log-shift', params: { id: String(shift.id) } })}
               />
             ))}
-          </View>
+          </ListGroup>
 
           {selected <= today ? (
             <Button

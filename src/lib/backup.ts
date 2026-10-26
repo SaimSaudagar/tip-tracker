@@ -36,10 +36,15 @@ export const BACKUP_COLUMNS = {
     'notes',
     'created_at',
     'updated_at',
+    'period',
   ],
   tipouts: ['id', 'shift_id', 'recipient_name', 'amount_cents'],
+  paychecks: ['id', 'job_id', 'pay_date', 'period_start', 'period_end', 'net_cents', 'gross_cents', 'notes', 'created_at'],
   settings: ['key', 'value'],
 } as const;
+
+/** Tables added after the first backup format; older backups simply don't have them. */
+const TABLES_ADDED_LATER: TableName[] = ['paychecks'];
 
 export type TableName = keyof typeof BACKUP_COLUMNS;
 export type BackupTables = Record<TableName, Row[]>;
@@ -82,9 +87,11 @@ const INTEGER_COLUMNS = new Set([
   'tip_out_cents',
   'service_charge_cents',
   'amount_cents',
+  'net_cents',
 ]);
-const REQUIRED_TEXT = new Set(['name', 'date', 'tipout_rule', 'recipient_name', 'key', 'value']);
-const NULLABLE_INTEGERS = new Set(['sales_cents', 'covers']);
+const REQUIRED_TEXT = new Set(['name', 'date', 'tipout_rule', 'recipient_name', 'key', 'value', 'pay_date']);
+// Columns added after the first backup format may be missing (undefined) in older files; they restore as NULL.
+const NULLABLE_INTEGERS = new Set(['sales_cents', 'covers', 'gross_cents']);
 
 export type ParseResult = { ok: true; backup: Backup } | { ok: false; error: string };
 
@@ -105,9 +112,13 @@ export function parseBackup(text: string, currentSchemaVersion: number): ParseRe
   if (typeof b.tables !== 'object' || b.tables === null) {
     return { ok: false, error: 'This backup is incomplete.' };
   }
+  const tables = { ...b.tables } as BackupTables;
+  for (const table of TABLES_ADDED_LATER) {
+    if (tables[table] === undefined) tables[table] = [];
+  }
 
   for (const table of Object.keys(BACKUP_COLUMNS) as TableName[]) {
-    const rows = b.tables[table];
+    const rows = tables[table];
     if (!Array.isArray(rows)) return { ok: false, error: `This backup is missing its ${table}.` };
     for (const row of rows) {
       if (typeof row !== 'object' || row === null) return { ok: false, error: `A ${table} entry is damaged.` };
@@ -124,13 +135,15 @@ export function parseBackup(text: string, currentSchemaVersion: number): ParseRe
   }
 
   const ids = (rows: Row[]) => new Set(rows.map((r) => r.id));
-  const jobIds = ids(b.tables.jobs);
-  const positionIds = ids(b.tables.positions);
-  const shiftIds = ids(b.tables.shifts);
-  if (b.tables.positions.length === 0) return { ok: false, error: 'This backup has no positions to restore.' };
-  if (b.tables.positions.some((p) => !jobIds.has(p.job_id))) return { ok: false, error: 'A position in this backup points to a missing job.' };
-  if (b.tables.shifts.some((s) => !positionIds.has(s.position_id))) return { ok: false, error: 'A shift in this backup points to a missing position.' };
-  if (b.tables.tipouts.some((t) => !shiftIds.has(t.shift_id))) return { ok: false, error: 'A tip-out in this backup points to a missing shift.' };
+  const jobIds = ids(tables.jobs);
+  const positionIds = ids(tables.positions);
+  const shiftIds = ids(tables.shifts);
+  if (tables.positions.length === 0) return { ok: false, error: 'This backup has no positions to restore.' };
+  if (tables.positions.some((p) => !jobIds.has(p.job_id))) return { ok: false, error: 'A position in this backup points to a missing job.' };
+  if (tables.shifts.some((s) => !positionIds.has(s.position_id))) return { ok: false, error: 'A shift in this backup points to a missing position.' };
+  if (tables.tipouts.some((t) => !shiftIds.has(t.shift_id))) return { ok: false, error: 'A tip-out in this backup points to a missing shift.' };
+  if (tables.paychecks.some((c) => !jobIds.has(c.job_id))) return { ok: false, error: 'A paycheck in this backup points to a missing job.' };
 
-  return { ok: true, backup: { ...b, tables: { ...b.tables, settings: b.tables.settings.filter((s) => !DEVICE_ONLY_SETTINGS.includes(String(s.key))) } } };
+  tables.settings = tables.settings.filter((s) => !DEVICE_ONLY_SETTINGS.includes(String(s.key)));
+  return { ok: true, backup: { ...b, tables } };
 }

@@ -24,10 +24,7 @@ export function ShiftRow({ shift, today, onPress }: Props) {
       accessibilityRole="button"
       accessibilityLabel={`${formatDayLabel(shift.date, today)}, ${formatMoney(totals.netTipsCents)} in tips. Edit shift`}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.row,
-        { backgroundColor: pressed ? theme.backgroundSelected : theme.backgroundElement },
-      ]}>
+      style={({ pressed }) => [styles.row, { backgroundColor: pressed ? theme.backgroundSelected : 'transparent' }]}>
       <View style={styles.left}>
         <ThemedText type="smallBold">{formatDayLabel(shift.date, today)}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
@@ -54,7 +51,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: Spacing.three,
     paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.three,
+    minHeight: 60,
     gap: Spacing.three,
   },
   left: {

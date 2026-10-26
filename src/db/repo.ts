@@ -15,17 +15,28 @@ export type Position = {
   tipOutValue: number;
 };
 
+/** Lunch/daytime vs dinner/night, used to compare what each pays. */
+export type ShiftPeriod = 'am' | 'pm';
+
 export type Shift = ShiftAmounts & {
   id: number;
   positionId: number;
   positionName: string;
   jobName: string;
   date: ISODate;
+  /** Local "HH:MM" clock times, when the user entered them. */
+  startTime: string | null;
+  endTime: string | null;
+  breakMinutes: number;
+  period: ShiftPeriod | null;
   salesCents: number | null;
   notes: string | null;
 };
 
-export type ShiftInput = Omit<Shift, 'id' | 'positionName' | 'jobName'> & { id?: number };
+type ShiftTimes = 'startTime' | 'endTime' | 'breakMinutes' | 'period';
+
+export type ShiftInput = Omit<Shift, 'id' | 'positionName' | 'jobName' | ShiftTimes> &
+  Partial<Pick<Shift, ShiftTimes>> & { id?: number };
 
 type PositionRow = {
   id: number;
@@ -43,6 +54,10 @@ type ShiftRow = {
   position_name: string;
   job_name: string;
   date: string;
+  start_time: string | null;
+  end_time: string | null;
+  break_minutes: number;
+  period: string | null;
   minutes_worked: number;
   hourly_wage_cents: number;
   cash_tips_cents: number;
@@ -70,6 +85,10 @@ const toShift = (r: ShiftRow): Shift => ({
   positionName: r.position_name,
   jobName: r.job_name,
   date: r.date,
+  startTime: r.start_time,
+  endTime: r.end_time,
+  breakMinutes: r.break_minutes,
+  period: r.period === 'am' || r.period === 'pm' ? r.period : null,
   minutesWorked: r.minutes_worked,
   hourlyWageCents: r.hourly_wage_cents,
   cashTipsCents: r.cash_tips_cents,
@@ -83,7 +102,7 @@ const toShift = (r: ShiftRow): Shift => ({
 
 const SHIFT_SELECT = `
   SELECT s.id, s.position_id, p.name AS position_name, j.name AS job_name, s.date,
-         s.minutes_worked, s.hourly_wage_cents, s.cash_tips_cents, s.card_tips_cents,
+         s.start_time, s.end_time, s.break_minutes, s.period, s.minutes_worked, s.hourly_wage_cents, s.cash_tips_cents, s.card_tips_cents,
          s.tip_in_cents, s.tip_out_cents, s.service_charge_cents, s.sales_cents, s.notes
   FROM shifts s
   JOIN positions p ON p.id = s.position_id
@@ -139,13 +158,18 @@ export async function saveShift(db: SQLiteDatabase, s: ShiftInput): Promise<numb
     s.serviceChargeCents,
     s.salesCents,
     s.notes,
+    s.startTime ?? null,
+    s.endTime ?? null,
+    s.breakMinutes ?? 0,
+    s.period ?? null,
   ];
 
   if (s.id !== undefined) {
     await db.runAsync(
       `UPDATE shifts SET position_id = ?, date = ?, minutes_worked = ?, hourly_wage_cents = ?,
          cash_tips_cents = ?, card_tips_cents = ?, tip_in_cents = ?, tip_out_cents = ?,
-         service_charge_cents = ?, sales_cents = ?, notes = ?, updated_at = datetime('now')
+         service_charge_cents = ?, sales_cents = ?, notes = ?, start_time = ?, end_time = ?,
+         break_minutes = ?, period = ?, updated_at = datetime('now')
        WHERE id = ?`,
       ...values,
       s.id,
@@ -155,8 +179,9 @@ export async function saveShift(db: SQLiteDatabase, s: ShiftInput): Promise<numb
 
   const result = await db.runAsync(
     `INSERT INTO shifts (position_id, date, minutes_worked, hourly_wage_cents, cash_tips_cents,
-       card_tips_cents, tip_in_cents, tip_out_cents, service_charge_cents, sales_cents, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       card_tips_cents, tip_in_cents, tip_out_cents, service_charge_cents, sales_cents, notes,
+       start_time, end_time, break_minutes, period)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ...values,
   );
   return result.lastInsertRowId;
@@ -444,4 +469,121 @@ export async function importShifts(
   });
 
   return { imported, duplicates };
+}
+
+// ---- Weekly goal ----
+
+export async function getWeeklyGoal(db: SQLiteDatabase): Promise<number | null> {
+  const row = await db.getFirstAsync<{ value: string }>("SELECT value FROM settings WHERE key = 'weekly_goal_cents'");
+  const cents = Number(row?.value);
+  return Number.isInteger(cents) && cents > 0 ? cents : null;
+}
+
+export async function setWeeklyGoal(db: SQLiteDatabase, cents: number | null): Promise<void> {
+  if (cents === null || cents <= 0) await db.runAsync("DELETE FROM settings WHERE key = 'weekly_goal_cents'");
+  else await setSetting(db, 'weekly_goal_cents', String(cents));
+}
+
+// ---- Paychecks ----
+
+export type Paycheck = {
+  id: number;
+  jobId: number;
+  jobName: string;
+  payDate: ISODate;
+  periodStart: ISODate | null;
+  periodEnd: ISODate | null;
+  netCents: number;
+  grossCents: number | null;
+  notes: string | null;
+};
+
+export type PaycheckInput = Omit<Paycheck, 'id' | 'jobName'> & { id?: number };
+
+type PaycheckRow = {
+  id: number;
+  job_id: number;
+  job_name: string;
+  pay_date: string;
+  period_start: string | null;
+  period_end: string | null;
+  net_cents: number;
+  gross_cents: number | null;
+  notes: string | null;
+};
+
+const toPaycheck = (r: PaycheckRow): Paycheck => ({
+  id: r.id,
+  jobId: r.job_id,
+  jobName: r.job_name,
+  payDate: r.pay_date,
+  periodStart: r.period_start,
+  periodEnd: r.period_end,
+  netCents: r.net_cents,
+  grossCents: r.gross_cents,
+  notes: r.notes,
+});
+
+const PAYCHECK_SELECT = `
+  SELECT c.id, c.job_id, j.name AS job_name, c.pay_date, c.period_start, c.period_end,
+         c.net_cents, c.gross_cents, c.notes
+  FROM paychecks c JOIN jobs j ON j.id = c.job_id
+`;
+
+export async function listPaychecks(db: SQLiteDatabase, limit = 50): Promise<Paycheck[]> {
+  const rows = await db.getAllAsync<PaycheckRow>(
+    `${PAYCHECK_SELECT} ORDER BY c.pay_date DESC, c.id DESC LIMIT ?`,
+    limit,
+  );
+  return rows.map(toPaycheck);
+}
+
+export async function getPaycheck(db: SQLiteDatabase, id: number): Promise<Paycheck | null> {
+  const row = await db.getFirstAsync<PaycheckRow>(`${PAYCHECK_SELECT} WHERE c.id = ?`, id);
+  return row ? toPaycheck(row) : null;
+}
+
+export async function savePaycheck(db: SQLiteDatabase, p: PaycheckInput): Promise<number> {
+  const values = [p.jobId, p.payDate, p.periodStart, p.periodEnd, p.netCents, p.grossCents, p.notes];
+  if (p.id !== undefined) {
+    await db.runAsync(
+      `UPDATE paychecks SET job_id = ?, pay_date = ?, period_start = ?, period_end = ?, net_cents = ?,
+         gross_cents = ?, notes = ? WHERE id = ?`,
+      ...values,
+      p.id,
+    );
+    return p.id;
+  }
+  const result = await db.runAsync(
+    `INSERT INTO paychecks (job_id, pay_date, period_start, period_end, net_cents, gross_cents, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ...values,
+  );
+  return result.lastInsertRowId;
+}
+
+export async function deletePaycheck(db: SQLiteDatabase, id: number): Promise<void> {
+  await db.runAsync('DELETE FROM paychecks WHERE id = ?', id);
+}
+
+export type Job = { id: number; name: string };
+
+export async function listJobs(db: SQLiteDatabase): Promise<Job[]> {
+  return db.getAllAsync<Job>('SELECT id, name FROM jobs WHERE archived_at IS NULL ORDER BY created_at, id');
+}
+
+/** Shifts for one job between two dates, for comparing against a paycheck. */
+export async function listJobShiftsBetween(
+  db: SQLiteDatabase,
+  jobId: number,
+  start: ISODate,
+  end: ISODate,
+): Promise<Shift[]> {
+  const rows = await db.getAllAsync<ShiftRow>(
+    `${SHIFT_SELECT} WHERE j.id = ? AND s.date BETWEEN ? AND ? ORDER BY s.date`,
+    jobId,
+    start,
+    end,
+  );
+  return rows.map(toShift);
 }

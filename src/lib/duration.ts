@@ -36,6 +36,42 @@ export function formatDuration(minutes: number): string {
 }
 
 /**
+ * Parses a clock time as people type it: "5pm", "5:30 pm", "17:30", "1730", "9a".
+ * Returns 24-hour "HH:MM", or null when it can't be read.
+ */
+export function parseClockTime(input: string): string | null {
+  const s = input.trim().toLowerCase().replace(/\s+/g, '').replace(/\./g, '');
+  if (s === '') return null;
+  const m = /^(\d{1,2})(?::?(\d{2}))?(a|am|p|pm)?$/.exec(s);
+  if (!m) return null;
+  let hour = Number(m[1]);
+  const minute = m[2] ? Number(m[2]) : 0;
+  const suffix = m[3];
+  if (minute > 59) return null;
+  if (suffix) {
+    if (hour < 1 || hour > 12) return null;
+    if (suffix.startsWith('p') && hour !== 12) hour += 12;
+    if (suffix.startsWith('a') && hour === 12) hour = 0;
+  } else if (hour > 23) {
+    return null;
+  }
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+/** "17:30" -> "5:30 PM", "09:00" -> "9 AM". */
+export function formatClock(time: string): string {
+  const [h, m] = time.split(':').map(Number);
+  const suffix = h < 12 ? 'AM' : 'PM';
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return m === 0 ? `${hour} ${suffix}` : `${hour}:${String(m).padStart(2, '0')} ${suffix}`;
+}
+
+/** Shifts starting before 3 PM count as lunch/daytime (AM); later starts as dinner/night (PM). */
+export function periodForStart(time: string): 'am' | 'pm' {
+  return Number(time.slice(0, 2)) < 15 ? 'am' : 'pm';
+}
+
+/**
  * Minutes between two "HH:MM" clock times, minus a break.
  * An end time earlier than the start means the shift ran past midnight.
  */

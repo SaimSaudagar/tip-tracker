@@ -49,6 +49,10 @@ Docs: https://docs.expo.dev/eas/index.md
 - **Platform splits** use `.web.ts` files (`files`, `notify`). Keep both files' exports identical.
 - **Legal text** in `src/constants/legal.ts` must match `docs/privacy-policy.md` and `docs/terms-of-use.md`.
 - **Backups** copy every table column listed in `BACKUP_COLUMNS` (`src/lib/backup.ts`). When a migration adds a column, add it there too; a test compares the list against the schema and fails if they differ. Settings that describe the device (`pro_override`, `last_backup_at`) are never backed up or restored.
+- **Clock times are `HH:MM` 24-hour strings** (`parseClockTime` / `formatClock` in `src/lib/duration.ts`). When a shift has both start and end times they decide its minutes worked; `period` ('am' | 'pm' | null) tags lunch vs dinner.
+- **Paychecks** are compared with what was logged by `comparePaycheck` (`src/lib/paychecks.ts`): wages + card tips + service charges for that job and period, against gross pay. Cash tips are never on a paycheck.
+- **Design tokens** live in `src/constants/theme.ts` (`Colors`, `Spacing`, `Radius`, `Shadows`, `Motion`, `NumberFont`). Use them instead of literals; money uses `ThemedText` types `display` and `amount`.
+- **Motion and haptics:** no animation on screens seen many times a day (charts are static). Buttons scale to 0.97 on press. One haptic per action through `src/lib/haptics.ts` (selection on chips, success on save, destructive on delete). Confirmations go through `showToast` (`src/components/toast.tsx`), which respects Reduce Motion and announces itself to screen readers.
 - Run `npm test`, `npm run typecheck` and `npm run lint` before declaring a task done.
 
 ## Rules

@@ -100,9 +100,9 @@ describe('summarize', () => {
 describe('dashboard periods', () => {
   const dated = (date: string, cashTipsCents: number) => ({ ...shift({ cashTipsCents }), date });
 
-  it('loads enough history for a week that started last year', () => {
-    // Fri Jan 1, 2027; with Sunday weeks the week began Sun Dec 27, 2026.
-    expect(dashboardLoadRange('2027-01-01', 0)).toEqual({ start: '2026-12-27', end: '2027-12-31' });
+  it('loads last week too, even when it started last year', () => {
+    // Fri Jan 1, 2027; with Sunday weeks this week began Sun Dec 27, 2026 and last week on Dec 20.
+    expect(dashboardLoadRange('2027-01-01', 0)).toEqual({ start: '2026-12-20', end: '2027-12-31' });
   });
 
   it('splits shifts into week, month and year', () => {

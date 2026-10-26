@@ -4,25 +4,30 @@ import { useCallback } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BarChart } from '@/components/bar-chart';
 import { Button } from '@/components/button';
+import { ListGroup } from '@/components/list-group';
+import { ProgressRing } from '@/components/progress-ring';
 import { ShiftRow } from '@/components/shift-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing, TopTabInset } from '@/constants/theme';
-import { getWeekStart, listRecentShifts, listShiftsBetween } from '@/db/repo';
+import { BottomTabInset, MaxContentWidth, Radius, Spacing, TopTabInset } from '@/constants/theme';
+import { getWeekStart, getWeeklyGoal, listRecentShifts, listShiftsBetween } from '@/db/repo';
 import { useDbQuery } from '@/db/use-db-query';
 import { useTheme } from '@/hooks/use-theme';
-import { buildDashboardPeriods, dashboardLoadRange, type Period } from '@/lib/dashboard';
-import { formatMonthYear, formatRange, todayISO } from '@/lib/dates';
+import { buildDashboardPeriods, buildWeekBars, dashboardLoadRange, goalProgress, type Period } from '@/lib/dashboard';
+import { addDays, formatMonthYear, formatRange, todayISO, weekRange } from '@/lib/dates';
 import { formatDuration } from '@/lib/duration';
+import { formatChange, percentChange } from '@/lib/insights';
 import { formatMoney } from '@/lib/money';
+import { summarizeRange } from '@/lib/shift-math';
 import { usePro } from '@/purchases/pro-context';
 
-const RECENT_LIMIT = 8;
+const RECENT_LIMIT = 6;
 
 const hourly = (cents: number | null) => (cents === null ? '—' : `${formatMoney(cents)}/hr`);
 
-export default function DashboardScreen() {
+export default function HomeScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { isPro } = usePro();
@@ -30,24 +35,33 @@ export default function DashboardScreen() {
 
   const load = useCallback(
     async (db: SQLiteDatabase) => {
-      const weekStart = await getWeekStart(db);
+      const [weekStart, goalCents] = await Promise.all([getWeekStart(db), getWeeklyGoal(db)]);
       const range = dashboardLoadRange(today, weekStart);
       const [shifts, recent] = await Promise.all([
         listShiftsBetween(db, range.start, range.end),
         listRecentShifts(db, RECENT_LIMIT),
       ]);
-      return { periods: buildDashboardPeriods(shifts, today, weekStart), recent };
+      const lastWeek = weekRange(addDays(today, -7), weekStart);
+      return {
+        periods: buildDashboardPeriods(shifts, today, weekStart),
+        bars: buildWeekBars(shifts, today, weekStart),
+        lastWeekTotalCents: summarizeRange(shifts, lastWeek).totalCents,
+        goalCents,
+        recent,
+      };
     },
     [today],
   );
   const { data, error } = useDbQuery(load);
 
   const week = data?.periods.week;
-  const logShift = () => router.push('/log-shift');
+  const progress = data && week ? goalProgress(week.summary.totalCents, data.goalCents) : null;
+  const change = data && week ? percentChange(data.lastWeekTotalCents, week.summary.totalCents) : null;
+  const noShiftsYet = data && data.recent.length === 0;
 
   return (
     <ThemedView style={styles.screen}>
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
         <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
           <View style={styles.header}>
             <ThemedText type="smallBold" themeColor="textSecondary">
@@ -65,18 +79,76 @@ export default function DashboardScreen() {
           ) : null}
 
           <View style={[styles.hero, { backgroundColor: theme.tint }]}>
-            <ThemedText type="small" style={{ color: theme.onTint }}>
-              Tips this week
-            </ThemedText>
-            <ThemedText style={[styles.heroAmount, { color: theme.onTint }]} accessibilityRole="header">
-              {week ? formatMoney(week.summary.netTipsCents) : ' '}
-            </ThemedText>
+            <View style={styles.heroTop}>
+              <View style={styles.heroMain}>
+                <ThemedText type="small" style={{ color: theme.onTint }}>
+                  Tips this week
+                </ThemedText>
+                <ThemedText type="display" style={{ color: theme.onTint }} accessibilityRole="header" adjustsFontSizeToFit numberOfLines={1}>
+                  {week ? formatMoney(week.summary.netTipsCents) : ' '}
+                </ThemedText>
+              </View>
+              {progress !== null && data?.goalCents ? (
+                <ProgressRing
+                  progress={progress}
+                  color={theme.onTint}
+                  trackColor="rgba(255,255,255,0.25)"
+                  accessibilityLabel={`Weekly goal: ${Math.round(progress * 100)}% of ${formatMoney(data.goalCents, { wholeDollars: true })}`}>
+                  <ThemedText type="smallBold" style={{ color: theme.onTint }}>
+                    {Math.round(progress * 100)}%
+                  </ThemedText>
+                  <ThemedText type="small" style={[styles.ringCaption, { color: theme.onTint }]}>
+                    of {formatMoney(data.goalCents, { wholeDollars: true })}
+                  </ThemedText>
+                </ProgressRing>
+              ) : null}
+            </View>
             <View style={styles.heroStats}>
               <HeroStat label="Total earned" value={week ? formatMoney(week.summary.totalCents) : '—'} />
               <HeroStat label="Hours" value={week ? formatDuration(week.summary.minutesWorked) : '—'} />
               <HeroStat label="Real hourly" value={week ? hourly(week.summary.realHourlyCents) : '—'} />
             </View>
           </View>
+
+          {data && !noShiftsYet ? (
+            <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+              <View style={styles.cardHeader}>
+                <ThemedText type="smallBold">Day by day</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {change === null
+                    ? 'Total earned'
+                    : `${formatChange(change)} vs last week`}
+                </ThemedText>
+              </View>
+              <BarChart
+                bars={data.bars.map((b) => ({
+                  key: b.date,
+                  label: b.label,
+                  value: b.totalCents,
+                  compare: b.lastWeekTotalCents,
+                  highlight: b.date === today,
+                }))}
+                accessibilityLabel={`Total earned per day this week: ${data.bars
+                  .map((b) => `${b.label} ${formatMoney(b.totalCents, { wholeDollars: true })}`)
+                  .join(', ')}`}
+              />
+              <View style={styles.legend}>
+                <LegendDot color={theme.tint} label="This week" />
+                <LegendDot color={theme.backgroundSelected} label="Last week" />
+              </View>
+            </View>
+          ) : null}
+
+          {data && !data.goalCents && !noShiftsYet ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/settings')}
+              style={({ pressed }) => [styles.goalPrompt, { backgroundColor: theme.tintSoft, opacity: pressed ? 0.75 : 1 }]}>
+              <ThemedText type="small" style={{ color: theme.tint }}>
+                Set a weekly goal to track your progress ›
+              </ThemedText>
+            </Pressable>
+          ) : null}
 
           <View style={styles.cards}>
             <PeriodCard title={formatMonthYear(today)} period={data?.periods.month} />
@@ -87,11 +159,11 @@ export default function DashboardScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={`See your ${today.slice(0, 4)} totals with Pro`}
                 onPress={() => router.push({ pathname: '/paywall', params: { reason: 'year' } })}
-                style={[styles.card, { backgroundColor: theme.tintSoft }]}>
+                style={[styles.card, styles.halfCard, { backgroundColor: theme.tintSoft }]}>
                 <ThemedText type="small" themeColor="textSecondary">
                   {today.slice(0, 4)}
                 </ThemedText>
-                <ThemedText type="smallBold" style={[styles.cardAmount, { color: theme.tint }]}>
+                <ThemedText type="amount" style={{ color: theme.tint }}>
                   Your year
                 </ThemedText>
                 <ThemedText type="small" style={{ color: theme.tint }}>
@@ -105,8 +177,8 @@ export default function DashboardScreen() {
             RECENT SHIFTS
           </ThemedText>
 
-          {data && data.recent.length === 0 ? (
-            <View style={[styles.empty, { backgroundColor: theme.backgroundElement }]}>
+          {noShiftsYet ? (
+            <View style={[styles.card, styles.empty, { backgroundColor: theme.backgroundElement }]}>
               <ThemedText type="smallBold">No shifts yet</ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
                 Log your first shift. It takes about five seconds, and your tips stay on this phone.
@@ -114,7 +186,7 @@ export default function DashboardScreen() {
             </View>
           ) : null}
 
-          <View style={styles.list}>
+          <ListGroup>
             {data?.recent.map((shift) => (
               <ShiftRow
                 key={shift.id}
@@ -123,11 +195,11 @@ export default function DashboardScreen() {
                 onPress={() => router.push({ pathname: '/log-shift', params: { id: String(shift.id) } })}
               />
             ))}
-          </View>
+          </ListGroup>
         </ScrollView>
 
         <View style={[styles.footer, { backgroundColor: theme.background }]}>
-          <Button title="Log shift" onPress={logShift} />
+          <Button title="Log shift" onPress={() => router.push('/log-shift')} />
         </View>
       </SafeAreaView>
     </ThemedView>
@@ -148,17 +220,26 @@ function HeroStat({ label, value }: { label: string; value: string }) {
   );
 }
 
+function LegendDot({ color, label }: { color: string; label: string }) {
+  return (
+    <View style={styles.legendItem}>
+      <View style={[styles.legendDot, { backgroundColor: color }]} />
+      <ThemedText type="small" themeColor="textSecondary">
+        {label}
+      </ThemedText>
+    </View>
+  );
+}
+
 function PeriodCard({ title, period }: { title: string; period?: Period }) {
   const theme = useTheme();
   const s = period?.summary;
   return (
-    <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+    <View style={[styles.card, styles.halfCard, { backgroundColor: theme.backgroundElement }]}>
       <ThemedText type="small" themeColor="textSecondary">
         {title}
       </ThemedText>
-      <ThemedText type="smallBold" style={styles.cardAmount}>
-        {s ? formatMoney(s.netTipsCents) : '—'}
-      </ThemedText>
+      <ThemedText type="amount">{s ? formatMoney(s.netTipsCents) : '—'}</ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
         {!s ? ' ' : s.shiftCount === 0 ? 'No shifts yet' : `${hourly(s.realHourlyCents)} · ${formatDuration(s.minutesWorked)}`}
       </ThemedText>
@@ -168,9 +249,6 @@ function PeriodCard({ title, period }: { title: string; period?: Period }) {
 
 const styles = StyleSheet.create({
   screen: {
-    flex: 1,
-  },
-  safeArea: {
     flex: 1,
   },
   content: {
@@ -189,49 +267,78 @@ const styles = StyleSheet.create({
     marginTop: Spacing.two,
   },
   hero: {
-    borderRadius: Spacing.four,
+    borderRadius: Radius.xl,
+    borderCurve: 'continuous',
     padding: Spacing.four,
-    gap: Spacing.two,
+    gap: Spacing.three,
   },
-  heroAmount: {
-    fontSize: 44,
-    lineHeight: 52,
-    fontWeight: 700,
+  heroTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  heroMain: {
+    flex: 1,
+    gap: Spacing.one,
+  },
+  ringCaption: {
+    fontSize: 11,
+    lineHeight: 14,
+    opacity: 0.85,
   },
   heroStats: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: Spacing.two,
-    marginTop: Spacing.two,
   },
   heroStat: {
     gap: Spacing.half,
+  },
+  card: {
+    borderRadius: Radius.lg,
+    borderCurve: 'continuous',
+    padding: Spacing.three,
+    gap: Spacing.three,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+  },
+  legend: {
+    flexDirection: 'row',
+    gap: Spacing.three,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: Radius.full,
+  },
+  goalPrompt: {
+    borderRadius: Radius.md,
+    borderCurve: 'continuous',
+    paddingVertical: Spacing.two + Spacing.one,
+    paddingHorizontal: Spacing.three,
   },
   cards: {
     flexDirection: 'row',
     gap: Spacing.three,
   },
-  card: {
+  halfCard: {
     flex: 1,
-    borderRadius: Spacing.three,
-    padding: Spacing.three,
     gap: Spacing.one,
-  },
-  cardAmount: {
-    fontSize: 24,
-    lineHeight: 32,
   },
   sectionTitle: {
     marginTop: Spacing.two,
   },
-  list: {
-    gap: Spacing.two,
-  },
   empty: {
-    borderRadius: Spacing.three,
-    padding: Spacing.four,
-    gap: Spacing.one,
     alignItems: 'center',
+    gap: Spacing.one,
   },
   emptyText: {
     textAlign: 'center',

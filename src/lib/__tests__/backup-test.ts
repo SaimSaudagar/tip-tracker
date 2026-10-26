@@ -36,11 +36,25 @@ const tables = (): BackupTables => ({
       notes: 'Patio',
       created_at: '2026-10-25 23:00:00',
       updated_at: '2026-10-25 23:00:00',
+      period: 'pm',
     },
   ],
   tipouts: [
     { id: 3, shift_id: 7, recipient_name: 'Maria', amount_cents: 1000 },
     { id: 4, shift_id: 7, recipient_name: 'Bar', amount_cents: 500 },
+  ],
+  paychecks: [
+    {
+      id: 2,
+      job_id: 1,
+      pay_date: '2026-10-30',
+      period_start: '2026-10-12',
+      period_end: '2026-10-25',
+      net_cents: 41250,
+      gross_cents: 52000,
+      notes: null,
+      created_at: '2026-10-30 09:00:00',
+    },
   ],
   settings: [
     { key: 'week_start', value: '1' },
@@ -73,17 +87,42 @@ describe('backups', () => {
   it('includes every column the database schema creates', () => {
     const schema = MIGRATIONS.join('\n');
     const tablesSeen: string[] = [];
+    const columnsByTable = new Map<string, string[]>();
     for (const match of schema.matchAll(/CREATE TABLE (\w+) \(([\s\S]*?)\n\s*\);/g)) {
       const [, table, body] = match;
       tablesSeen.push(table);
-      const columns = body
-        .split('\n')
-        .map((line) => line.trim())
-        .filter((line) => /^[a-z_]+ (INTEGER|TEXT)/.test(line))
-        .map((line) => line.split(' ')[0]);
+      columnsByTable.set(
+        table,
+        body
+          .split('\n')
+          .map((line) => line.trim())
+          .filter((line) => /^[a-z_]+ (INTEGER|TEXT)/.test(line))
+          .map((line) => line.split(' ')[0]),
+      );
+    }
+    for (const [, table, column] of schema.matchAll(/ALTER TABLE (\w+) ADD COLUMN (\w+)/g)) {
+      columnsByTable.get(table)!.push(column);
+    }
+    for (const [table, columns] of columnsByTable) {
       expect([...BACKUP_COLUMNS[table as keyof BackupTables]].sort()).toEqual(columns.sort());
     }
     expect(tablesSeen.sort()).toEqual(Object.keys(BACKUP_COLUMNS).sort());
+  });
+
+  it('still restores backups made before paychecks and shift periods existed', () => {
+    const old = buildBackup(tables(), 2, now) as unknown as { tables: Record<string, unknown[]> };
+    delete old.tables.paychecks;
+    (old.tables.shifts[0] as Record<string, unknown>).period = undefined;
+    const parsed = parseBackup(JSON.stringify(old), 3);
+    expect(parsed.ok).toBe(true);
+    expect(parsed.ok && parsed.backup.tables.paychecks).toEqual([]);
+  });
+
+  it('rejects a paycheck for a job that isn’t in the backup', () => {
+    const t = tables();
+    t.paychecks[0].job_id = 42;
+    const parsed = parseBackup(JSON.stringify(buildBackup(t, 3, now)), 3);
+    expect(!parsed.ok && parsed.error).toContain('paycheck');
   });
 
   it('strips device-only settings from hand-made files too', () => {

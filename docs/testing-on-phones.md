@@ -8,7 +8,20 @@ The app runs in **Expo Go**, a free app that loads your code from your PC over W
 2. Connect both phones to the **same Wi-Fi network as your PC**. Guest networks and some office networks block this; a home network works.
 3. Your phone needs to be able to reach the PC. If Windows asks whether Node.js may use the network, allow **Private networks**.
 
-## 2. Start the app on your PC
+## 2. Sign in (one time)
+
+The project is linked to the expo.dev account **saimsaudagar** (team `saimsaudagars-team`), so both Expo Go and the Expo command-line tool must be signed in to that account.
+
+- **Expo Go on each phone:** open Expo Go, go to the account or profile tab, and log in as **saimsaudagar**.
+- **Expo CLI on the PC** (already done on this PC; check with `npx expo whoami`). If it ever needs doing again, use this, then open the printed link in Chrome and click **Approve**:
+
+```powershell
+$env:BROWSER = 'none'; npx expo login --browser
+```
+
+`BROWSER = 'none'` works around an Expo CLI bug on Windows: when it opens the browser itself, the `&` characters in the login URL break the Windows `start` command and the CLI crashes.
+
+## 3. Start the app on your PC
 
 In a terminal in the project folder (`E:\tip-tracker`), run:
 
@@ -20,7 +33,7 @@ The first part forces your real Wi-Fi address. Your PC also has a virtual networ
 
 A QR code appears. Leave this terminal open while testing.
 
-## 3. Open it on each phone
+## 4. Open it on each phone
 
 - **iPhone:** open the **Camera** app, point it at the QR code, and tap the “Open in Expo Go” banner.
 - **Android:** open **Expo Go** and tap **Scan QR code**.
@@ -35,7 +48,7 @@ The first load takes 30–60 seconds while the app is bundled.
 npx expo start --tunnel
 ```
 
-## 4. What to test (both phones)
+## 5. What to test (both phones)
 
 Tick each one off, and note anything that looks wrong.
 
@@ -71,7 +84,7 @@ Tick each one off, and note anything that looks wrong.
 - [ ] **Restore from a backup**: pick that file. You’re asked to confirm, then it says “Restored N shifts”.
 - [ ] **Export all shifts (CSV)**, save it, then **Import from another app (CSV)** with the same file: it reports the shifts as already in the app and skips them.
 
-## 5. Reporting problems
+## 6. Reporting problems
 
 For each problem, note the phone (iPhone or Android), what you tapped, what you expected and what happened. A screenshot helps.
 

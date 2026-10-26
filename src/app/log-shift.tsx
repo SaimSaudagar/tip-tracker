@@ -5,7 +5,9 @@ import { Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 're
 
 import { Button } from '@/components/button';
 import { Chip } from '@/components/chip';
+import { DateStepper } from '@/components/date-stepper';
 import { MoneyField } from '@/components/money-field';
+import { showToast } from '@/components/toast';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -14,19 +16,32 @@ import {
   getLatestShift,
   getShift,
   getShiftTipOuts,
+  getWeekStart,
+  getWeeklyGoal,
   listPositions,
+  listShiftsBetween,
   recentTipOutNames,
   saveShiftWithTipOuts,
   type Position,
   type Shift,
+  type ShiftPeriod,
 } from '@/db/repo';
 import { useTheme } from '@/hooks/use-theme';
 import { confirmDestructive } from '@/lib/confirm';
-import { addDays, formatDayLabel, todayISO } from '@/lib/dates';
-import { minutesToInput, parseDuration } from '@/lib/duration';
+import { celebrationFor } from '@/lib/celebration';
+import { monthRange, todayISO, weekRange } from '@/lib/dates';
+import {
+  formatClock,
+  minutesBetween,
+  minutesToInput,
+  parseClockTime,
+  parseDuration,
+  periodForStart,
+} from '@/lib/duration';
+import { haptic } from '@/lib/haptics';
 import { centsToInput, formatMoney, formatPercent, parseMoney } from '@/lib/money';
 import { maybeAskForReview } from '@/lib/review-prompt';
-import { calcTipOut, computeShift } from '@/lib/shift-math';
+import { calcTipOut, computeShift, summarize } from '@/lib/shift-math';
 import { parseTipOutDrafts, type TipOutDraft } from '@/lib/tipouts';
 import { usePro } from '@/purchases/pro-context';
 
@@ -34,6 +49,9 @@ type Form = {
   date: string;
   positionId: number | null;
   hours: string;
+  start: string;
+  end: string;
+  breakMinutes: string;
   cash: string;
   card: string;
   tipIn: string;
@@ -47,6 +65,9 @@ const blankForm = (date: string): Form => ({
   date,
   positionId: null,
   hours: '',
+  start: '',
+  end: '',
+  breakMinutes: '',
   cash: '',
   card: '',
   tipIn: '',
@@ -60,6 +81,9 @@ const formFromShift = (s: Shift): Form => ({
   date: s.date,
   positionId: s.positionId,
   hours: minutesToInput(s.minutesWorked),
+  start: s.startTime ? formatClock(s.startTime) : '',
+  end: s.endTime ? formatClock(s.endTime) : '',
+  breakMinutes: s.breakMinutes > 0 ? String(s.breakMinutes) : '',
   cash: centsToInput(s.cashTipsCents),
   card: centsToInput(s.cardTipsCents),
   tipIn: centsToInput(s.tipInCents),
@@ -99,6 +123,8 @@ export default function LogShiftScreen() {
   const [saving, setSaving] = useState(false);
   const [tipOutRows, setTipOutRows] = useState<TipOutDraft[]>([]);
   const [recentNames, setRecentNames] = useState<string[]>([]);
+  const [period, setPeriod] = useState<ShiftPeriod | null>(null);
+  const [periodChosen, setPeriodChosen] = useState(false);
   const nextRowKey = useRef(0);
 
   const newRow = (name = '', amount = ''): TipOutDraft => ({ key: `row-${nextRowKey.current++}`, name, amount });
@@ -122,6 +148,8 @@ export default function LogShiftScreen() {
         } else {
           setOriginal(existing);
           setForm(formFromShift(existing));
+          setPeriod(existing.period);
+          setPeriodChosen(existing.period !== null);
           setTipOutRows(
             existingTipOuts.map((t, i) => ({ key: `saved-${i}`, name: t.name, amount: centsToInput(t.amountCents) })),
           );
@@ -129,7 +157,8 @@ export default function LogShiftScreen() {
           setShowMore(
             existing.tipInCents + existing.tipOutCents + existing.serviceChargeCents > 0 ||
               existing.salesCents !== null ||
-              !!existing.notes,
+              !!existing.notes ||
+              !!existing.startTime,
           );
         }
       } else {
@@ -140,6 +169,7 @@ export default function LogShiftScreen() {
           positionId: lastPosition?.id ?? all[0]?.id ?? null,
           hours: latest && lastPosition ? minutesToInput(latest.minutesWorked) : '',
         });
+        setPeriod(latest?.period ?? null);
       }
       setLoaded(true);
     })();
@@ -151,7 +181,16 @@ export default function LogShiftScreen() {
   const set = (key: keyof Form) => (value: string) => setForm((f) => ({ ...f, [key]: value }));
   const position = positions.find((p) => p.id === form.positionId) ?? null;
 
-  const minutes = parseDuration(form.hours);
+  // Start and end times, when both are filled in, decide the hours worked.
+  const startTime = form.start.trim() === '' ? undefined : parseClockTime(form.start);
+  const endTime = form.end.trim() === '' ? undefined : parseClockTime(form.end);
+  const breakMinutes = form.breakMinutes.trim() === '' ? 0 : /^\d{1,3}$/.test(form.breakMinutes.trim()) ? Number(form.breakMinutes) : null;
+  const usingTimes = !!startTime && !!endTime;
+  const timedMinutes = usingTimes && breakMinutes !== null ? minutesBetween(startTime!, endTime!, breakMinutes) : null;
+  const minutes = usingTimes ? timedMinutes : parseDuration(form.hours);
+  const timesValid = startTime !== null && endTime !== null && breakMinutes !== null;
+  // A start time suggests lunch or dinner until the user picks one themselves.
+  const effectivePeriod: ShiftPeriod | null = !periodChosen && startTime ? periodForStart(startTime) : period;
   const cash = parseMoney(form.cash);
   const card = parseMoney(form.card);
   const tipIn = parseMoney(form.tipIn);
@@ -185,7 +224,7 @@ export default function LogShiftScreen() {
     original && original.positionId === form.positionId ? original.hourlyWageCents : (position?.hourlyWageCents ?? 0);
 
   const values = [minutes, cash, card, tipIn, tipOut, serviceCharge, sales];
-  const valid = values.every((v) => v !== null) && form.positionId !== null;
+  const valid = values.every((v) => v !== null) && timesValid && form.positionId !== null;
   const amounts = valid
     ? {
         minutesWorked: minutes!,
@@ -209,18 +248,28 @@ export default function LogShiftScreen() {
     if (!amounts || form.positionId === null || !canSave) return;
     setSaving(true);
     try {
-      await saveShiftWithTipOuts(
+      const savedId = await saveShiftWithTipOuts(
         db,
         {
           id: shiftId,
           positionId: form.positionId,
           date: form.date,
           ...amounts,
+          startTime: usingTimes ? startTime! : null,
+          endTime: usingTimes ? endTime! : null,
+          breakMinutes: usingTimes ? breakMinutes! : 0,
+          period: effectivePeriod,
           salesCents: form.sales.trim() === '' ? null : sales,
           notes: form.notes.trim() || null,
         },
         namedTipOuts.entries,
       );
+      haptic.success();
+      if (shiftId === undefined) {
+        await celebrate(savedId);
+      } else {
+        showToast({ title: 'Changes saved' });
+      }
       close();
       if (shiftId === undefined) {
         maybeAskForReview(db).catch((e) => console.warn('Review prompt failed', e));
@@ -230,11 +279,42 @@ export default function LogShiftScreen() {
     }
   };
 
+  /** Shows a highlight for the new shift ("Best Friday this month") or a plain confirmation. */
+  const celebrate = async (savedId: number) => {
+    try {
+      const [weekStart, goalCents] = await Promise.all([getWeekStart(db), getWeeklyGoal(db)]);
+      const month = monthRange(form.date);
+      const week = weekRange(form.date, weekStart);
+      const [monthShifts, weekShifts] = await Promise.all([
+        listShiftsBetween(db, month.start, month.end),
+        listShiftsBetween(db, week.start, week.end),
+      ]);
+      const saved = monthShifts.find((s) => s.id === savedId);
+      if (!saved) throw new Error('Saved shift not found');
+      const weekAfter = summarize(weekShifts).totalCents;
+      // "This month" and the weekly goal only make sense for shifts in the current month and week.
+      const isCurrentWeek = today >= week.start && today <= week.end;
+      showToast(
+        celebrationFor({
+          saved,
+          monthShifts: form.date.slice(0, 7) === today.slice(0, 7) ? monthShifts : [saved],
+          weekTotalBefore: weekAfter - computeShift(saved).totalCents,
+          weekTotalAfter: weekAfter,
+          goalCents: isCurrentWeek ? goalCents : null,
+        }),
+      );
+    } catch {
+      showToast({ title: 'Shift saved' });
+    }
+  };
+
   const remove = async () => {
     if (shiftId === undefined) return;
     const ok = await confirmDestructive('Delete this shift?', 'Its tips and hours will be removed.', 'Delete');
     if (!ok) return;
     await deleteShift(db, shiftId);
+    haptic.destructive();
+    showToast({ title: 'Shift deleted' });
     close();
   };
 
@@ -288,28 +368,7 @@ export default function LogShiftScreen() {
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}>
-        <View style={[styles.dateRow, { backgroundColor: theme.backgroundElement }]}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Previous day"
-            onPress={() => set('date')(addDays(form.date, -1))}
-            hitSlop={8}
-            style={styles.dateArrow}>
-            <ThemedText type="subtitle">‹</ThemedText>
-          </Pressable>
-          <ThemedText type="smallBold" style={styles.dateLabel}>
-            {formatDayLabel(form.date, today)}
-          </ThemedText>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Next day"
-            disabled={form.date >= today}
-            onPress={() => set('date')(addDays(form.date, 1))}
-            hitSlop={8}
-            style={[styles.dateArrow, { opacity: form.date >= today ? 0.25 : 1 }]}>
-            <ThemedText type="subtitle">›</ThemedText>
-          </Pressable>
-        </View>
+        <DateStepper value={form.date} onChange={set('date')} today={today} max={today} label="Shift date" />
 
         {positions.length > 1 ? (
           <View style={styles.chips}>
@@ -354,10 +413,40 @@ export default function LogShiftScreen() {
         <MoneyField
           label="Hours worked"
           suffix="hrs"
-          value={form.hours}
+          value={usingTimes && timedMinutes !== null ? minutesToInput(timedMinutes) : form.hours}
+          editable={!usingTimes}
           onChangeText={set('hours')}
-          error={minutes === null ? 'Enter hours like 6.5 or 6:30 (24 max)' : null}
+          error={!usingTimes && minutes === null ? 'Enter hours like 6.5 or 6:30 (24 max)' : null}
+          hint={
+            usingTimes
+              ? `${formatClock(startTime!)} – ${formatClock(endTime!)}${breakMinutes ? `, ${breakMinutes} min break` : ''}`
+              : undefined
+          }
         />
+
+        <View style={styles.periodRow}>
+          <ThemedText type="small" themeColor="textSecondary">
+            Shift
+          </ThemedText>
+          <Chip
+            label="Lunch · AM"
+            accessibilityLabel="Lunch or daytime shift"
+            selected={effectivePeriod === 'am'}
+            onPress={() => {
+              setPeriodChosen(true);
+              setPeriod(effectivePeriod === 'am' ? null : 'am');
+            }}
+          />
+          <Chip
+            label="Dinner · PM"
+            accessibilityLabel="Dinner or night shift"
+            selected={effectivePeriod === 'pm'}
+            onPress={() => {
+              setPeriodChosen(true);
+              setPeriod(effectivePeriod === 'pm' ? null : 'pm');
+            }}
+          />
+        </View>
 
         <Pressable
           accessibilityRole="button"
@@ -371,6 +460,28 @@ export default function LogShiftScreen() {
 
         {showMore ? (
           <View style={styles.more}>
+            <View style={styles.timesBlock}>
+              <ThemedText type="small" themeColor="textSecondary">
+                Start & end times (optional; they fill in hours worked)
+              </ThemedText>
+              <View style={styles.row}>
+                <TimeField label="Start" placeholder="4:30pm" value={form.start} onChangeText={set('start')} invalid={startTime === null} />
+                <TimeField label="End" placeholder="11pm" value={form.end} onChangeText={set('end')} invalid={endTime === null} />
+                <TimeField
+                  label="Break (min)"
+                  placeholder="0"
+                  value={form.breakMinutes}
+                  onChangeText={set('breakMinutes')}
+                  invalid={breakMinutes === null}
+                  numeric
+                />
+              </View>
+              {startTime === null || endTime === null ? (
+                <ThemedText type="small" style={{ color: theme.danger }}>
+                  Enter times like 4:30pm or 16:30.
+                </ThemedText>
+              ) : null}
+            </View>
             <View style={styles.row}>
               <MoneyField
                 label="Tip-out paid"
@@ -536,6 +647,42 @@ export default function LogShiftScreen() {
   );
 }
 
+function TimeField({
+  label,
+  invalid,
+  numeric,
+  ...props
+}: {
+  label: string;
+  placeholder: string;
+  value: string;
+  onChangeText: (v: string) => void;
+  invalid: boolean;
+  numeric?: boolean;
+}) {
+  const theme = useTheme();
+  return (
+    <View style={styles.timeField}>
+      <ThemedText type="small" themeColor="textSecondary">
+        {label}
+      </ThemedText>
+      <TextInput
+        accessibilityLabel={label}
+        placeholderTextColor={theme.textSecondary}
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType={numeric ? 'number-pad' : 'default'}
+        maxLength={8}
+        style={[
+          styles.timeInput,
+          { backgroundColor: theme.backgroundElement, color: theme.text, borderColor: invalid ? theme.danger : 'transparent' },
+        ]}
+        {...props}
+      />
+    </View>
+  );
+}
+
 function SummaryLine({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (
     <View style={styles.summaryLine}>
@@ -570,20 +717,6 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
   },
-  dateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: Spacing.three,
-    paddingHorizontal: Spacing.two,
-  },
-  dateArrow: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
-  },
-  dateLabel: {
-    fontSize: 17,
-  },
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -603,6 +736,28 @@ const styles = StyleSheet.create({
   },
   more: {
     gap: Spacing.three,
+  },
+  periodRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  timesBlock: {
+    gap: Spacing.two,
+  },
+  timeField: {
+    flex: 1,
+    minWidth: 0,
+    gap: Spacing.one,
+  },
+  timeInput: {
+    minWidth: 0,
+    borderRadius: Spacing.three,
+    borderWidth: 2,
+    paddingHorizontal: Spacing.three,
+    minHeight: 48,
+    fontSize: 16,
   },
   notesWrapper: {
     gap: Spacing.one,

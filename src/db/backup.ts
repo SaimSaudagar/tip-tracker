@@ -17,6 +17,7 @@ const ORDER: Record<TableName, string> = {
   positions: 'id',
   shifts: 'id',
   tipouts: 'id',
+  paychecks: 'id',
   settings: 'key',
 };
 
@@ -34,11 +35,11 @@ export async function createBackup(db: SQLiteDatabase): Promise<Backup> {
 export async function restoreBackup(db: SQLiteDatabase, backup: Backup): Promise<void> {
   const deviceOnly = DEVICE_ONLY_SETTINGS.map(() => '?').join(', ');
   await db.withTransactionAsync(async () => {
-    await db.execAsync('DELETE FROM tipouts; DELETE FROM shifts; DELETE FROM positions; DELETE FROM jobs;');
+    await db.execAsync('DELETE FROM tipouts; DELETE FROM paychecks; DELETE FROM shifts; DELETE FROM positions; DELETE FROM jobs;');
     await db.runAsync(`DELETE FROM settings WHERE key NOT IN (${deviceOnly})`, ...DEVICE_ONLY_SETTINGS);
 
     // Parents before children, so foreign keys hold at every step.
-    for (const table of ['jobs', 'positions', 'shifts', 'tipouts', 'settings'] as TableName[]) {
+    for (const table of ['jobs', 'positions', 'shifts', 'tipouts', 'paychecks', 'settings'] as TableName[]) {
       const columns = BACKUP_COLUMNS[table];
       const sql = `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`;
       for (const row of backup.tables[table]) {

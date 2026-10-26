@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { AppState, Platform, StyleSheet, useColorScheme, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { ToastHost } from '@/components/toast';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { DATABASE_NAME, migrateDbIfNeeded } from '@/db/migrations';
@@ -35,9 +36,11 @@ export default function RootLayout() {
             <Stack.Screen name="log-shift" options={{ presentation: 'modal', title: 'Log shift' }} />
             <Stack.Screen name="position" options={{ presentation: 'modal', title: 'Position' }} />
             <Stack.Screen name="import" options={{ presentation: 'modal', title: 'Import shifts' }} />
+            <Stack.Screen name="paycheck" options={{ presentation: 'modal', title: 'Paycheck' }} />
             <Stack.Screen name="paywall" options={{ presentation: 'modal', headerShown: false }} />
             <Stack.Screen name="legal" options={{ presentation: 'modal', title: '' }} />
           </Stack>
+          <ToastHost />
         </ProProvider>
       </SQLiteProvider>
     </ThemeProvider>

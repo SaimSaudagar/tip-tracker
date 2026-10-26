@@ -74,6 +74,23 @@ export const MIGRATIONS: string[] = [
   INSERT OR IGNORE INTO settings (key, value)
     SELECT 'onboarded', '1' WHERE EXISTS (SELECT 1 FROM shifts);
   `,
+  // 3: lunch/dinner tag on shifts, and paychecks.
+  `
+  ALTER TABLE shifts ADD COLUMN period TEXT; -- 'am' | 'pm' | NULL
+
+  CREATE TABLE paychecks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id INTEGER NOT NULL REFERENCES jobs(id),
+    pay_date TEXT NOT NULL,   -- local YYYY-MM-DD
+    period_start TEXT,
+    period_end TEXT,
+    net_cents INTEGER NOT NULL CHECK (net_cents >= 0),
+    gross_cents INTEGER,
+    notes TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX paychecks_date_idx ON paychecks(pay_date);
+  `,
 ];
 
 export const DATABASE_NAME = 'tips.db';

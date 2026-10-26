@@ -8,17 +8,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
 import { Chip } from '@/components/chip';
+import { MoneyField } from '@/components/money-field';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing, TopTabInset } from '@/constants/theme';
 import {
   getSettings,
   getWeekStart,
+  getWeeklyGoal,
   listAllShifts,
   listPositions,
   listTipOutsBetween,
   setSetting,
   setWeekStart,
+  setWeeklyGoal,
   type Position,
 } from '@/db/repo';
 import { createBackup, restoreBackup } from '@/db/backup';
@@ -30,7 +33,7 @@ import { parseBackup } from '@/lib/backup';
 import { confirmDestructive } from '@/lib/confirm';
 import { formatDayLabel, toISODate, todayISO, type Weekday } from '@/lib/dates';
 import { CSV, JSON_FILE, readPickedFile, shareTextFile } from '@/lib/files';
-import { formatMoney, formatPercent } from '@/lib/money';
+import { centsToInput, formatMoney, formatPercent, parseMoney } from '@/lib/money';
 import { notificationsSupported, requestNotificationPermission, scheduleTestReminder } from '@/lib/notify';
 import { FREE_POSITION_LIMIT } from '@/lib/pro';
 import { formatTime, type ReminderSettings } from '@/lib/reminders-plan';
@@ -70,14 +73,16 @@ export default function SettingsScreen() {
   const [backupMessage, setBackupMessage] = useState<{ text: string; error?: boolean } | null>(null);
 
   const load = useCallback(async (database: SQLiteDatabase) => {
-    const [positions, weekStart, settings] = await Promise.all([
+    const [positions, weekStart, settings, weeklyGoal] = await Promise.all([
       listPositions(database),
       getWeekStart(database),
       getSettings(database),
+      getWeeklyGoal(database),
     ]);
     return {
       positions,
       weekStart,
+      weeklyGoal,
       reminders: readReminderSettings(settings),
       lastBackup: settings.last_backup_at ?? null,
     };
@@ -299,6 +304,13 @@ export default function SettingsScreen() {
             ) : null}
           </Section>
 
+          <Section title="WEEKLY GOAL">
+            {data ? <GoalField goalCents={data.weeklyGoal} onSave={(cents) => setWeeklyGoal(db, cents)} /> : null}
+            <ThemedText type="small" themeColor="textSecondary">
+              What you aim to earn each week, tips plus wages. Home shows how close you are. Leave it empty for no goal.
+            </ThemedText>
+          </Section>
+
           <Section title="WEEK STARTS ON">
             <View style={styles.segment}>
               {WEEK_STARTS.map(({ value, label }) => {
@@ -374,6 +386,31 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
       </ThemedText>
       {children}
     </View>
+  );
+}
+
+/** Edits the goal in place and saves when the field loses focus or Done is pressed. */
+function GoalField({ goalCents, onSave }: { goalCents: number | null; onSave: (cents: number | null) => Promise<void> }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const value = draft ?? (goalCents ? centsToInput(goalCents) : '');
+  const parsed = value.trim() === '' ? 0 : parseMoney(value);
+  const commit = async () => {
+    if (draft === null || parsed === null) return;
+    await onSave(parsed > 0 ? parsed : null);
+    setDraft(null);
+  };
+  return (
+    <MoneyField
+      label="Goal per week"
+      prefix="$"
+      placeholder="No goal"
+      value={value}
+      onChangeText={setDraft}
+      onBlur={commit}
+      onSubmitEditing={commit}
+      returnKeyType="done"
+      error={parsed === null ? 'Enter an amount like 800' : null}
+    />
   );
 }
 

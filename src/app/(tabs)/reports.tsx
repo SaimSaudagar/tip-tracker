@@ -5,21 +5,31 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
+import { ListGroup } from '@/components/list-group';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing, TopTabInset } from '@/constants/theme';
-import { listShiftsBetween, listTipOutsBetween } from '@/db/repo';
+import {
+  listJobShiftsBetween,
+  listPaychecks,
+  listShiftsBetween,
+  listTipOutsBetween,
+  type Paycheck,
+} from '@/db/repo';
 import { useDbQuery } from '@/db/use-db-query';
 import { useTheme } from '@/hooks/use-theme';
 import { shiftMonth } from '@/lib/calendar';
-import { monthRange, todayISO, yearRange } from '@/lib/dates';
+import { formatDayLabel, formatRange, monthRange, todayISO, yearRange } from '@/lib/dates';
 import { formatDuration } from '@/lib/duration';
 import { sharePdf } from '@/lib/files';
 import { formatMoney } from '@/lib/money';
+import { comparePaycheck, PAYCHECK_TOLERANCE_CENTS } from '@/lib/paychecks';
 import { formatShortDate } from '@/lib/reminders-plan';
 import { buildMonthlyReport, buildYearSummary, monthlyReportHtml, yearSummaryHtml } from '@/lib/reports';
 import { combineTipOuts, describeTipOuts } from '@/lib/tipouts';
 import { usePro } from '@/purchases/pro-context';
+
+const PAYCHECK_LIMIT = 12;
 
 export default function ReportsScreen() {
   const { month } = useLocalSearchParams<{ month?: string }>();
@@ -45,15 +55,25 @@ function Reports({ linkedMonth }: { linkedMonth: string | null }) {
     async (db: SQLiteDatabase) => {
       const m = monthRange(month);
       const y = yearRange(`${year}-01-01`);
-      const [monthShifts, yearShifts, tipOuts] = await Promise.all([
+      const [monthShifts, yearShifts, tipOuts, paychecks] = await Promise.all([
         listShiftsBetween(db, m.start, m.end),
         listShiftsBetween(db, y.start, y.end),
         listTipOutsBetween(db, m.start, m.end),
+        listPaychecks(db, PAYCHECK_LIMIT),
       ]);
       const withNames = monthShifts.map((s) => ({ ...s, tipOuts: tipOuts.get(s.id) ?? [] }));
+      // Gross minus what was logged for each paycheck's period, when there's enough to compare.
+      const differences = await Promise.all(
+        paychecks.map(async (p) => {
+          if (p.grossCents === null || p.periodStart === null || p.periodEnd === null) return null;
+          const shifts = await listJobShiftsBetween(db, p.jobId, p.periodStart, p.periodEnd);
+          return shifts.length > 0 ? comparePaycheck(p.grossCents, shifts).differenceCents : null;
+        }),
+      );
       return {
         report: buildMonthlyReport(withNames, month),
         summary: buildYearSummary(yearShifts, `${year}-01-01`),
+        paychecks: paychecks.map((paycheck, i) => ({ paycheck, differenceCents: differences[i] })),
       };
     },
     [month, year],
@@ -191,6 +211,30 @@ function Reports({ linkedMonth }: { linkedMonth: string | null }) {
             ) : null}
           </View>
 
+          <View style={styles.section}>
+            <ThemedText type="smallBold" themeColor="textSecondary">
+              PAYCHECKS
+            </ThemedText>
+            {data && data.paychecks.length === 0 ? (
+              <ThemedText type="small" themeColor="textSecondary">
+                Add your paychecks to check that wages and card tips match the shifts you logged.
+              </ThemedText>
+            ) : null}
+            <ListGroup>
+              {data?.paychecks.map(({ paycheck, differenceCents }) => (
+                <PaycheckRow
+                  key={paycheck.id}
+                  paycheck={paycheck}
+                  differenceCents={differenceCents}
+                  today={today}
+                  showJob={new Set(data.paychecks.map((p) => p.paycheck.jobId)).size > 1}
+                  onPress={() => router.push({ pathname: '/paycheck', params: { id: String(paycheck.id) } })}
+                />
+              ))}
+            </ListGroup>
+            <Button title="Add paycheck" variant="secondary" onPress={() => router.push('/paycheck')} />
+          </View>
+
           {error ? <ThemedText style={{ color: theme.danger }}>{error}</ThemedText> : null}
 
           <ThemedText type="small" themeColor="textSecondary" style={styles.note}>
@@ -229,6 +273,62 @@ function Stepper(props: {
         <ThemedText type="subtitle">›</ThemedText>
       </Pressable>
     </View>
+  );
+}
+
+function PaycheckRow({
+  paycheck,
+  differenceCents,
+  today,
+  showJob,
+  onPress,
+}: {
+  paycheck: Paycheck;
+  differenceCents: number | null;
+  today: string;
+  showJob: boolean;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  const period =
+    paycheck.periodStart && paycheck.periodEnd
+      ? formatRange({ start: paycheck.periodStart, end: paycheck.periodEnd }, today)
+      : null;
+  const details = [showJob ? paycheck.jobName : null, period].filter(Boolean).join(' · ');
+  const matches = differenceCents !== null && Math.abs(differenceCents) <= PAYCHECK_TOLERANCE_CENTS;
+  const status =
+    differenceCents === null
+      ? null
+      : matches
+        ? 'Matches shifts'
+        : differenceCents < 0
+          ? `${formatMoney(-differenceCents)} short`
+          : `${formatMoney(differenceCents)} over`;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Paycheck ${formatDayLabel(paycheck.payDate, today)}, ${formatMoney(paycheck.netCents)}${status ? `, ${status}` : ''}. Edit`}
+      onPress={onPress}
+      style={({ pressed }) => [styles.paycheckRow, { backgroundColor: pressed ? theme.backgroundSelected : 'transparent' }]}>
+      <View style={styles.paycheckLeft}>
+        <ThemedText type="smallBold">{formatDayLabel(paycheck.payDate, today)}</ThemedText>
+        {details ? (
+          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+            {details}
+          </ThemedText>
+        ) : null}
+      </View>
+      <View style={styles.paycheckRight}>
+        <ThemedText type="smallBold" style={styles.amount}>
+          {formatMoney(paycheck.netCents)}
+        </ThemedText>
+        {status ? (
+          <ThemedText type="small" style={{ color: matches ? theme.tint : theme.danger }}>
+            {status}
+          </ThemedText>
+        ) : null}
+      </View>
+    </Pressable>
   );
 }
 
@@ -290,5 +390,22 @@ const styles = StyleSheet.create({
   },
   note: {
     textAlign: 'center',
+  },
+  paycheckRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    minHeight: 60,
+    gap: Spacing.three,
+  },
+  paycheckLeft: {
+    flex: 1,
+    gap: Spacing.half,
+  },
+  paycheckRight: {
+    alignItems: 'flex-end',
+    gap: Spacing.half,
   },
 });
