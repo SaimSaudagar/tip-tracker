@@ -64,6 +64,24 @@ export async function replaceScheduledNotifications(plans: PlannedNotification[]
   return plans.length;
 }
 
+/**
+ * Development helper: fires a sample reminder after `seconds` so notifications can be
+ * checked on a phone. Uses a `test-` id so reminder syncing doesn't cancel it.
+ */
+export async function scheduleTestReminder(seconds = 60): Promise<boolean> {
+  if (!(await requestNotificationPermission())) return false;
+  await Notifications.scheduleNotificationAsync({
+    identifier: `test-${Date.now()}`,
+    content: {
+      title: 'How were tips tonight?',
+      body: 'Test reminder. Tap to log a shift.',
+      data: { url: '/log-shift' },
+    },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds, channelId: CHANNEL_ID },
+  });
+  return true;
+}
+
 /** Opens the screen a tapped notification points to. */
 export function useNotificationRouting() {
   const router = useRouter();

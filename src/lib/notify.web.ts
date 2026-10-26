@@ -15,4 +15,8 @@ export async function replaceScheduledNotifications(_plans: PlannedNotification[
   return 0;
 }
 
+export async function scheduleTestReminder(_seconds = 60): Promise<boolean> {
+  return false;
+}
+
 export function useNotificationRouting() {}

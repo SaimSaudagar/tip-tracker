@@ -31,7 +31,7 @@ import { confirmDestructive } from '@/lib/confirm';
 import { formatDayLabel, toISODate, todayISO, type Weekday } from '@/lib/dates';
 import { CSV, JSON_FILE, readPickedFile, shareTextFile } from '@/lib/files';
 import { formatMoney, formatPercent } from '@/lib/money';
-import { notificationsSupported, requestNotificationPermission } from '@/lib/notify';
+import { notificationsSupported, requestNotificationPermission, scheduleTestReminder } from '@/lib/notify';
 import { FREE_POSITION_LIMIT } from '@/lib/pro';
 import { formatTime, type ReminderSettings } from '@/lib/reminders-plan';
 import { shiftsToCsv } from '@/lib/transfer';
@@ -66,6 +66,7 @@ export default function SettingsScreen() {
   const { isPro, setSimulatedPro } = usePro();
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [reminderMessage, setReminderMessage] = useState<string | null>(null);
+  const [testMessage, setTestMessage] = useState<string | null>(null);
   const [backupMessage, setBackupMessage] = useState<{ text: string; error?: boolean } | null>(null);
 
   const load = useCallback(async (database: SQLiteDatabase) => {
@@ -274,6 +275,27 @@ export default function SettingsScreen() {
               <ThemedText type="small" style={{ color: theme.danger }} accessibilityLiveRegion="polite">
                 {reminderMessage}
               </ThemedText>
+            ) : null}
+            {__DEV__ && notificationsSupported ? (
+              <>
+                <Button
+                  title="Developer: test reminder in 1 minute"
+                  variant="secondary"
+                  onPress={async () => {
+                    setTestMessage(null);
+                    setTestMessage(
+                      (await scheduleTestReminder(60))
+                        ? 'Scheduled. Leave the app or lock your phone; it arrives in about a minute. Tap it to open Log shift.'
+                        : PERMISSION_OFF,
+                    );
+                  }}
+                />
+                {testMessage ? (
+                  <ThemedText type="small" themeColor="textSecondary" accessibilityLiveRegion="polite">
+                    {testMessage}
+                  </ThemedText>
+                ) : null}
+              </>
             ) : null}
           </Section>
 

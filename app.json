@@ -39,6 +39,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "owner": "saimsaudagars-team",
+    "extra": {
+      "eas": {
+        "projectId": "627935a0-a872-4a89-89ca-e8684f61d449"
+      }
     }
   }
 }
