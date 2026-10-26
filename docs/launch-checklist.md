@@ -7,7 +7,8 @@ What's left before the App Store and Google Play. Every step here needs your acc
 - [ ] **App name.** "Tip Tracker" is a placeholder (the plan suggests *[Brand]: Tip Tracker & Log*). Change `name` in `app.json` and search the code for "Tip Tracker".
 - [ ] **Bundle ID.** `app.json` uses `com.saimsaudagar.tiptracker` for both `ios.bundleIdentifier` and `android.package`. Change it now if you want something else: it can't change after the first upload.
 - [ ] **Support email.** Set `SUPPORT_EMAIL` in `src/constants/app.ts`; Settings shows a "Contact support" row once it's filled in.
-- [ ] **Legal placeholders.** Replace `[contact email]`, `[developer name]` and `[jurisdiction]` in `src/constants/legal.ts` **and** in `docs/privacy-policy.md` / `docs/terms-of-use.md` (they must match). Host the two docs somewhere public for the store listings.
+- [ ] **Legal placeholders.** Replace `[contact email]`, `[developer name]` and `[jurisdiction]` in `src/constants/legal.ts` **and** in `docs/privacy-policy.md` / `docs/terms-of-use.md`. A test fails if the in-app and hosted copies drift apart.
+- [ ] **Host the legal pages.** Run `npm run legal-site`, which rebuilds the `site/` folder (it warns about any placeholders left). The quickest free host is Netlify Drop: open app.netlify.com/drop and drag the `site` folder onto it. You get links like `https://<name>.netlify.app/privacy.html` and `/terms.html` for App Store Connect and the Play Console. GitHub Pages also works, but only from a public repository on a free GitHub plan.
 
 ## 2. Accounts
 

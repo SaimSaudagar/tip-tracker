@@ -1,5 +1,5 @@
 import { celebrationFor } from '@/lib/celebration';
-import { buildWeekBars, dashboardLoadRange, goalProgress, taxSeasonYear } from '@/lib/dashboard';
+import { buildWeekBars, dashboardLoadRange, goalProgress, lastWeekToDate, taxSeasonYear } from '@/lib/dashboard';
 import { formatClock, minutesBetween, parseClockTime, periodForStart } from '@/lib/duration';
 import { buildInsights, formatChange, insightsLoadRange, percentChange, type InsightShift } from '@/lib/insights';
 import { comparePaycheck } from '@/lib/paychecks';
@@ -141,6 +141,13 @@ describe('home week chart and goal', () => {
     expect(goalProgress(50000, 100000)).toBe(0.5);
     expect(goalProgress(150000, 100000)).toBe(1);
     expect(goalProgress(50000, null)).toBeNull();
+  });
+
+  it('compares this week so far with the same days last week', () => {
+    // Monday Oct 26, weeks starting Sunday: Sun Oct 18 to Mon Oct 19.
+    expect(lastWeekToDate(today, 0)).toEqual({ start: '2026-10-18', end: '2026-10-19' });
+    // Weeks starting Monday: just Mon Oct 19.
+    expect(lastWeekToDate(today, 1)).toEqual({ start: '2026-10-19', end: '2026-10-19' });
   });
 });
 

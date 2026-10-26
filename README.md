@@ -19,7 +19,7 @@ npm run web
 
 The web version is for development only. It stores data in the browser, and reminders and the share sheet only work on phones.
 
-In development builds, turn on **Settings → Developer: simulate Pro** to try Pro features before RevenueCat is connected.
+In development builds, turn on **Settings → Developer: simulate Pro** to try Pro features before RevenueCat is connected, and use **Settings → Developer: add 12 weeks of sample shifts** to fill every screen with realistic data (Delete all data removes it).
 
 ## Purchases (RevenueCat)
 
@@ -73,5 +73,9 @@ npm run lint
 | `src/db/migrations.ts` | Database schema, applied with `PRAGMA user_version` |
 | `src/db/repo.ts` | All SQL queries |
 | `src/db/use-db-query.ts` | Hook that reloads a query when data changes |
+| `src/db/__tests__/` / `src/db/testing/memory-db.ts` | Tests of the real SQL against an in-memory SQLite (sql.js) |
+| `src/lib/sample-data.ts` | Development-only sample shifts |
+| `scripts/build-legal-site.js` → `site/` | `npm run legal-site` builds the public privacy and terms pages from `docs/` |
+| `docs/store-screenshots/` | Draft App Store and Google Play screenshots |
 
 See `AGENTS.md` for the conventions (money in cents, local date strings, append-only migrations).

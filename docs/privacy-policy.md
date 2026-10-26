@@ -32,5 +32,4 @@ Tip Tracker is meant for working adults and is not directed to children under 13
 
 If this policy changes, the new version will appear in the app with a new date.
 
-Questions: [contact email]
-Developer: [developer name]
+Questions: [contact email]. Developer: [developer name].

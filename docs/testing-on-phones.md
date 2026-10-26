@@ -71,6 +71,9 @@ Tick each one off, and note anything that looks wrong.
 - [ ] Edit the shift, then delete one with the native “Delete this shift?” dialog.
 - [ ] Close the app completely (swipe it away), reopen it from Expo Go: your data is still there.
 
+**Sample data**
+- [ ] Settings → **Developer: add 12 weeks of sample shifts**: Home, Calendar, Insights and Reports fill with realistic numbers. (Delete all data removes them again.)
+
 **Pro features (simulated)**
 - [ ] Settings → turn on **Developer: simulate Pro**.
 - [ ] Log shift: with a tip-out rule set, the tip-out fills itself in (“Auto: …”).

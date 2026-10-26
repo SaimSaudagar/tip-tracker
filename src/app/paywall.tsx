@@ -11,6 +11,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { getSettings, setSetting } from '@/db/repo';
 import { useTheme } from '@/hooks/use-theme';
 import { track } from '@/lib/analytics';
+import { requestNotificationPermission } from '@/lib/notify';
 import type { PaywallReason } from '@/lib/pro';
 import { usePro, type Plan, type PlanId } from '@/purchases/pro-context';
 
@@ -84,6 +85,8 @@ export default function PaywallScreen() {
       if (result === 'purchased') {
         const trial = plan.id === 'annual' || plan.id === 'annual_month_trial';
         track({ name: trial ? 'trial_started' : 'purchase_completed', product: plan.id });
+        // The paywall promises a reminder before the trial ends, which needs notifications.
+        if (trial) await requestNotificationPermission().catch(() => false);
         close();
       } else if (result === 'unavailable') {
         setMessage('Purchases aren’t available yet. Please try again later.');

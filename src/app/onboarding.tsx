@@ -122,6 +122,10 @@ export default function OnboardingScreen() {
                   <ThemedText style={styles.bulletText}>{line}</ThemedText>
                 </View>
               ))}
+              <ThemedText type="small" themeColor="textSecondary">
+                Switching from another tip app? Set up here first, then import your history from a CSV file on the
+                Home screen.
+              </ThemedText>
             </View>
           ) : null}
 

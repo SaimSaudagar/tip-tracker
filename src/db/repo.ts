@@ -1,6 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import type { ISODate, Weekday } from '@/lib/dates';
+import type { SampleShift } from '@/lib/sample-data';
 import type { ShiftAmounts, TipOutRule } from '@/lib/shift-math';
 import type { TipOutEntry } from '@/lib/tipouts';
 
@@ -501,6 +502,19 @@ export async function importShifts(
   });
 
   return { imported, duplicates };
+}
+
+/** Development only: adds generated shifts, with their tip-out names, to `position`. */
+export async function addSampleShifts(db: SQLiteDatabase, position: Position, shifts: SampleShift[]): Promise<number> {
+  await db.withTransactionAsync(async () => {
+    for (const { tipOuts, ...s } of shifts) {
+      const id = await saveShift(db, { ...s, positionId: position.id, hourlyWageCents: position.hourlyWageCents || 213 });
+      for (const t of tipOuts) {
+        await db.runAsync('INSERT INTO tipouts (shift_id, recipient_name, amount_cents) VALUES (?, ?, ?)', id, t.name, t.amountCents);
+      }
+    }
+  });
+  return shifts.length;
 }
 
 // ---- Weekly goal ----

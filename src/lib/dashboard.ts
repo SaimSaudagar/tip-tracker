@@ -55,6 +55,14 @@ export function taxSeasonYear(today: ISODate, dismissedYear: string | null): str
   return year === dismissedYear ? null : year;
 }
 
+/**
+ * Last week up to the same weekday as today, so "vs last week" compares like with like
+ * instead of a few days of this week against all of last week.
+ */
+export function lastWeekToDate(today: ISODate, weekStart: Weekday): DateRange {
+  return { start: weekRange(addDays(today, -7), weekStart).start, end: addDays(today, -7) };
+}
+
 /** Share of the weekly goal reached, 0–1, or null without a goal. */
 export function goalProgress(totalCents: number, goalCents: number | null): number | null {
   if (goalCents === null || goalCents <= 0) return null;

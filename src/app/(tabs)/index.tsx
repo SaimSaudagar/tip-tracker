@@ -28,10 +28,11 @@ import {
   buildWeekBars,
   dashboardLoadRange,
   goalProgress,
+  lastWeekToDate,
   taxSeasonYear,
   type Period,
 } from '@/lib/dashboard';
-import { addDays, formatMonthYear, formatRange, todayISO, weekRange } from '@/lib/dates';
+import { formatMonthYear, formatRange, todayISO } from '@/lib/dates';
 import { formatDuration } from '@/lib/duration';
 import { formatChange, percentChange } from '@/lib/insights';
 import { formatMoney } from '@/lib/money';
@@ -60,11 +61,10 @@ export default function HomeScreen() {
         listShiftsBetween(db, range.start, range.end),
         listRecentShifts(db, RECENT_LIMIT),
       ]);
-      const lastWeek = weekRange(addDays(today, -7), weekStart);
       return {
         periods: buildDashboardPeriods(shifts, today, weekStart),
         bars: buildWeekBars(shifts, today, weekStart),
-        lastWeekTotalCents: summarizeRange(shifts, lastWeek).totalCents,
+        lastWeekToDateCents: summarizeRange(shifts, lastWeekToDate(today, weekStart)).totalCents,
         goalCents,
         recent,
         taxYear: taxYearShifts > 0 ? taxYear : null,
@@ -76,7 +76,7 @@ export default function HomeScreen() {
 
   const week = data?.periods.week;
   const progress = data && week ? goalProgress(week.summary.totalCents, data.goalCents) : null;
-  const change = data && week ? percentChange(data.lastWeekTotalCents, week.summary.totalCents) : null;
+  const change = data && week ? percentChange(data.lastWeekToDateCents, week.summary.totalCents) : null;
   const noShiftsYet = data && data.recent.length === 0;
 
   return (
@@ -164,7 +164,7 @@ export default function HomeScreen() {
                 <ThemedText type="small" themeColor="textSecondary">
                   {change === null
                     ? 'Total earned'
-                    : `${formatChange(change)} vs last week`}
+                    : `${formatChange(change)} vs this time last week`}
                 </ThemedText>
               </View>
               <BarChart
@@ -230,6 +230,15 @@ export default function HomeScreen() {
               <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
                 Log your first shift. It takes about five seconds, and your tips stay on this phone.
               </ThemedText>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push('/import')}
+                hitSlop={8}
+                style={styles.importLink}>
+                <ThemedText type="smallBold" style={{ color: theme.tint }}>
+                  Switching from another tip app? Import your history ›
+                </ThemedText>
+              </Pressable>
             </View>
           ) : null}
 
@@ -397,6 +406,9 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     textAlign: 'center',
+  },
+  importLink: {
+    marginTop: Spacing.two,
   },
   footer: {
     paddingHorizontal: Spacing.three,

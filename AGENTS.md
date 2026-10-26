@@ -40,7 +40,8 @@ Docs: https://docs.expo.dev/eas/index.md
 - **Time worked is whole minutes.** Use `parseDuration` / `formatDuration` from `src/lib/duration.ts`.
 - **Dates are local `YYYY-MM-DD` strings** (`src/lib/dates.ts`). Never convert shift dates through UTC or `Date#toISOString`.
 - **Business math lives in pure functions** in `src/lib/` with tests in `src/lib/__tests__/*-test.ts`. Screens call these functions; they don't do their own arithmetic.
-- **Database:** `expo-sqlite`, opened by `SQLiteProvider` in `src/app/_layout.tsx`. Schema changes go in a new entry at the end of `MIGRATIONS` in `src/db/migrations.ts` and never edit an entry that has shipped. All SQL lives in `src/db/repo.ts`. Screens read data with `useDbQuery` (reloads on database change and on focus).
+- **Database tests:** `src/db/__tests__/` runs the real SQL in `src/db/` against an in-memory SQLite from `openMemoryDb()` (`src/db/testing/memory-db.ts`). Add a test there when you change a query or a migration. Don't nest `withTransactionAsync` calls or start one while another may be running: expo-sqlite rejects a transaction inside a transaction.
+- **Database:** `expo-sqlite`, opened by `SQLiteProvider` in `src/app/_layout.tsx`. The file lives in `Documents/SQLite` on iOS and `files/SQLite` on Android, both included in the phone's own backups (`android.allowBackup` is on). Schema changes go in a new entry at the end of `MIGRATIONS` in `src/db/migrations.ts` and never edit an entry that has shipped. All SQL lives in `src/db/repo.ts`. Screens read data with `useDbQuery` (reloads on database change and on focus).
 - **Shifts store the hourly wage they were logged with**, so changing a position's wage never rewrites past earnings.
 - **Service charges / auto-gratuity are kept separate from tips** because they don't count as voluntary tips for tax reporting.
 - **No ads, no accounts, no tip data sent off the device.** Don't add analytics events that include amounts.
@@ -51,7 +52,7 @@ Docs: https://docs.expo.dev/eas/index.md
 - **Delete all data** (`deleteAllData` in `src/db/repo.ts`) keeps only the purchase and one-time-prompt settings listed in `KEPT_ON_ERASE`; add new settings of that kind there.
 - **Reminders** are planned by the pure `planReminders` (one-off dates, skipping days that already have a shift) and scheduled by `src/lib/notify.ts`. `ReminderSync` in the root layout re-plans whenever shifts or settings change, so screens never schedule notifications themselves.
 - **Platform splits** use `.web.ts` files (`files`, `notify`). Keep both files' exports identical.
-- **Legal text** in `src/constants/legal.ts` must match `docs/privacy-policy.md` and `docs/terms-of-use.md`.
+- **Legal text** in `src/constants/legal.ts` must match `docs/privacy-policy.md` and `docs/terms-of-use.md`; `legal-test.ts` fails when they drift. After changing either doc, run `npm run legal-site` to rebuild the hosted pages in `site/`.
 - **Backups** copy every table column listed in `BACKUP_COLUMNS` (`src/lib/backup.ts`). When a migration adds a column, add it there too; a test compares the list against the schema and fails if they differ. Settings that describe the device (`pro_override`, `last_backup_at`) are never backed up or restored.
 - **Covers** (guests served) are optional whole numbers on a shift, parsed with `parseCount`. They feed the "tips per guest" insight and the CSV export/import.
 - **Clock times are `HH:MM` 24-hour strings** (`parseClockTime` / `formatClock` in `src/lib/duration.ts`). When a shift has both start and end times they decide its minutes worked; `period` ('am' | 'pm' | null) tags lunch vs dinner.

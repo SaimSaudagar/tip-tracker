@@ -107,10 +107,9 @@ export function ProProvider({ children }: { children: ReactNode }) {
 
   const setSimulatedPro = useCallback(
     async (on: boolean) => {
-      await db.withTransactionAsync(async () => {
-        await setSetting(db, 'pro_override', on ? '1' : '0');
-        if (!on && !revenueCatEnabled) await removeSetting(db, 'trial_ends_at');
-      });
+      // Two plain writes rather than a transaction, so this can't collide with one already running.
+      await setSetting(db, 'pro_override', on ? '1' : '0');
+      if (!on && !revenueCatEnabled) await removeSetting(db, 'trial_ends_at');
     },
     [db],
   );

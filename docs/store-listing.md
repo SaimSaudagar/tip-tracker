@@ -71,13 +71,16 @@ Don’t repeat words from the name or subtitle in the keyword field; Apple alrea
 > Terms of Use: [hosted terms URL]
 > Privacy Policy: [hosted privacy URL]
 
-**Screenshot headlines** (6.9" and 6.5" iPhone sizes are required):
+**Screenshots:** drafts are in `docs/store-screenshots/`: `iphone-6.9/` (1290 × 2796, the size the App Store requires for iPhone) and `android-phone/` (1080 × 1920). They show the real app screens filled with the developer sample data, framed with these headlines:
 
-1. **No ads. Ever.** Log a shift in 5 seconds. *(quick-log screen)*
-2. **Your real hourly**, not just your tips. *(home dashboard)*
-3. **Every day at a glance.** *(calendar)*
-4. **Tip report for your employer**, due by the 10th. *(Reports tab)*
-5. **Switch from your old app** in a minute. *(import preview)*
+1. **No ads. Ever.** Log a shift in about 5 seconds. *(quick log)*
+2. **Your real hourly,** not just your tips. *(Home)*
+3. **Every day at a glance.** See what each shift paid. *(Calendar)*
+4. **Your employer tip report,** ready before the 10th. *(Reports)*
+5. **Switch apps in a minute.** Bring your history with you. *(import)*
+6. **Find your best shifts.** Best days, lunch vs dinner, trends. *(Insights)*
+
+They were rendered from the web build, so fonts differ slightly from iOS. Before submitting, you can swap in captures from your own phones (Settings → Developer: add 12 weeks of sample shifts, then take screenshots) for a pixel-exact match. The app doesn't support iPad yet (`supportsTablet` is off), so no iPad screenshots are needed.
 
 **App Privacy (nutrition label):** tip data never leaves the device. Once RevenueCat is added, check its App Privacy guide (revenuecat.com/docs) for what the SDK collects. It is typically *Purchase History* and an app-scoped *User ID*, used for App Functionality and not linked to identity or used for tracking. Update this before submitting.
 

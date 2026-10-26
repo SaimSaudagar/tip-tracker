@@ -15,6 +15,7 @@ import { ThemedView } from '@/components/themed-view';
 import { SUPPORT_EMAIL } from '@/constants/app';
 import { MaxContentWidth, Spacing, TopTabInset } from '@/constants/theme';
 import {
+  addSampleShifts,
   deleteAllData,
   getSettings,
   getWeekStart,
@@ -42,6 +43,7 @@ import { haptic } from '@/lib/haptics';
 import { centsToInput, formatMoney, formatPercent, parseMoney } from '@/lib/money';
 import { notificationsSupported, requestNotificationPermission, scheduleTestReminder } from '@/lib/notify';
 import { FREE_POSITION_LIMIT } from '@/lib/pro';
+import { buildSampleShifts } from '@/lib/sample-data';
 import { formatTime, type ReminderSettings } from '@/lib/reminders-plan';
 import { shiftsToCsv } from '@/lib/transfer';
 import { usePro } from '@/purchases/pro-context';
@@ -205,6 +207,13 @@ export default function SettingsScreen() {
     await deleteAllData(db);
     haptic.destructive();
     showToast({ title: 'All data deleted' });
+  };
+
+  const loadSampleShifts = async () => {
+    const [position] = await listPositions(db);
+    if (!position) return;
+    const count = await addSampleShifts(db, position, buildSampleShifts(todayISO(), { seed: Date.now() % 100_000 }));
+    showToast({ title: `Added ${count} sample shifts`, detail: 'Delete all data to remove them.' });
   };
 
   const contactSupport = () => {
@@ -432,6 +441,12 @@ export default function SettingsScreen() {
             <LinkRow label="Terms of use" onPress={() => router.push({ pathname: '/legal', params: { doc: 'terms' } })} />
             {SUPPORT_EMAIL ? <LinkRow label="Contact support" onPress={contactSupport} /> : null}
           </Section>
+
+          {__DEV__ ? (
+            <Section title="DEVELOPER">
+              <Button title="Developer: add 12 weeks of sample shifts" variant="secondary" onPress={loadSampleShifts} />
+            </Section>
+          ) : null}
 
           <ThemedText type="small" themeColor="textSecondary" style={styles.version}>
             Tip Tracker {Constants.expoConfig?.version ?? ''} · Records only, not tax advice.
