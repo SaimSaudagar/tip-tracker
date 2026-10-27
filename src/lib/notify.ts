@@ -8,7 +8,7 @@ import { track } from '@/lib/analytics';
 import type { PlannedNotification } from '@/lib/reminders-plan';
 
 /** Identifier prefixes for notifications this app schedules (see planReminders). */
-const OWN_PREFIXES = ['shift-', 'report-', 'trial-'];
+const OWN_PREFIXES = ['shift-', 'report-', 'trial-', 'recap-'];
 const CHANNEL_ID = 'reminders';
 
 export const notificationsSupported = true;

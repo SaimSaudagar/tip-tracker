@@ -1,4 +1,5 @@
 import { DEFAULT_REMINDERS, employerReportDueDate, formatTime, planReminders, trialEndDate } from '@/lib/reminders-plan';
+import { summarize } from '@/lib/shift-math';
 
 // Mon Oct 26, 2026, 3:00 PM local
 const now = new Date(2026, 9, 26, 15, 0);
@@ -65,6 +66,45 @@ describe('report reminders', () => {
     expect(employerReportDueDate('2026-09-01')).toBe('2026-10-12'); // Oct 10 is a Saturday
     expect(employerReportDueDate('2026-04-01')).toBe('2026-05-11'); // May 10 is a Sunday
     expect(employerReportDueDate('2026-12-01')).toBe('2027-01-11'); // Jan 10, 2027 is a Sunday
+  });
+});
+
+describe('weekly recap', () => {
+  // This week (Sunday start): Oct 25 – 31, so the recap comes Sunday Nov 1 at 11 AM.
+  const range = { start: '2026-10-25', end: '2026-10-31' };
+  const shift = (cashTipsCents: number, minutesWorked: number) => ({
+    minutesWorked,
+    hourlyWageCents: 213,
+    cashTipsCents,
+    cardTipsCents: 0,
+    tipInCents: 0,
+    tipOutCents: 0,
+    serviceChargeCents: 0,
+  });
+  const week = { range, summary: summarize([shift(22750, 390), shift(18000, 360)]) };
+  const recapOn = { ...DEFAULT_REMINDERS, weeklyRecap: true };
+
+  it('sums up the week the morning after it ends', () => {
+    const [recap] = planReminders({ now, settings: recapOn, loggedDates: new Set(), week });
+    expect(recap).toEqual({
+      id: 'recap-2026-10-25',
+      fireAt: new Date(2026, 10, 1, 11, 0),
+      title: 'Your week: $407.50 in tips',
+      body: '$434.13 earned in 12h 30m · $34.73/hr real hourly, over 2 shifts.',
+      url: '/',
+    });
+  });
+
+  it('is off by default, and skips a week with nothing logged', () => {
+    expect(planReminders({ now, settings: DEFAULT_REMINDERS, loggedDates: new Set(), week })).toEqual([]);
+    const empty = { range, summary: summarize([]) };
+    expect(planReminders({ now, settings: recapOn, loggedDates: new Set(), week: empty })).toEqual([]);
+  });
+
+  it('leaves out real hourly for tips-only weeks', () => {
+    const tipsOnly = { range, summary: summarize([shift(5000, 0)]) };
+    const [recap] = planReminders({ now, settings: recapOn, loggedDates: new Set(), week: tipsOnly });
+    expect(recap.body).toBe('$50.00 earned in 0h, over 1 shift.');
   });
 });
 

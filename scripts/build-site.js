@@ -262,6 +262,7 @@ const SUPPORT = [
     title: 'Reminders don’t show up',
     steps: [
       'Settings → Reminders → turn on After-shift reminder, and pick the time and the days you work. Days you’ve already logged get no reminder.',
+      'Weekly recap sends your week’s totals the morning after the week ends. The amounts show in the notification, so leave it off if others see your phone.',
       'If nothing arrives, allow notifications for Tipbook in your phone’s Settings → Notifications.',
     ],
   },

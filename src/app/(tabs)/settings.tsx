@@ -107,7 +107,10 @@ export default function SettingsScreen() {
   const updateReminders = async (change: Partial<ReminderSettings>) => {
     if (!reminders) return;
     setReminderMessage(null);
-    const turningOn = (change.enabled && !reminders.enabled) || (change.reportReminder && !reminders.reportReminder);
+    const turningOn =
+      (change.enabled && !reminders.enabled) ||
+      (change.reportReminder && !reminders.reportReminder) ||
+      (change.weeklyRecap && !reminders.weeklyRecap);
     try {
       if (turningOn && !(await requestNotificationPermission())) {
         setReminderMessage(PERMISSION_OFF);
@@ -346,6 +349,13 @@ export default function SettingsScreen() {
                 </View>
               </>
             ) : null}
+            <ToggleRow
+              label="Weekly recap"
+              hint="The morning after your week ends: what you made and your real hourly. The amounts show in the notification."
+              value={!!reminders?.weeklyRecap}
+              disabled={!notificationsSupported || !reminders}
+              onValueChange={(on) => updateReminders({ weeklyRecap: on })}
+            />
             <ToggleRow
               label={isPro ? 'Monthly report reminder' : 'Monthly report reminder · Pro'}
               hint="On the 8th, a nudge that last month’s tip report is due to your employer by the 10th."

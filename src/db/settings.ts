@@ -15,6 +15,7 @@ export function readReminderSettings(s: Record<string, string>): ReminderSetting
     time: s.reminder_time && parseTime(s.reminder_time) ? s.reminder_time : DEFAULT_REMINDERS.time,
     days,
     reportReminder: s.report_reminder === '1',
+    weeklyRecap: s.weekly_recap === '1',
   };
 }
 
@@ -24,6 +25,7 @@ export async function saveReminderSettings(db: SQLiteDatabase, r: ReminderSettin
     await setSetting(db, 'reminder_time', r.time);
     await setSetting(db, 'reminder_days', [...r.days].sort().join(''));
     await setSetting(db, 'report_reminder', r.reportReminder ? '1' : '0');
+    await setSetting(db, 'weekly_recap', r.weeklyRecap ? '1' : '0');
   });
 }
 

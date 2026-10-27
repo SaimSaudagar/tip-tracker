@@ -3,7 +3,10 @@
  * so a day that already has a shift logged gets no reminder. The plan is
  * rebuilt whenever shifts or reminder settings change.
  */
-import { addDays, fromISODate, toISODate, type ISODate, type Weekday } from '@/lib/dates';
+import { addDays, fromISODate, toISODate, type DateRange, type ISODate, type Weekday } from '@/lib/dates';
+import { formatDuration } from '@/lib/duration';
+import { formatMoney } from '@/lib/money';
+import type { PeriodSummary } from '@/lib/shift-math';
 
 export type ReminderSettings = {
   enabled: boolean;
@@ -13,6 +16,8 @@ export type ReminderSettings = {
   days: Weekday[];
   /** Monthly employer tip report reminder (a Pro feature). */
   reportReminder: boolean;
+  /** The morning after each week ends: what it paid. */
+  weeklyRecap: boolean;
 };
 
 export type PlannedNotification = {
@@ -29,6 +34,7 @@ export const DEFAULT_REMINDERS: ReminderSettings = {
   time: '23:00',
   days: [0, 1, 2, 3, 4, 5, 6],
   reportReminder: false,
+  weeklyRecap: false,
 };
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -82,11 +88,28 @@ export function trialEndDate(startedOn: ISODate, planId: string): ISODate | null
 /** How many days before a free trial ends the app reminds you, as the paywall promises. */
 export const TRIAL_REMINDER_DAYS = 2;
 
+/** When the weekly recap arrives: this hour on the first day of the next week. */
+export const RECAP_HOUR = 11;
+
+/** The recap for the week in `week`, or null when nothing was logged (a "$0 week" message helps nobody). */
+export function weeklyRecap(week: { range: DateRange; summary: PeriodSummary }): Omit<PlannedNotification, 'fireAt'> | null {
+  const s = week.summary;
+  if (s.shiftCount === 0) return null;
+  const hourly = s.realHourlyCents === null ? '' : ` · ${formatMoney(s.realHourlyCents)}/hr real hourly`;
+  return {
+    id: `recap-${week.range.start}`,
+    title: `Your week: ${formatMoney(s.netTipsCents)} in tips`,
+    body: `${formatMoney(s.totalCents)} earned in ${formatDuration(s.minutesWorked)}${hourly}, over ${s.shiftCount} shift${s.shiftCount === 1 ? '' : 's'}.`,
+    url: '/',
+  };
+}
+
 export function planReminders({
   now,
   settings,
   loggedDates,
   trialEndsOn = null,
+  week = null,
   horizonDays = 14,
 }: {
   now: Date;
@@ -94,6 +117,8 @@ export function planReminders({
   loggedDates: Set<ISODate>;
   /** Last day of a free trial, when one is running. Its reminder doesn't depend on the settings. */
   trialEndsOn?: ISODate | null;
+  /** This week so far, for the weekly recap. It's re-planned as shifts are logged, so it ends up complete. */
+  week?: { range: DateRange; summary: PeriodSummary } | null;
   horizonDays?: number;
 }): PlannedNotification[] {
   const plans: PlannedNotification[] = [];
@@ -135,6 +160,12 @@ export function planReminders({
         url: `/reports?month=${reportMonth}`,
       });
     }
+  }
+
+  if (settings.weeklyRecap && week) {
+    const recap = weeklyRecap(week);
+    const fireAt = at(addDays(week.range.end, 1), RECAP_HOUR, 0);
+    if (recap && fireAt > now) plans.push({ ...recap, fireAt });
   }
 
   if (trialEndsOn) {
