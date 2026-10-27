@@ -14,9 +14,10 @@ import { MaxContentWidth, Spacing, TopTabInset, WideContentWidth } from '@/const
 import { getWeekStart, listShiftsBetween } from '@/db/repo';
 import { useDbQuery } from '@/db/use-db-query';
 import { useTheme } from '@/hooks/use-theme';
+import { useToday } from '@/hooks/use-today';
 import { useWideLayout } from '@/hooks/use-wide-layout';
 import { buildMonthGrid, formatCellAmount, shiftMonth, summarizeByDay, weekdayInitials } from '@/lib/calendar';
-import { formatDayLabel, formatMonthYear, monthRange, todayISO } from '@/lib/dates';
+import { formatDayLabel, formatMonthYear, monthRange } from '@/lib/dates';
 import { formatDuration } from '@/lib/duration';
 import { formatMoney } from '@/lib/money';
 import { summarizeRange } from '@/lib/shift-math';
@@ -27,7 +28,7 @@ export default function CalendarScreen() {
   const theme = useTheme();
   const wide = useWideLayout();
   const router = useRouter();
-  const today = todayISO();
+  const today = useToday();
   const [month, setMonth] = useState(() => shiftMonth(today, 0));
   const [selected, setSelected] = useState(today);
 

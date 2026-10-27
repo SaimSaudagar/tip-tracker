@@ -30,6 +30,7 @@ import {
 import { useTheme } from '@/hooks/use-theme';
 import { track } from '@/lib/analytics';
 import { confirmDestructive } from '@/lib/confirm';
+import { errorText } from '@/lib/errors';
 import { celebrationFor } from '@/lib/celebration';
 import { monthRange, todayISO, weekRange } from '@/lib/dates';
 import {
@@ -303,6 +304,8 @@ export default function LogShiftScreen() {
       if (shiftId === undefined) {
         maybeAskForReview(db).catch((e) => console.warn('Review prompt failed', e));
       }
+    } catch (e) {
+      showToast({ title: 'Couldn’t save this shift', detail: errorText(e) });
     } finally {
       setSaving(false);
     }
@@ -341,7 +344,12 @@ export default function LogShiftScreen() {
     if (shiftId === undefined) return;
     const ok = await confirmDestructive('Delete this shift?', 'Its tips and hours will be removed.', 'Delete');
     if (!ok) return;
-    await deleteShift(db, shiftId);
+    try {
+      await deleteShift(db, shiftId);
+    } catch (e) {
+      showToast({ title: 'Couldn’t delete this shift', detail: errorText(e) });
+      return;
+    }
     haptic.destructive();
     showToast({ title: 'Shift deleted' });
     close();

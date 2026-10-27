@@ -81,6 +81,7 @@ export default function PositionScreen() {
 
   const [name, setName] = useState('');
   const [jobName, setJobName] = useState('');
+  const [originalJobName, setOriginalJobName] = useState('');
   const [wage, setWage] = useState('');
   const [rule, setRule] = useState<TipOutRule>('none');
   const [ruleValue, setRuleValue] = useState('');
@@ -108,6 +109,7 @@ export default function PositionScreen() {
       if (existing) {
         setName(existing.name);
         setJobName(existing.jobName);
+        setOriginalJobName(existing.jobName);
         setWage(centsToInput(existing.hourlyWageCents));
         setRule(existing.tipOutRule);
         setRuleValue(existing.tipOutRule === 'fixed' ? centsToInput(existing.tipOutValue) : bpsToInput(existing.tipOutValue));
@@ -122,7 +124,11 @@ export default function PositionScreen() {
   }, [db, positionId]);
 
   // Overtime belongs to the job, so show the settings of whichever job is named until the user edits them.
-  const savedOvertime = overtimeByJob.get(jobName.trim().toLowerCase()) ?? NO_OVERTIME;
+  // A name no job has yet is a rename (or a new job), which keeps this position's current job settings.
+  const savedOvertime =
+    overtimeByJob.get(jobName.trim().toLowerCase()) ??
+    overtimeByJob.get(originalJobName.trim().toLowerCase()) ??
+    NO_OVERTIME;
   const overtimeChoice = overtimeDraft?.choice ?? choiceOf(savedOvertime);
   const overtimeRate = overtimeDraft?.rate ?? (savedOvertime.rateCents === null ? '' : centsToInput(savedOvertime.rateCents));
 

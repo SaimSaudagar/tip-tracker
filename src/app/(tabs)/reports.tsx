@@ -19,9 +19,10 @@ import {
 } from '@/db/repo';
 import { useDbQuery } from '@/db/use-db-query';
 import { useTheme } from '@/hooks/use-theme';
+import { useToday } from '@/hooks/use-today';
 import { track } from '@/lib/analytics';
 import { shiftMonth } from '@/lib/calendar';
-import { formatDayLabel, formatRange, monthRange, todayISO, yearRange } from '@/lib/dates';
+import { formatDayLabel, formatRange, monthRange, yearRange } from '@/lib/dates';
 import { formatDuration } from '@/lib/duration';
 import { sharePdf } from '@/lib/files';
 import { formatMoney } from '@/lib/money';
@@ -49,7 +50,7 @@ function Reports({ linkedMonth, linkedYear }: { linkedMonth: string | null; link
   const theme = useTheme();
   const router = useRouter();
   const { isPro } = usePro();
-  const today = todayISO();
+  const today = useToday();
 
   // Early in the month, last month's report is the one due, so start there.
   const [month, setMonth] = useState(() =>

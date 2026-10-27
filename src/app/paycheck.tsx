@@ -15,6 +15,7 @@ import { deletePaycheck, getPaycheck, listJobs, listJobShiftsBetween, savePayche
 import { useDbQuery } from '@/db/use-db-query';
 import { useTheme } from '@/hooks/use-theme';
 import { confirmDestructive } from '@/lib/confirm';
+import { errorText } from '@/lib/errors';
 import { addDays, fromISODate, todayISO, type ISODate } from '@/lib/dates';
 import { formatDuration } from '@/lib/duration';
 import { haptic } from '@/lib/haptics';
@@ -160,6 +161,8 @@ export default function PaycheckScreen() {
       haptic.success();
       showToast({ title: paycheckId === undefined ? 'Paycheck saved' : 'Changes saved' });
       close();
+    } catch (e) {
+      showToast({ title: 'Couldn’t save this paycheck', detail: errorText(e) });
     } finally {
       setSaving(false);
     }
@@ -169,7 +172,12 @@ export default function PaycheckScreen() {
     if (paycheckId === undefined) return;
     const ok = await confirmDestructive('Delete this paycheck?', 'This can’t be undone.', 'Delete');
     if (!ok) return;
-    await deletePaycheck(db, paycheckId);
+    try {
+      await deletePaycheck(db, paycheckId);
+    } catch (e) {
+      showToast({ title: 'Couldn’t delete this paycheck', detail: errorText(e) });
+      return;
+    }
     haptic.destructive();
     showToast({ title: 'Paycheck deleted' });
     close();

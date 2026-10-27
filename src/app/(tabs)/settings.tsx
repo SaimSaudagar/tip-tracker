@@ -38,6 +38,7 @@ import { track } from '@/lib/analytics';
 import { APPEARANCE_OPTIONS, parseAppearance, type AppearancePreference } from '@/lib/appearance';
 import { parseBackup } from '@/lib/backup';
 import { confirmDestructive } from '@/lib/confirm';
+import { errorText } from '@/lib/errors';
 import { formatDayLabel, toISODate, todayISO, type Weekday } from '@/lib/dates';
 import { CSV, JSON_FILE, readPickedFile, shareTextFile } from '@/lib/files';
 import { haptic } from '@/lib/haptics';
@@ -107,11 +108,15 @@ export default function SettingsScreen() {
     if (!reminders) return;
     setReminderMessage(null);
     const turningOn = (change.enabled && !reminders.enabled) || (change.reportReminder && !reminders.reportReminder);
-    if (turningOn && !(await requestNotificationPermission())) {
-      setReminderMessage(PERMISSION_OFF);
-      return;
+    try {
+      if (turningOn && !(await requestNotificationPermission())) {
+        setReminderMessage(PERMISSION_OFF);
+        return;
+      }
+      await saveReminderSettings(db, { ...reminders, ...change });
+    } catch (e) {
+      setReminderMessage(`Couldn’t change reminders: ${errorText(e)}`);
     }
-    await saveReminderSettings(db, { ...reminders, ...change });
   };
 
   const toggleDay = (day: Weekday) => {
@@ -163,19 +168,20 @@ export default function SettingsScreen() {
 
   const restore = async () => {
     setBackupMessage(null);
-    const picked = await DocumentPicker.getDocumentAsync({
-      type: ['application/json', 'text/plain', 'application/octet-stream'],
-      copyToCacheDirectory: true,
-    });
-    if (picked.canceled || !picked.assets?.[0]) return;
     try {
+      const picked = await DocumentPicker.getDocumentAsync({
+        type: ['application/json', 'text/plain', 'application/octet-stream'],
+        copyToCacheDirectory: true,
+      });
+      if (picked.canceled || !picked.assets?.[0]) return;
       const parsed = parseBackup(await readPickedFile(picked.assets[0]), SCHEMA_VERSION);
       if (!parsed.ok) {
         setBackupMessage({ text: parsed.error, error: true });
         return;
       }
       const count = parsed.backup.tables.shifts.length;
-      const made = formatDayLabel(toISODate(new Date(parsed.backup.exportedAt)), todayISO());
+      const exportedAt = new Date(parsed.backup.exportedAt);
+      const made = Number.isNaN(exportedAt.getTime()) ? 'an unknown date' : formatDayLabel(toISODate(exportedAt), todayISO());
       const ok = await confirmDestructive(
         'Replace everything on this phone?',
         `This backup from ${made} has ${count} shift${count === 1 ? '' : 's'}. Everything currently in the app will be replaced by it.`,
@@ -205,16 +211,25 @@ export default function SettingsScreen() {
       'Delete everything',
     );
     if (!ok) return;
-    await deleteAllData(db);
+    try {
+      await deleteAllData(db);
+    } catch (e) {
+      showToast({ title: 'Couldn’t delete your data, nothing was changed', detail: errorText(e) });
+      return;
+    }
     haptic.destructive();
     showToast({ title: 'All data deleted' });
   };
 
   const loadSampleShifts = async () => {
-    const [position] = await listPositions(db);
-    if (!position) return;
-    const count = await addSampleShifts(db, position, buildSampleShifts(todayISO(), { seed: Date.now() % 100_000 }));
-    showToast({ title: `Added ${count} sample shifts`, detail: 'Delete all data to remove them.' });
+    try {
+      const [position] = await listPositions(db);
+      if (!position) return;
+      const count = await addSampleShifts(db, position, buildSampleShifts(todayISO(), { seed: Date.now() % 100_000 }));
+      showToast({ title: `Added ${count} sample shifts`, detail: 'Delete all data to remove them.' });
+    } catch (e) {
+      showToast({ title: 'Couldn’t add sample shifts', detail: errorText(e) });
+    }
   };
 
   const contactSupport = () => {
@@ -475,8 +490,12 @@ function GoalField({ goalCents, onSave }: { goalCents: number | null; onSave: (c
   const parsed = value.trim() === '' ? 0 : parseMoney(value);
   const commit = async () => {
     if (draft === null || parsed === null) return;
-    await onSave(parsed > 0 ? parsed : null);
-    setDraft(null);
+    try {
+      await onSave(parsed > 0 ? parsed : null);
+      setDraft(null);
+    } catch (e) {
+      showToast({ title: 'Couldn’t save your goal', detail: errorText(e) });
+    }
   };
   return (
     <MoneyField

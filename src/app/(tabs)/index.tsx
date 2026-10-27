@@ -24,6 +24,7 @@ import {
 } from '@/db/repo';
 import { useDbQuery } from '@/db/use-db-query';
 import { useTheme } from '@/hooks/use-theme';
+import { useToday } from '@/hooks/use-today';
 import { useWideLayout } from '@/hooks/use-wide-layout';
 import {
   buildDashboardPeriods,
@@ -34,7 +35,7 @@ import {
   taxSeasonYear,
   type Period,
 } from '@/lib/dashboard';
-import { formatMonthYear, formatRange, todayISO } from '@/lib/dates';
+import { formatMonthYear, formatRange } from '@/lib/dates';
 import { formatDuration, spokenDuration } from '@/lib/duration';
 import { formatChange, percentChange } from '@/lib/insights';
 import { formatMoney } from '@/lib/money';
@@ -53,7 +54,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const db = useSQLiteContext();
   const { isPro } = usePro();
-  const today = todayISO();
+  const today = useToday();
 
   const load = useCallback(
     async (db: SQLiteDatabase) => {

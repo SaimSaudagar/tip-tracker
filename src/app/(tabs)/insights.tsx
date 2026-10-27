@@ -15,7 +15,7 @@ import { MaxContentWidth, Radius, Spacing, TopTabInset } from '@/constants/theme
 import { getWeekStart, listShiftsBetween } from '@/db/repo';
 import { useDbQuery } from '@/db/use-db-query';
 import { useTheme } from '@/hooks/use-theme';
-import { todayISO } from '@/lib/dates';
+import { useToday } from '@/hooks/use-today';
 import { formatDuration } from '@/lib/duration';
 import { buildInsights, formatChange, insightsLoadRange, percentChange } from '@/lib/insights';
 import { formatMoney, formatPercent } from '@/lib/money';
@@ -31,7 +31,7 @@ export default function InsightsScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { isPro } = usePro();
-  const today = todayISO();
+  const today = useToday();
 
   const load = useCallback(
     async (db: SQLiteDatabase) => {
