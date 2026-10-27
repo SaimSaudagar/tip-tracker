@@ -46,6 +46,7 @@ export default function RootLayout() {
             <Stack.Screen name="paycheck" options={{ presentation: 'modal', title: 'Paycheck' }} />
             <Stack.Screen name="tip-pool" options={{ presentation: 'modal', title: 'Tip pool' }} />
             <Stack.Screen name="scan" options={{ presentation: 'modal', title: 'Scan checkout slip' }} />
+            <Stack.Screen name="share-week" options={{ presentation: 'modal', title: 'Share my week' }} />
             <Stack.Screen name="paywall" options={{ presentation: 'modal', headerShown: false }} />
             <Stack.Screen name="legal" options={{ presentation: 'modal', title: '' }} />
           </Stack>

@@ -147,6 +147,17 @@ export default function HomeScreen() {
                   spokenValue={week?.summary.realHourlyCents != null ? `${formatMoney(week.summary.realHourlyCents)} an hour` : 'none yet'}
                 />
               </View>
+              {week && week.summary.shiftCount > 0 ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => router.push('/share-week')}
+                  hitSlop={12}
+                  style={styles.heroShare}>
+                  <ThemedText type="smallBold" style={{ color: theme.onHero }}>
+                    Share my week ›
+                  </ThemedText>
+                </Pressable>
+              ) : null}
             </View>
 
             {data?.taxYear ? (
@@ -372,6 +383,9 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 14,
     opacity: 0.9,
+  },
+  heroShare: {
+    alignSelf: 'flex-end',
   },
   heroStats: {
     flexDirection: 'row',

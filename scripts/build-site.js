@@ -123,6 +123,7 @@ const FEATURES = [
 
 const EXTRAS = [
   'Home-screen and lock-screen widgets',
+  'Share your week as a picture',
   '“Hey Siri, log my tips in Tipbook”',
   'Shift reminders',
   'Tip-pool calculator',

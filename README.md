@@ -69,6 +69,7 @@ npm run test:e2e    # clicks through the app in a browser (first time: npx playw
 | `src/purchases/revenuecat.ts` | RevenueCat setup: keys, entitlement and offering names, trial end from the entitlement |
 | `src/lib/plans.ts` | Paywall plan text, with the store's price strings when they've loaded |
 | `src/app/tip-pool.tsx` / `src/lib/tip-pool.ts` | Tip pool calculator: split by hours or equally, exact to the cent |
+| `src/app/share-week.tsx` / `src/lib/week-card.ts` | "Share my week" (from Home): a 1080 × 1350 picture of the week, or text; `src/lib/share-image.ts` saves the picture |
 | `src/lib/appearance.ts` | Light / dark / automatic choice, applied app-wide |
 | `src/lib/analytics.ts` | The launch plan's funnel events; nothing is sent until a service is connected |
 | `src/constants/app.ts` | Support email (the Settings row is hidden while it's empty) |

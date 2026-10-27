@@ -200,6 +200,20 @@ test('California overtime adds time and a half and double time', async ({ page }
   await expectValue(page, 'Real hourly', '$28.36/hr');
 });
 
+test('shares my week as text', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await onboard(page);
+  await logShift(page, { cash: '85', card: '142.50', hours: '6.5' });
+  await page.getByRole('button', { name: 'Share my week' }).click();
+  await expect(visible(page, 'MY WEEK')).toBeVisible();
+  await expect(visible(page, 'Best day: Tuesday · $241')).toBeVisible();
+  await page.getByRole('button', { name: 'Share as text' }).click();
+  await expect(visible(page, 'Copied to the clipboard')).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    'My week in tips (Oct 25 – 31): $227.50 in tips, $241.35 earned in 6h 30m, $37.13/hr real hourly. Best day: Tuesday. Tracked with Tipbook.',
+  );
+});
+
 test('every screen opens without errors', async ({ page }) => {
   await onboard(page);
   await simulatePro(page);
@@ -217,6 +231,7 @@ test('every screen opens without errors', async ({ page }) => {
     ['/import', 'Choose CSV file'],
     ['/tip-pool', 'Tip pool total'],
     ['/scan', /checkout slip/i],
+    ['/share-week', 'MY WEEK'],
     ['/paywall?reason=settings', '$24.99/year'],
     ['/legal?doc=privacy', 'Privacy Policy'],
     ['/legal?doc=terms', 'Terms of Use'],
