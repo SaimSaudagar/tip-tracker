@@ -2,6 +2,7 @@
  * Development only: realistic shifts for trying every screen (and taking store
  * screenshots) without typing weeks of data. Deterministic for a given seed.
  */
+import { msg, t } from '@/i18n';
 import { addDays, fromISODate, type ISODate } from '@/lib/dates';
 import { percentOf } from '@/lib/money';
 import type { TipOutEntry } from '@/lib/tipouts';
@@ -36,7 +37,14 @@ function random(seed: number) {
   };
 }
 
-const NOTES = ['Big party on the patio', 'Slow night', 'Double', 'Rain, quiet', 'Birthday table tipped big'];
+// In the app's language, so screenshots and demo clips in Spanish show Spanish notes and names.
+const NOTES = [
+  msg('Big party on the patio'),
+  msg('Slow night'),
+  msg('Double'),
+  msg('Rain, quiet'),
+  msg('Birthday table tipped big'),
+];
 
 /** Shifts for the `days` before `today`: dinners most nights, lunch on Mondays, Tuesdays off. */
 export function buildSampleShifts(today: ISODate, { days = 84, seed = 7 } = {}): SampleShift[] {
@@ -76,10 +84,10 @@ export function buildSampleShifts(today: ISODate, { days = 84, seed = 7 } = {}):
       serviceChargeCents: weekend && rand() < 0.3 ? Math.round(between(3_000, 6_000)) : 0,
       salesCents,
       covers: Math.max(1, Math.round(salesCents / between(4_500, 6_000))),
-      notes: rand() < 0.12 ? NOTES[Math.floor(rand() * NOTES.length)] : null,
+      notes: rand() < 0.12 ? t(NOTES[Math.floor(rand() * NOTES.length)]) : null,
       tipOuts: [
-        { name: 'Busser', amountCents: busser },
-        ...(bar > 0 ? [{ name: 'Bar', amountCents: bar }] : []),
+        { name: t('Busser'), amountCents: busser },
+        ...(bar > 0 ? [{ name: t('Bar'), amountCents: bar }] : []),
       ],
     });
   }

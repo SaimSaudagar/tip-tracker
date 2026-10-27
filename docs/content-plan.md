@@ -6,6 +6,8 @@ Distribution is the real job. The research behind this plan (*Indie mobile app m
 2. **Paid micro-creators** (after a format repeats): real servers and bartenders posting about the app.
 3. **Apple Search Ads** (after launch): a few exact keywords, small daily budget.
 
+Every post is written out in `content-posts.md`. Spanish versions for Spanish-speaking servers and bartenders, with demo clips recorded from the app in Spanish, are in `content-posts-es.md`.
+
 ## Ground rules
 
 These keep the accounts alive and keep you within FTC and platform rules.

@@ -525,6 +525,13 @@ export const es: Record<string, string> = {
   'Log your first shift. It takes about five seconds, and your tips stay on this phone.': 'Registra tu primer turno. Toma unos cinco segundos y tus propinas se quedan en este teléfono.',
   'Switching from another tip app? Import your history ›': '¿Vienes de otra app de propinas? Importa tu historial ›',
   'Scan slip': 'Escanear',
+  // lib/sample-data.ts
+  'Big party on the patio': 'Grupo grande en la terraza',
+  'Slow night': 'Noche tranquila',
+  'Double': 'Doble turno',
+  'Rain, quiet': 'Lluvia, poca gente',
+  'Birthday table tipped big': 'La mesa del cumpleaños dejó buena propina',
+  'Bar': 'Barra',
   // lib/transfer.ts
   'Date': 'Fecha',
   'Total tips (one column)': 'Propinas totales (una columna)',
