@@ -10,10 +10,11 @@ import { ShiftRow } from '@/components/shift-row';
 import { SectionTitle } from '@/components/section-title';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing, TopTabInset } from '@/constants/theme';
+import { MaxContentWidth, Spacing, TopTabInset, WideContentWidth } from '@/constants/theme';
 import { getWeekStart, listShiftsBetween } from '@/db/repo';
 import { useDbQuery } from '@/db/use-db-query';
 import { useTheme } from '@/hooks/use-theme';
+import { useWideLayout } from '@/hooks/use-wide-layout';
 import { buildMonthGrid, formatCellAmount, shiftMonth, summarizeByDay, weekdayInitials } from '@/lib/calendar';
 import { formatDayLabel, formatMonthYear, monthRange, todayISO } from '@/lib/dates';
 import { formatDuration } from '@/lib/duration';
@@ -24,6 +25,7 @@ const CELL_MAX_FONT_SCALE = 1.3;
 
 export default function CalendarScreen() {
   const theme = useTheme();
+  const wide = useWideLayout();
   const router = useRouter();
   const today = todayISO();
   const [month, setMonth] = useState(() => shiftMonth(today, 0));
@@ -53,123 +55,129 @@ export default function CalendarScreen() {
   return (
     <ThemedView style={styles.screen}>
       <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
-        <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
-          <View style={styles.monthBar}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Previous month"
-              onPress={() => goToMonth(-1)}
-              hitSlop={12}
-              style={styles.arrow}>
-              <ThemedText type="subtitle">‹</ThemedText>
-            </Pressable>
-            <ThemedText type="smallBold" style={styles.monthTitle} accessibilityRole="header">
-              {formatMonthYear(month)}
-            </ThemedText>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Next month"
-              disabled={isCurrentMonth}
-              onPress={() => goToMonth(1)}
-              hitSlop={12}
-              style={[styles.arrow, { opacity: isCurrentMonth ? 0.25 : 1 }]}>
-              <ThemedText type="subtitle">›</ThemedText>
-            </Pressable>
-          </View>
-
-          <View style={[styles.summary, { backgroundColor: theme.backgroundElement }]}>
-            <SummaryStat label="Tips" value={monthSummary ? formatMoney(monthSummary.netTipsCents) : '—'} />
-            <SummaryStat label="Hours" value={monthSummary ? formatDuration(monthSummary.minutesWorked) : '—'} />
-            <SummaryStat
-              label="Real hourly"
-              value={monthSummary?.realHourlyCents != null ? `${formatMoney(monthSummary.realHourlyCents)}/hr` : '—'}
-            />
-            <SummaryStat label="Shifts" value={monthSummary ? String(monthSummary.shiftCount) : '—'} />
-          </View>
-
-          <View style={styles.weekRow}>
-            {(data ? weekdayInitials(data.weekStart) : []).map((d, i) => (
-              <ThemedText key={i} type="small" themeColor="textSecondary" style={styles.weekday}>
-                {d}
+        <ScrollView
+          contentContainerStyle={[styles.content, wide && styles.contentWide]}
+          contentInsetAdjustmentBehavior="automatic">
+          {/* One column on phones; on wide screens the selected day sits beside the month. */}
+          <View style={[styles.column, wide && styles.columnWide]}>
+            <View style={styles.monthBar}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Previous month"
+                onPress={() => goToMonth(-1)}
+                hitSlop={12}
+                style={styles.arrow}>
+                <ThemedText type="subtitle">‹</ThemedText>
+              </Pressable>
+              <ThemedText type="smallBold" style={styles.monthTitle} accessibilityRole="header">
+                {formatMonthYear(month)}
               </ThemedText>
-            ))}
-          </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Next month"
+                disabled={isCurrentMonth}
+                onPress={() => goToMonth(1)}
+                hitSlop={12}
+                style={[styles.arrow, { opacity: isCurrentMonth ? 0.25 : 1 }]}>
+                <ThemedText type="subtitle">›</ThemedText>
+              </Pressable>
+            </View>
 
-          <View style={styles.grid}>
-            {data?.grid.map((week) => (
-              <View key={week[0].date} style={styles.weekRow}>
-                {week.map((cell) => {
-                  const day = data.byDay.get(cell.date);
-                  const isSelected = cell.date === selected;
-                  const isFuture = cell.date > today;
-                  return (
-                    <Pressable
-                      key={cell.date}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: isSelected, disabled: isFuture }}
-                      accessibilityLabel={`${formatDayLabel(cell.date, today)}${day ? `, ${formatMoney(day.netTipsCents)} in tips` : ', no shifts'}`}
-                      disabled={isFuture}
-                      onPress={() => setSelected(cell.date)}
-                      style={[
-                        styles.cell,
-                        {
-                          backgroundColor: isSelected ? theme.tint : day && cell.inMonth ? theme.tintSoft : 'transparent',
-                          borderColor: cell.date === today && !isSelected ? theme.tint : 'transparent',
-                          opacity: isFuture ? 0.35 : 1,
-                        },
-                      ]}>
-                      {/* Days from the next or previous month are told apart by color, not opacity, so they stay readable.
-                          Text in the fixed-shape cells stops growing at 130% so large text sizes don't clip it;
-                          the cell's label reads the full amount. */}
-                      <ThemedText
-                        type="small"
-                        maxFontSizeMultiplier={CELL_MAX_FONT_SCALE}
-                        style={{ color: isSelected ? theme.onTint : cell.inMonth ? theme.text : theme.textSecondary }}>
-                        {Number(cell.date.slice(8))}
-                      </ThemedText>
-                      <ThemedText
-                        type="small"
-                        numberOfLines={1}
-                        maxFontSizeMultiplier={CELL_MAX_FONT_SCALE}
-                        style={[
-                          styles.cellAmount,
-                          { color: isSelected ? theme.onTint : cell.inMonth ? theme.tint : theme.textSecondary },
-                        ]}>
-                        {day ? formatCellAmount(day.netTipsCents) : ' '}
-                      </ThemedText>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            ))}
-          </View>
-
-          <SectionTitle style={styles.sectionTitle}>{formatDayLabel(selected, today)}</SectionTitle>
-
-          {data && dayShifts.length === 0 ? (
-            <ThemedText type="small" themeColor="textSecondary">
-              No shifts logged this day.
-            </ThemedText>
-          ) : null}
-
-          <ListGroup>
-            {dayShifts.map((shift) => (
-              <ShiftRow
-                key={shift.id}
-                shift={shift}
-                today={today}
-                onPress={() => router.push({ pathname: '/log-shift', params: { id: String(shift.id) } })}
+            <View style={[styles.summary, { backgroundColor: theme.backgroundElement }]}>
+              <SummaryStat label="Tips" value={monthSummary ? formatMoney(monthSummary.netTipsCents) : '—'} />
+              <SummaryStat label="Hours" value={monthSummary ? formatDuration(monthSummary.minutesWorked) : '—'} />
+              <SummaryStat
+                label="Real hourly"
+                value={monthSummary?.realHourlyCents != null ? `${formatMoney(monthSummary.realHourlyCents)}/hr` : '—'}
               />
-            ))}
-          </ListGroup>
+              <SummaryStat label="Shifts" value={monthSummary ? String(monthSummary.shiftCount) : '—'} />
+            </View>
 
-          {selected <= today ? (
-            <Button
-              title={`Log a shift for ${formatDayLabel(selected, today).replace(/^Today$/, 'today').replace(/^Yesterday$/, 'yesterday')}`}
-              variant="secondary"
-              onPress={() => router.push({ pathname: '/log-shift', params: { date: selected } })}
-            />
-          ) : null}
+            <View style={styles.weekRow}>
+              {(data ? weekdayInitials(data.weekStart) : []).map((d, i) => (
+                <ThemedText key={i} type="small" themeColor="textSecondary" style={styles.weekday}>
+                  {d}
+                </ThemedText>
+              ))}
+            </View>
+
+            <View style={styles.grid}>
+              {data?.grid.map((week) => (
+                <View key={week[0].date} style={styles.weekRow}>
+                  {week.map((cell) => {
+                    const day = data.byDay.get(cell.date);
+                    const isSelected = cell.date === selected;
+                    const isFuture = cell.date > today;
+                    return (
+                      <Pressable
+                        key={cell.date}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: isSelected, disabled: isFuture }}
+                        accessibilityLabel={`${formatDayLabel(cell.date, today)}${day ? `, ${formatMoney(day.netTipsCents)} in tips` : ', no shifts'}`}
+                        disabled={isFuture}
+                        onPress={() => setSelected(cell.date)}
+                        style={[
+                          styles.cell,
+                          {
+                            backgroundColor: isSelected ? theme.tint : day && cell.inMonth ? theme.tintSoft : 'transparent',
+                            borderColor: cell.date === today && !isSelected ? theme.tint : 'transparent',
+                            opacity: isFuture ? 0.35 : 1,
+                          },
+                        ]}>
+                        {/* Days from the next or previous month are told apart by color, not opacity, so they stay readable.
+                            Text in the fixed-shape cells stops growing at 130% so large text sizes don't clip it;
+                            the cell's label reads the full amount. */}
+                        <ThemedText
+                          type="small"
+                          maxFontSizeMultiplier={CELL_MAX_FONT_SCALE}
+                          style={{ color: isSelected ? theme.onTint : cell.inMonth ? theme.text : theme.textSecondary }}>
+                          {Number(cell.date.slice(8))}
+                        </ThemedText>
+                        <ThemedText
+                          type="small"
+                          numberOfLines={1}
+                          maxFontSizeMultiplier={CELL_MAX_FONT_SCALE}
+                          style={[
+                            styles.cellAmount,
+                            { color: isSelected ? theme.onTint : cell.inMonth ? theme.tint : theme.textSecondary },
+                          ]}>
+                          {day ? formatCellAmount(day.netTipsCents) : ' '}
+                        </ThemedText>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ))}
+            </View>
+          </View>
+          <View style={[styles.column, wide && styles.columnWide]}>
+            <SectionTitle style={wide ? null : styles.sectionTitle}>{formatDayLabel(selected, today)}</SectionTitle>
+
+            {data && dayShifts.length === 0 ? (
+              <ThemedText type="small" themeColor="textSecondary">
+                No shifts logged this day.
+              </ThemedText>
+            ) : null}
+
+            <ListGroup>
+              {dayShifts.map((shift) => (
+                <ShiftRow
+                  key={shift.id}
+                  shift={shift}
+                  today={today}
+                  onPress={() => router.push({ pathname: '/log-shift', params: { id: String(shift.id) } })}
+                />
+              ))}
+            </ListGroup>
+
+            {selected <= today ? (
+              <Button
+                title={`Log a shift for ${formatDayLabel(selected, today).replace(/^Today$/, 'today').replace(/^Yesterday$/, 'yesterday')}`}
+                variant="secondary"
+                onPress={() => router.push({ pathname: '/log-shift', params: { date: selected } })}
+              />
+            ) : null}
+          </View>
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
@@ -199,6 +207,19 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
+  },
+  contentWide: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.four,
+    maxWidth: WideContentWidth,
+  },
+  column: {
+    gap: Spacing.three,
+  },
+  columnWide: {
+    flex: 1,
+    minWidth: 0,
   },
   monthBar: {
     flexDirection: 'row',

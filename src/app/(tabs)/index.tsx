@@ -12,7 +12,7 @@ import { SectionTitle } from '@/components/section-title';
 import { ShiftRow } from '@/components/shift-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Radius, Spacing, TopTabInset } from '@/constants/theme';
+import { MaxContentWidth, Radius, Spacing, TopTabInset, WideContentWidth } from '@/constants/theme';
 import {
   countShiftsBetween,
   getSettings,
@@ -24,6 +24,7 @@ import {
 } from '@/db/repo';
 import { useDbQuery } from '@/db/use-db-query';
 import { useTheme } from '@/hooks/use-theme';
+import { useWideLayout } from '@/hooks/use-wide-layout';
 import {
   buildDashboardPeriods,
   buildWeekBars,
@@ -40,12 +41,15 @@ import { formatMoney } from '@/lib/money';
 import { summarizeRange } from '@/lib/shift-math';
 import { usePro } from '@/purchases/pro-context';
 
+/** Recent shifts listed on phones, and in the taller right-hand column on wide screens. */
 const RECENT_LIMIT = 6;
+const RECENT_LIMIT_WIDE = 12;
 
 const hourly = (cents: number | null) => (cents === null ? '—' : `${formatMoney(cents)}/hr`);
 
 export default function HomeScreen() {
   const theme = useTheme();
+  const wide = useWideLayout();
   const router = useRouter();
   const db = useSQLiteContext();
   const { isPro } = usePro();
@@ -60,7 +64,7 @@ export default function HomeScreen() {
       const range = dashboardLoadRange(today, weekStart);
       const [shifts, recent] = await Promise.all([
         listShiftsBetween(db, range.start, range.end),
-        listRecentShifts(db, RECENT_LIMIT),
+        listRecentShifts(db, wide ? RECENT_LIMIT_WIDE : RECENT_LIMIT),
       ]);
       return {
         periods: buildDashboardPeriods(shifts, today, weekStart),
@@ -71,7 +75,7 @@ export default function HomeScreen() {
         taxYear: taxYearShifts > 0 ? taxYear : null,
       };
     },
-    [today],
+    [today, wide],
   );
   const { data, error } = useDbQuery(load);
 
@@ -85,179 +89,185 @@ export default function HomeScreen() {
       {/* The bottom edge keeps the pinned Log shift button above the tab bar: on iOS the
           tab's safe area includes the bar, and on Android the tab content already ends above it. */}
       <SafeAreaView style={styles.screen} edges={['top', 'left', 'right', 'bottom']}>
-        <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
-          <View style={styles.header}>
-            <SectionTitle>This week</SectionTitle>
-            {week ? (
-              <ThemedText type="small" themeColor="textSecondary">
-                {formatRange(week.range, today)}
-              </ThemedText>
-            ) : null}
-          </View>
-
-          {error ? (
-            <ThemedText style={{ color: theme.danger }}>Couldn’t load your shifts: {error.message}</ThemedText>
-          ) : null}
-
-          <View style={[styles.hero, { backgroundColor: theme.hero }]}>
-            <View style={styles.heroTop}>
-              <View style={styles.heroMain}>
-                <ThemedText type="small" style={{ color: theme.onHero }}>
-                  Tips this week
+        <ScrollView
+          contentContainerStyle={[styles.content, wide && styles.contentWide]}
+          contentInsetAdjustmentBehavior="automatic">
+          {/* One column on phones; on wide screens the week is on the left and recent shifts on the right. */}
+          <View style={[styles.column, wide && styles.columnWide]}>
+            <View style={styles.header}>
+              <SectionTitle>This week</SectionTitle>
+              {week ? (
+                <ThemedText type="small" themeColor="textSecondary">
+                  {formatRange(week.range, today)}
                 </ThemedText>
-                <ThemedText type="display" style={{ color: theme.onHero }} adjustsFontSizeToFit numberOfLines={1}>
-                  {week ? formatMoney(week.summary.netTipsCents) : ' '}
-                </ThemedText>
-              </View>
-              {progress !== null && data?.goalCents ? (
-                <ProgressRing
-                  progress={progress}
-                  color={theme.heroAccent}
-                  trackColor={theme.heroTrack}
-                  accessibilityLabel={`Weekly goal: ${Math.round(progress * 100)}% of ${formatMoney(data.goalCents, { wholeDollars: true })}`}>
-                  {/* The ring is a fixed size, so its text stops growing at 130%; the ring's label has it all. */}
-                  <ThemedText type="smallBold" maxFontSizeMultiplier={1.3} style={{ color: theme.onHero }}>
-                    {Math.round(progress * 100)}%
-                  </ThemedText>
-                  <ThemedText type="small" maxFontSizeMultiplier={1.3} style={[styles.ringCaption, { color: theme.onHero }]}>
-                    of {formatMoney(data.goalCents, { wholeDollars: true })}
-                  </ThemedText>
-                </ProgressRing>
               ) : null}
             </View>
-            <View style={styles.heroStats}>
-              <HeroStat label="Total earned" value={week ? formatMoney(week.summary.totalCents) : '—'} />
-              <HeroStat
-                label="Hours"
-                value={week ? formatDuration(week.summary.minutesWorked) : '—'}
-                spokenValue={week ? spokenDuration(week.summary.minutesWorked) : 'none yet'}
-              />
-              <HeroStat
-                label="Real hourly"
-                value={week ? hourly(week.summary.realHourlyCents) : '—'}
-                spokenValue={week?.summary.realHourlyCents != null ? `${formatMoney(week.summary.realHourlyCents)} an hour` : 'none yet'}
-              />
-            </View>
-          </View>
 
-          {data?.taxYear ? (
-            <View style={[styles.card, styles.taxCard, { backgroundColor: theme.tintSoft }]}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Your ${data.taxYear} tip summary is ready. Open reports`}
-                onPress={() => router.push({ pathname: '/reports', params: { year: data.taxYear! } })}
-                style={styles.taxText}>
-                <ThemedText type="smallBold">Your {data.taxYear} tip summary is ready</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  Tips, service charges and wages for the whole year, for tax time.
-                </ThemedText>
-                <ThemedText type="smallBold" style={{ color: theme.tint }}>
-                  See it in Reports ›
-                </ThemedText>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Dismiss"
-                hitSlop={12}
-                onPress={() => setSetting(db, 'tax_card_dismissed', data.taxYear!)}>
-                <ThemedText themeColor="textSecondary">✕</ThemedText>
-              </Pressable>
-            </View>
-          ) : null}
+            {error ? (
+              <ThemedText style={{ color: theme.danger }}>Couldn’t load your shifts: {error.message}</ThemedText>
+            ) : null}
 
-          {data && !noShiftsYet ? (
-            <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
-              <View style={styles.cardHeader}>
-                <ThemedText type="smallBold">Day by day</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {change === null
-                    ? 'Total earned'
-                    : `${formatChange(change)} vs this time last week`}
-                </ThemedText>
+            <View style={[styles.hero, { backgroundColor: theme.hero }]}>
+              <View style={styles.heroTop}>
+                <View style={styles.heroMain}>
+                  <ThemedText type="small" style={{ color: theme.onHero }}>
+                    Tips this week
+                  </ThemedText>
+                  <ThemedText type="display" style={{ color: theme.onHero }} adjustsFontSizeToFit numberOfLines={1}>
+                    {week ? formatMoney(week.summary.netTipsCents) : ' '}
+                  </ThemedText>
+                </View>
+                {progress !== null && data?.goalCents ? (
+                  <ProgressRing
+                    progress={progress}
+                    color={theme.heroAccent}
+                    trackColor={theme.heroTrack}
+                    accessibilityLabel={`Weekly goal: ${Math.round(progress * 100)}% of ${formatMoney(data.goalCents, { wholeDollars: true })}`}>
+                    {/* The ring is a fixed size, so its text stops growing at 130%; the ring's label has it all. */}
+                    <ThemedText type="smallBold" maxFontSizeMultiplier={1.3} style={{ color: theme.onHero }}>
+                      {Math.round(progress * 100)}%
+                    </ThemedText>
+                    <ThemedText type="small" maxFontSizeMultiplier={1.3} style={[styles.ringCaption, { color: theme.onHero }]}>
+                      of {formatMoney(data.goalCents, { wholeDollars: true })}
+                    </ThemedText>
+                  </ProgressRing>
+                ) : null}
               </View>
-              <BarChart
-                bars={data.bars.map((b) => ({
-                  key: b.date,
-                  label: b.label,
-                  value: b.totalCents,
-                  compare: b.lastWeekTotalCents,
-                  highlight: b.date === today,
-                }))}
-                accessibilityLabel={`Total earned per day this week: ${data.bars
-                  .map((b) => `${b.label} ${formatMoney(b.totalCents, { wholeDollars: true })}`)
-                  .join(', ')}`}
-              />
-              <View style={styles.legend}>
-                <LegendDot color={theme.tint} label="This week" />
-                <LegendDot color={theme.backgroundSelected} label="Last week" />
+              <View style={styles.heroStats}>
+                <HeroStat label="Total earned" value={week ? formatMoney(week.summary.totalCents) : '—'} />
+                <HeroStat
+                  label="Hours"
+                  value={week ? formatDuration(week.summary.minutesWorked) : '—'}
+                  spokenValue={week ? spokenDuration(week.summary.minutesWorked) : 'none yet'}
+                />
+                <HeroStat
+                  label="Real hourly"
+                  value={week ? hourly(week.summary.realHourlyCents) : '—'}
+                  spokenValue={week?.summary.realHourlyCents != null ? `${formatMoney(week.summary.realHourlyCents)} an hour` : 'none yet'}
+                />
               </View>
             </View>
-          ) : null}
 
-          {data && !data.goalCents && !noShiftsYet ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push('/settings')}
-              style={({ pressed }) => [styles.goalPrompt, { backgroundColor: theme.tintSoft, opacity: pressed ? 0.75 : 1 }]}>
-              <ThemedText type="small" style={{ color: theme.tint }}>
-                Set a weekly goal to track your progress ›
-              </ThemedText>
-            </Pressable>
-          ) : null}
+            {data?.taxYear ? (
+              <View style={[styles.card, styles.taxCard, { backgroundColor: theme.tintSoft }]}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Your ${data.taxYear} tip summary is ready. Open reports`}
+                  onPress={() => router.push({ pathname: '/reports', params: { year: data.taxYear! } })}
+                  style={styles.taxText}>
+                  <ThemedText type="smallBold">Your {data.taxYear} tip summary is ready</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    Tips, service charges and wages for the whole year, for tax time.
+                  </ThemedText>
+                  <ThemedText type="smallBold" style={{ color: theme.tint }}>
+                    See it in Reports ›
+                  </ThemedText>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Dismiss"
+                  hitSlop={12}
+                  onPress={() => setSetting(db, 'tax_card_dismissed', data.taxYear!)}>
+                  <ThemedText themeColor="textSecondary">✕</ThemedText>
+                </Pressable>
+              </View>
+            ) : null}
 
-          <View style={styles.cards}>
-            <PeriodCard title={formatMonthYear(today)} period={data?.periods.month} />
-            {isPro ? (
-              <PeriodCard title={today.slice(0, 4)} period={data?.periods.year} />
-            ) : (
+            {data && !noShiftsYet ? (
+              <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+                <View style={styles.cardHeader}>
+                  <ThemedText type="smallBold">Day by day</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {change === null
+                      ? 'Total earned'
+                      : `${formatChange(change)} vs this time last week`}
+                  </ThemedText>
+                </View>
+                <BarChart
+                  bars={data.bars.map((b) => ({
+                    key: b.date,
+                    label: b.label,
+                    value: b.totalCents,
+                    compare: b.lastWeekTotalCents,
+                    highlight: b.date === today,
+                  }))}
+                  accessibilityLabel={`Total earned per day this week: ${data.bars
+                    .map((b) => `${b.label} ${formatMoney(b.totalCents, { wholeDollars: true })}`)
+                    .join(', ')}`}
+                />
+                <View style={styles.legend}>
+                  <LegendDot color={theme.tint} label="This week" />
+                  <LegendDot color={theme.backgroundSelected} label="Last week" />
+                </View>
+              </View>
+            ) : null}
+
+            {data && !data.goalCents && !noShiftsYet ? (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`${today.slice(0, 4)}: Your year. See it with Pro`}
-                onPress={() => router.push({ pathname: '/paywall', params: { reason: 'year' } })}
-                style={[styles.card, styles.halfCard, { backgroundColor: theme.tintSoft }]}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {today.slice(0, 4)}
-                </ThemedText>
-                <ThemedText type="amount" style={{ color: theme.tint }}>
-                  Your year
-                </ThemedText>
+                onPress={() => router.push('/settings')}
+                style={({ pressed }) => [styles.goalPrompt, { backgroundColor: theme.tintSoft, opacity: pressed ? 0.75 : 1 }]}>
                 <ThemedText type="small" style={{ color: theme.tint }}>
-                  See it with Pro ›
+                  Set a weekly goal to track your progress ›
                 </ThemedText>
               </Pressable>
-            )}
-          </View>
+            ) : null}
 
-          <SectionTitle style={styles.sectionTitle}>Recent shifts</SectionTitle>
-
-          {noShiftsYet ? (
-            <View style={[styles.card, styles.empty, { backgroundColor: theme.backgroundElement }]}>
-              <ThemedText type="smallBold">No shifts yet</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
-                Log your first shift. It takes about five seconds, and your tips stay on this phone.
-              </ThemedText>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.push('/import')}
-                hitSlop={8}
-                style={styles.importLink}>
-                <ThemedText type="smallBold" style={{ color: theme.tint }}>
-                  Switching from another tip app? Import your history ›
-                </ThemedText>
-              </Pressable>
+            <View style={styles.cards}>
+              <PeriodCard title={formatMonthYear(today)} period={data?.periods.month} />
+              {isPro ? (
+                <PeriodCard title={today.slice(0, 4)} period={data?.periods.year} />
+              ) : (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`${today.slice(0, 4)}: Your year. See it with Pro`}
+                  onPress={() => router.push({ pathname: '/paywall', params: { reason: 'year' } })}
+                  style={[styles.card, styles.halfCard, { backgroundColor: theme.tintSoft }]}>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {today.slice(0, 4)}
+                  </ThemedText>
+                  <ThemedText type="amount" style={{ color: theme.tint }}>
+                    Your year
+                  </ThemedText>
+                  <ThemedText type="small" style={{ color: theme.tint }}>
+                    See it with Pro ›
+                  </ThemedText>
+                </Pressable>
+              )}
             </View>
-          ) : null}
+          </View>
+          <View style={[styles.column, wide && styles.columnWide]}>
+            <SectionTitle style={wide ? null : styles.sectionTitle}>Recent shifts</SectionTitle>
 
-          <ListGroup>
-            {data?.recent.map((shift) => (
-              <ShiftRow
-                key={shift.id}
-                shift={shift}
-                today={today}
-                onPress={() => router.push({ pathname: '/log-shift', params: { id: String(shift.id) } })}
-              />
-            ))}
-          </ListGroup>
+            {noShiftsYet ? (
+              <View style={[styles.card, styles.empty, { backgroundColor: theme.backgroundElement }]}>
+                <ThemedText type="smallBold">No shifts yet</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
+                  Log your first shift. It takes about five seconds, and your tips stay on this phone.
+                </ThemedText>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => router.push('/import')}
+                  hitSlop={8}
+                  style={styles.importLink}>
+                  <ThemedText type="smallBold" style={{ color: theme.tint }}>
+                    Switching from another tip app? Import your history ›
+                  </ThemedText>
+                </Pressable>
+              </View>
+            ) : null}
+
+            <ListGroup>
+              {data?.recent.map((shift) => (
+                <ShiftRow
+                  key={shift.id}
+                  shift={shift}
+                  today={today}
+                  onPress={() => router.push({ pathname: '/log-shift', params: { id: String(shift.id) } })}
+                />
+              ))}
+            </ListGroup>
+          </View>
         </ScrollView>
 
         <View style={[styles.footer, { backgroundColor: theme.background }]}>
@@ -322,6 +332,19 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
+  },
+  contentWide: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.four,
+    maxWidth: WideContentWidth,
+  },
+  column: {
+    gap: Spacing.three,
+  },
+  columnWide: {
+    flex: 1,
+    minWidth: 0,
   },
   header: {
     flexDirection: 'row',

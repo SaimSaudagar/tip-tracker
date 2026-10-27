@@ -114,3 +114,5 @@ export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 /** On web, native tabs fall back to a floating bar at the top of the screen. */
 export const TopTabInset = Platform.select({ web: 64 }) ?? 0;
 export const MaxContentWidth = 800;
+/** Two-column dashboards on wide screens (see useWideLayout). */
+export const WideContentWidth = 1200;

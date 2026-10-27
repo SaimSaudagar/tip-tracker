@@ -63,6 +63,8 @@ Docs: https://docs.expo.dev/eas/index.md
 - **Paychecks** are compared with what was logged by `comparePaycheck` (`src/lib/paychecks.ts`): wages + card tips + service charges for that job and period, against gross pay. Cash tips are never on a paycheck.
 - **Design tokens** live in `src/constants/theme.ts` (`Colors`, `Spacing`, `Radius`, `Shadows`, `Motion`, `NumberFont`). Use them instead of literals; money uses `ThemedText` types `display` and `amount`.
 - **Motion and haptics:** no animation on screens seen many times a day (charts are static). Buttons scale to 0.97 on press. One haptic per action through `src/lib/haptics.ts` (selection on chips, success on save, destructive on delete). Confirmations go through `showToast` (`src/components/toast.tsx`), which respects Reduce Motion and announces itself to screen readers.
+- **Layout widths:** screens center their content at `MaxContentWidth` (800). On windows `useWideLayout()` says are wide (900+ points: iPad landscape, the 13" iPad, big Split View panes), Home and Calendar switch to two columns up to `WideContentWidth`. Keep phone layouts single-column.
+- **Accessibility:** every `Pressable` gets an `accessibilityRole` and, when its text isn't enough, an `accessibilityLabel` that starts with the visible text (so Voice Control finds it). Group labels above sections use `SectionTitle` (a heading, read in normal case). Text on colored surfaces needs 4.5:1 contrast; don't dim it with opacity below 0.9. Text inside fixed-size shapes (calendar cells, the goal ring) caps `maxFontSizeMultiplier` at 1.3 and the shape's label carries the full value. Read durations with `spokenDuration`.
 - Run `npm test`, `npm run typecheck` and `npm run lint` before declaring a task done.
 
 ## Rules

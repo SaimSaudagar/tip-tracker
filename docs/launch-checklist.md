@@ -69,7 +69,7 @@ Preview builds behave like the store version, so the Developer switches in Setti
 - [ ] Run `npx expo-doctor` on your PC. The cloud session couldn't reach Expo's servers for two of its checks.
 - [ ] Optional: crash reporting with Sentry (`npx expo install @sentry/react-native`, needs a development build) and analytics by connecting PostHog or Aptabase in `src/lib/analytics.ts`. Either one means updating the privacy policy and the store privacy labels.
 - [ ] Fill in the App Store privacy labels and the Play Console Data safety form to match the privacy policy. RevenueCat's documentation lists what its SDK collects.
-- [ ] Screenshots and listing text: `docs/store-listing.md`.
+- [ ] Screenshots and listing text: `docs/store-listing.md`. The app supports iPad, so App Store Connect asks for iPad screenshots too (`docs/store-screenshots/ipad-13/`). If you'd rather skip iPad review for the first release, set `ios.supportsTablet` to `false` in `app.json`; iPads then run the iPhone layout.
 - [ ] Build and submit:
 
 ```powershell
@@ -81,6 +81,5 @@ In the iOS "Notes for reviewer", explain what makes the app different: no ads, n
 
 ## Not built yet, and why
 
-- **iPad layout.** The app runs on iPads in iPhone mode (`supportsTablet` is off), so no iPad screenshots or iPad review are needed for launch.
 - **Double time.** The "over 8 hrs a day" overtime rule doesn't count California's double time after 12 hours.
 - **Slip scanning has only been tested on made-up slips.** Real photos from different POS systems (Toast, Square, Clover, Aloha…) are needed to tune it.

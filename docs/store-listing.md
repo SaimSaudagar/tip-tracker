@@ -71,7 +71,7 @@ Don’t repeat words from the name or subtitle in the keyword field; Apple alrea
 > Terms of Use: [hosted terms URL]
 > Privacy Policy: [hosted privacy URL]
 
-**Screenshots:** drafts are in `docs/store-screenshots/`: `iphone-6.9/` (1290 × 2796, the size the App Store requires for iPhone) and `android-phone/` (1080 × 1920). They show the real app screens filled with the developer sample data, framed with these headlines:
+**Screenshots:** drafts are in `docs/store-screenshots/`: `iphone-6.9/` (1290 × 2796, the size the App Store requires for iPhone), `ipad-13/` (2064 × 2752, required because the app runs on iPad) and `android-phone/` (1080 × 1920). They show the real app screens filled with the developer sample data, framed with these headlines:
 
 1. **No ads. Ever.** Log a shift in about 5 seconds. *(quick log)*
 2. **Your real hourly,** not just your tips. *(Home)*
@@ -80,7 +80,7 @@ Don’t repeat words from the name or subtitle in the keyword field; Apple alrea
 5. **Switch apps in a minute.** Bring your history with you. *(import)*
 6. **Find your best shifts.** Best days, lunch vs dinner, trends. *(Insights)*
 
-They were rendered from the web build, so fonts differ slightly from iOS. Before submitting, you can swap in captures from your own phones (Settings → Developer: add 12 weeks of sample shifts, then take screenshots) for a pixel-exact match. The app doesn't support iPad yet (`supportsTablet` is off), so no iPad screenshots are needed.
+They were rendered from the web build, so fonts differ slightly from iOS, and on iPad Log shift opens as a sheet rather than full screen. Before submitting, you can swap in captures from your own devices (Settings → Developer: add 12 weeks of sample shifts, then take screenshots) for a pixel-exact match. On iPads 900 points wide or more (landscape, or the 13" in portrait), Home and Calendar use two columns.
 
 **App Privacy (nutrition label):** tip data never leaves the device. Once RevenueCat is added, check its App Privacy guide (revenuecat.com/docs) for what the SDK collects. It is typically *Purchase History* and an app-scoped *User ID*, used for App Functionality and not linked to identity or used for tracking. Update this before submitting.
 
