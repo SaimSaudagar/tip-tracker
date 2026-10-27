@@ -153,7 +153,7 @@ export default function PaywallScreen() {
                     key={p.id}
                     accessibilityRole="radio"
                     accessibilityLabel={`${p.title}, ${p.price}. ${p.detail}`}
-                    accessibilityState={{ selected: isSelected, checked: isSelected }}
+                    aria-checked={isSelected}
                     onPress={() => setSelected(p.id)}
                     style={[
                       styles.plan,

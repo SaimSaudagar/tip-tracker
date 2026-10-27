@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/button';
 import { Chip } from '@/components/chip';
 import { MoneyField } from '@/components/money-field';
+import { SectionTitle } from '@/components/section-title';
 import { showToast } from '@/components/toast';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -262,12 +263,13 @@ export default function SettingsScreen() {
             ) : null}
           </View>
 
-          <Section title="JOBS & POSITIONS">
+          <Section title="Jobs & positions">
             {data?.positions.map((p) => (
               <Pressable
                 key={p.id}
                 accessibilityRole="button"
-                accessibilityLabel={`Edit ${p.name} at ${p.jobName}`}
+                accessibilityLabel={`${p.name} at ${p.jobName}, ${describePosition(p)}`}
+                accessibilityHint="Edit this position"
                 onPress={() => router.push({ pathname: '/position', params: { id: String(p.id) } })}
                 style={({ pressed }) => [
                   styles.row,
@@ -287,7 +289,7 @@ export default function SettingsScreen() {
             </ThemedText>
           </Section>
 
-          <Section title="REMINDERS">
+          <Section title="Reminders">
             {!notificationsSupported ? (
               <ThemedText type="small" themeColor="textSecondary">
                 Reminders work in the phone app, not in a browser.
@@ -364,14 +366,14 @@ export default function SettingsScreen() {
             ) : null}
           </Section>
 
-          <Section title="WEEKLY GOAL">
+          <Section title="Weekly goal">
             {data ? <GoalField goalCents={data.weeklyGoal} onSave={(cents) => setWeeklyGoal(db, cents)} /> : null}
             <ThemedText type="small" themeColor="textSecondary">
               What you aim to earn each week, tips plus wages. Home shows how close you are. Leave it empty for no goal.
             </ThemedText>
           </Section>
 
-          <Section title="WEEK STARTS ON">
+          <Section title="Week starts on">
             <View style={styles.segment}>
               {WEEK_STARTS.map(({ value, label }) => (
                 <SegmentItem
@@ -385,7 +387,7 @@ export default function SettingsScreen() {
             </View>
           </Section>
 
-          <Section title="APPEARANCE">
+          <Section title="Appearance">
             <View style={styles.segment}>
               {APPEARANCE_OPTIONS.map(({ value, label }) => (
                 <SegmentItem
@@ -399,7 +401,7 @@ export default function SettingsScreen() {
             </View>
           </Section>
 
-          <Section title="YOUR DATA">
+          <Section title="Your data">
             <ThemedText type="small" themeColor="textSecondary">
               Your tips are stored only on this phone and included in your phone’s regular backups. No account, no
               ads.
@@ -432,18 +434,18 @@ export default function SettingsScreen() {
             <Button title="Delete all data" variant="danger" onPress={eraseEverything} />
           </Section>
 
-          <Section title="TOOLS">
+          <Section title="Tools">
             <LinkRow label="Tip pool calculator" onPress={() => router.push('/tip-pool')} />
           </Section>
 
-          <Section title="ABOUT">
+          <Section title="About">
             <LinkRow label="Privacy policy" onPress={() => router.push({ pathname: '/legal', params: { doc: 'privacy' } })} />
             <LinkRow label="Terms of use" onPress={() => router.push({ pathname: '/legal', params: { doc: 'terms' } })} />
             {SUPPORT_EMAIL ? <LinkRow label="Contact support" onPress={contactSupport} /> : null}
           </Section>
 
           {__DEV__ ? (
-            <Section title="DEVELOPER">
+            <Section title="Developer">
               <Button title="Developer: add 12 weeks of sample shifts" variant="secondary" onPress={loadSampleShifts} />
             </Section>
           ) : null}
@@ -460,9 +462,7 @@ export default function SettingsScreen() {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <View style={styles.section}>
-      <ThemedText type="smallBold" themeColor="textSecondary">
-        {title}
-      </ThemedText>
+      <SectionTitle>{title}</SectionTitle>
       {children}
     </View>
   );

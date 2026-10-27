@@ -8,6 +8,7 @@ import { BarChart } from '@/components/bar-chart';
 import { Button } from '@/components/button';
 import { ListGroup } from '@/components/list-group';
 import { ProgressRing } from '@/components/progress-ring';
+import { SectionTitle } from '@/components/section-title';
 import { ShiftRow } from '@/components/shift-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -33,7 +34,7 @@ import {
   type Period,
 } from '@/lib/dashboard';
 import { formatMonthYear, formatRange, todayISO } from '@/lib/dates';
-import { formatDuration } from '@/lib/duration';
+import { formatDuration, spokenDuration } from '@/lib/duration';
 import { formatChange, percentChange } from '@/lib/insights';
 import { formatMoney } from '@/lib/money';
 import { summarizeRange } from '@/lib/shift-math';
@@ -86,9 +87,7 @@ export default function HomeScreen() {
       <SafeAreaView style={styles.screen} edges={['top', 'left', 'right', 'bottom']}>
         <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
           <View style={styles.header}>
-            <ThemedText type="smallBold" themeColor="textSecondary">
-              THIS WEEK
-            </ThemedText>
+            <SectionTitle>This week</SectionTitle>
             {week ? (
               <ThemedText type="small" themeColor="textSecondary">
                 {formatRange(week.range, today)}
@@ -106,7 +105,7 @@ export default function HomeScreen() {
                 <ThemedText type="small" style={{ color: theme.onHero }}>
                   Tips this week
                 </ThemedText>
-                <ThemedText type="display" style={{ color: theme.onHero }} accessibilityRole="header" adjustsFontSizeToFit numberOfLines={1}>
+                <ThemedText type="display" style={{ color: theme.onHero }} adjustsFontSizeToFit numberOfLines={1}>
                   {week ? formatMoney(week.summary.netTipsCents) : ' '}
                 </ThemedText>
               </View>
@@ -116,10 +115,11 @@ export default function HomeScreen() {
                   color={theme.heroAccent}
                   trackColor={theme.heroTrack}
                   accessibilityLabel={`Weekly goal: ${Math.round(progress * 100)}% of ${formatMoney(data.goalCents, { wholeDollars: true })}`}>
-                  <ThemedText type="smallBold" style={{ color: theme.onHero }}>
+                  {/* The ring is a fixed size, so its text stops growing at 130%; the ring's label has it all. */}
+                  <ThemedText type="smallBold" maxFontSizeMultiplier={1.3} style={{ color: theme.onHero }}>
                     {Math.round(progress * 100)}%
                   </ThemedText>
-                  <ThemedText type="small" style={[styles.ringCaption, { color: theme.onHero }]}>
+                  <ThemedText type="small" maxFontSizeMultiplier={1.3} style={[styles.ringCaption, { color: theme.onHero }]}>
                     of {formatMoney(data.goalCents, { wholeDollars: true })}
                   </ThemedText>
                 </ProgressRing>
@@ -127,8 +127,16 @@ export default function HomeScreen() {
             </View>
             <View style={styles.heroStats}>
               <HeroStat label="Total earned" value={week ? formatMoney(week.summary.totalCents) : '—'} />
-              <HeroStat label="Hours" value={week ? formatDuration(week.summary.minutesWorked) : '—'} />
-              <HeroStat label="Real hourly" value={week ? hourly(week.summary.realHourlyCents) : '—'} />
+              <HeroStat
+                label="Hours"
+                value={week ? formatDuration(week.summary.minutesWorked) : '—'}
+                spokenValue={week ? spokenDuration(week.summary.minutesWorked) : 'none yet'}
+              />
+              <HeroStat
+                label="Real hourly"
+                value={week ? hourly(week.summary.realHourlyCents) : '—'}
+                spokenValue={week?.summary.realHourlyCents != null ? `${formatMoney(week.summary.realHourlyCents)} an hour` : 'none yet'}
+              />
             </View>
           </View>
 
@@ -204,7 +212,7 @@ export default function HomeScreen() {
             ) : (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`See your ${today.slice(0, 4)} totals with Pro`}
+                accessibilityLabel={`${today.slice(0, 4)}: Your year. See it with Pro`}
                 onPress={() => router.push({ pathname: '/paywall', params: { reason: 'year' } })}
                 style={[styles.card, styles.halfCard, { backgroundColor: theme.tintSoft }]}>
                 <ThemedText type="small" themeColor="textSecondary">
@@ -220,9 +228,7 @@ export default function HomeScreen() {
             )}
           </View>
 
-          <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
-            RECENT SHIFTS
-          </ThemedText>
+          <SectionTitle style={styles.sectionTitle}>Recent shifts</SectionTitle>
 
           {noShiftsYet ? (
             <View style={[styles.card, styles.empty, { backgroundColor: theme.backgroundElement }]}>
@@ -263,11 +269,11 @@ export default function HomeScreen() {
   );
 }
 
-function HeroStat({ label, value }: { label: string; value: string }) {
+function HeroStat({ label, value, spokenValue }: { label: string; value: string; spokenValue?: string }) {
   const theme = useTheme();
   return (
-    <View style={styles.heroStat}>
-      <ThemedText type="small" style={{ color: theme.onHero, opacity: 0.8 }}>
+    <View style={styles.heroStat} accessible accessibilityLabel={`${label}: ${spokenValue ?? value}`}>
+      <ThemedText type="small" style={{ color: theme.onHero, opacity: 0.9 }}>
         {label}
       </ThemedText>
       <ThemedText type="smallBold" style={{ color: theme.onHero }}>
@@ -341,7 +347,7 @@ const styles = StyleSheet.create({
   ringCaption: {
     fontSize: 11,
     lineHeight: 14,
-    opacity: 0.85,
+    opacity: 0.9,
   },
   heroStats: {
     flexDirection: 'row',

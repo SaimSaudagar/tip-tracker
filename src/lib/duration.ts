@@ -35,6 +35,16 @@ export function formatDuration(minutes: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
+/** The same for screen readers, which read "6h" as "6 h": 390 -> "6 hours 30 minutes". */
+export function spokenDuration(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  const hours = `${h} ${h === 1 ? 'hour' : 'hours'}`;
+  const mins = `${m} ${m === 1 ? 'minute' : 'minutes'}`;
+  if (h === 0 && m > 0) return mins;
+  return m === 0 ? hours : `${hours} ${mins}`;
+}
+
 /**
  * Parses a clock time as people type it: "5pm", "5:30 pm", "17:30", "1730", "9a".
  * Returns 24-hour "HH:MM", or null when it can't be read.

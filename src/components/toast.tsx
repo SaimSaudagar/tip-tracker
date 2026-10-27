@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AccessibilityInfo, Pressable, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeOut, ReduceMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -44,8 +44,18 @@ export function ToastHost() {
 
   useEffect(() => {
     if (!toast) return;
-    const timer = setTimeout(() => dismiss(toast.id), VISIBLE_MS);
-    return () => clearTimeout(timer);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let cancelled = false;
+    // Android lets people ask for messages to stay up longer (Accessibility → Time to take action).
+    const visibleMs =
+      Platform.OS === 'android' ? AccessibilityInfo.getRecommendedTimeoutMillis(VISIBLE_MS) : Promise.resolve(VISIBLE_MS);
+    visibleMs.then((ms) => {
+      if (!cancelled) timer = setTimeout(() => dismiss(toast.id), ms);
+    });
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [toast]);
 
   if (!toast) return null;

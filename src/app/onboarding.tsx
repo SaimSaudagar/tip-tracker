@@ -92,7 +92,15 @@ export default function OnboardingScreen() {
           ) : (
             <View />
           )}
-          <View style={styles.dots} accessibilityLabel={`Step ${step + 1} of ${STEPS}`}>
+          <View
+            style={styles.dots}
+            accessible
+            role="progressbar"
+            aria-label={`Step ${step + 1} of ${STEPS}`}
+            aria-valuemin={1}
+            aria-valuemax={STEPS}
+            aria-valuenow={step + 1}
+            aria-valuetext={`Step ${step + 1} of ${STEPS}`}>
             {Array.from({ length: STEPS }, (_, i) => (
               <View
                 key={i}

@@ -1,6 +1,7 @@
 import { Redirect } from 'expo-router';
 import { NativeTabs } from 'expo-router/native-tabs';
 import type { SQLiteDatabase } from 'expo-sqlite';
+import { Platform } from 'react-native';
 
 import { getSettings } from '@/db/repo';
 import { useDbQuery } from '@/db/use-db-query';
@@ -20,7 +21,10 @@ export default function TabsLayout() {
       backgroundColor={theme.background}
       indicatorColor={theme.backgroundElement}
       tintColor={theme.tint}
-      labelStyle={{ selected: { color: theme.text } }}>
+      labelStyle={{
+        default: Platform.OS === 'web' ? { color: theme.textSecondary } : undefined,
+        selected: { color: theme.text },
+      }}>
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'house', selected: 'house.fill' }} md="home" />

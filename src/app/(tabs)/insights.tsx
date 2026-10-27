@@ -8,6 +8,7 @@ import { BarChart } from '@/components/bar-chart';
 import { Button } from '@/components/button';
 import { ListGroup } from '@/components/list-group';
 import { ShiftRow } from '@/components/shift-row';
+import { SectionTitle } from '@/components/section-title';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Radius, Spacing, TopTabInset } from '@/constants/theme';
@@ -154,9 +155,7 @@ export default function InsightsScreen() {
 
               {insights.bestShifts.length > 0 ? (
                 <View style={styles.section}>
-                  <ThemedText type="smallBold" themeColor="textSecondary">
-                    BEST SHIFTS BY REAL HOURLY
-                  </ThemedText>
+                  <SectionTitle>Best shifts by real hourly</SectionTitle>
                   <ListGroup>
                     {insights.bestShifts.map((best) => {
                       const shift = data.shifts.find((s) => s.id === best.id);
@@ -205,9 +204,7 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
   const theme = useTheme();
   return (
     <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
-      <ThemedText type="smallBold" themeColor="textSecondary">
-        {title.toUpperCase()}
-      </ThemedText>
+      <SectionTitle>{title}</SectionTitle>
       {children}
     </View>
   );

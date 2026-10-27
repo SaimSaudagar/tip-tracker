@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
 import { ListGroup } from '@/components/list-group';
+import { SectionTitle } from '@/components/section-title';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing, TopTabInset } from '@/constants/theme';
@@ -112,9 +113,7 @@ function Reports({ linkedMonth, linkedYear }: { linkedMonth: string | null; link
           </ThemedText>
 
           <View style={styles.section}>
-            <ThemedText type="smallBold" themeColor="textSecondary">
-              MONTHLY TIP REPORT
-            </ThemedText>
+            <SectionTitle>Monthly tip report</SectionTitle>
             <Stepper
               label={report?.label ?? ''}
               previousLabel="Previous month"
@@ -184,9 +183,7 @@ function Reports({ linkedMonth, linkedYear }: { linkedMonth: string | null; link
           </View>
 
           <View style={styles.section}>
-            <ThemedText type="smallBold" themeColor="textSecondary">
-              YEAR-END SUMMARY
-            </ThemedText>
+            <SectionTitle>Year-end summary</SectionTitle>
             <Stepper
               label={year}
               previousLabel="Previous year"
@@ -236,9 +233,7 @@ function Reports({ linkedMonth, linkedYear }: { linkedMonth: string | null; link
           </View>
 
           <View style={styles.section}>
-            <ThemedText type="smallBold" themeColor="textSecondary">
-              PAYCHECKS
-            </ThemedText>
+            <SectionTitle>Paychecks</SectionTitle>
             {data && data.paychecks.length === 0 ? (
               <ThemedText type="small" themeColor="textSecondary">
                 Add your paychecks to check that wages and card tips match the shifts you logged.

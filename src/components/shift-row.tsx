@@ -4,7 +4,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import type { Shift } from '@/db/repo';
 import { formatDayLabel, type ISODate } from '@/lib/dates';
-import { formatDuration } from '@/lib/duration';
+import { formatDuration, spokenDuration } from '@/lib/duration';
 import { formatMoney } from '@/lib/money';
 import { computeShift } from '@/lib/shift-math';
 import { useTheme } from '@/hooks/use-theme';
@@ -18,11 +18,19 @@ export function ShiftRow({ shift, today, onPress }: Props) {
     shift.minutesWorked > 0 ? formatDuration(shift.minutesWorked) : null,
     totals.realHourlyCents !== null ? `${formatMoney(totals.realHourlyCents)}/hr` : null,
   ].filter(Boolean);
+  const spoken = [
+    formatDayLabel(shift.date, today),
+    shift.positionName + (shift.notes ? `, ${shift.notes}` : ''),
+    `${formatMoney(totals.netTipsCents)} in tips`,
+    shift.minutesWorked > 0 ? spokenDuration(shift.minutesWorked) : null,
+    totals.realHourlyCents !== null ? `${formatMoney(totals.realHourlyCents)} an hour` : null,
+  ].filter(Boolean);
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${formatDayLabel(shift.date, today)}, ${formatMoney(totals.netTipsCents)} in tips. Edit shift`}
+      accessibilityLabel={spoken.join(', ')}
+      accessibilityHint="Edit this shift"
       onPress={onPress}
       style={({ pressed }) => [styles.row, { backgroundColor: pressed ? theme.backgroundSelected : 'transparent' }]}>
       <View style={styles.left}>

@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/button';
 import { ListGroup } from '@/components/list-group';
 import { ShiftRow } from '@/components/shift-row';
+import { SectionTitle } from '@/components/section-title';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing, TopTabInset } from '@/constants/theme';
@@ -18,6 +19,8 @@ import { formatDayLabel, formatMonthYear, monthRange, todayISO } from '@/lib/dat
 import { formatDuration } from '@/lib/duration';
 import { formatMoney } from '@/lib/money';
 import { summarizeRange } from '@/lib/shift-math';
+
+const CELL_MAX_FONT_SCALE = 1.3;
 
 export default function CalendarScreen() {
   const theme = useTheme();
@@ -110,18 +113,28 @@ export default function CalendarScreen() {
                       style={[
                         styles.cell,
                         {
-                          backgroundColor: isSelected ? theme.tint : day ? theme.tintSoft : 'transparent',
+                          backgroundColor: isSelected ? theme.tint : day && cell.inMonth ? theme.tintSoft : 'transparent',
                           borderColor: cell.date === today && !isSelected ? theme.tint : 'transparent',
-                          opacity: cell.inMonth ? (isFuture ? 0.35 : 1) : 0.4,
+                          opacity: isFuture ? 0.35 : 1,
                         },
                       ]}>
-                      <ThemedText type="small" style={{ color: isSelected ? theme.onTint : theme.text }}>
+                      {/* Days from the next or previous month are told apart by color, not opacity, so they stay readable.
+                          Text in the fixed-shape cells stops growing at 130% so large text sizes don't clip it;
+                          the cell's label reads the full amount. */}
+                      <ThemedText
+                        type="small"
+                        maxFontSizeMultiplier={CELL_MAX_FONT_SCALE}
+                        style={{ color: isSelected ? theme.onTint : cell.inMonth ? theme.text : theme.textSecondary }}>
                         {Number(cell.date.slice(8))}
                       </ThemedText>
                       <ThemedText
                         type="small"
                         numberOfLines={1}
-                        style={[styles.cellAmount, { color: isSelected ? theme.onTint : theme.tint }]}>
+                        maxFontSizeMultiplier={CELL_MAX_FONT_SCALE}
+                        style={[
+                          styles.cellAmount,
+                          { color: isSelected ? theme.onTint : cell.inMonth ? theme.tint : theme.textSecondary },
+                        ]}>
                         {day ? formatCellAmount(day.netTipsCents) : ' '}
                       </ThemedText>
                     </Pressable>
@@ -131,9 +144,7 @@ export default function CalendarScreen() {
             ))}
           </View>
 
-          <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
-            {formatDayLabel(selected, today).toUpperCase()}
-          </ThemedText>
+          <SectionTitle style={styles.sectionTitle}>{formatDayLabel(selected, today)}</SectionTitle>
 
           {data && dayShifts.length === 0 ? (
             <ThemedText type="small" themeColor="textSecondary">

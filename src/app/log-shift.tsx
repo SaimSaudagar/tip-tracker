@@ -471,7 +471,7 @@ export default function LogShiftScreen() {
           </ThemedText>
           <Chip
             label="Lunch · AM"
-            accessibilityLabel="Lunch or daytime shift"
+            accessibilityLabel="Lunch, AM shift"
             selected={effectivePeriod === 'am'}
             onPress={() => {
               setPeriodChosen(true);
@@ -480,7 +480,7 @@ export default function LogShiftScreen() {
           />
           <Chip
             label="Dinner · PM"
-            accessibilityLabel="Dinner or night shift"
+            accessibilityLabel="Dinner, PM shift"
             selected={effectivePeriod === 'pm'}
             onPress={() => {
               setPeriodChosen(true);

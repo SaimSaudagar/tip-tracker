@@ -1,4 +1,4 @@
-import { formatDuration, minutesBetween, minutesToInput, parseDuration } from '@/lib/duration';
+import { formatDuration, minutesBetween, minutesToInput, parseDuration, spokenDuration } from '@/lib/duration';
 
 describe('parseDuration', () => {
   it.each([
@@ -43,6 +43,19 @@ describe('formatDuration', () => {
     [1505, '25h 5m'],
   ])('formats %p minutes as %p', (minutes, text) => {
     expect(formatDuration(minutes)).toBe(text);
+  });
+});
+
+describe('spokenDuration', () => {
+  it.each([
+    [0, '0 hours'],
+    [1, '1 minute'],
+    [45, '45 minutes'],
+    [60, '1 hour'],
+    [390, '6 hours 30 minutes'],
+    [61, '1 hour 1 minute'],
+  ])('reads %p minutes as %p', (minutes, text) => {
+    expect(spokenDuration(minutes)).toBe(text);
   });
 });
 

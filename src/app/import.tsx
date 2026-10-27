@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/button';
+import { SectionTitle } from '@/components/section-title';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -97,7 +98,7 @@ export default function ImportScreen() {
         options={{
           title: 'Import shifts',
           headerLeft: () => (
-            <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={close} hitSlop={12} style={styles.headerButton}>
+            <Pressable accessibilityRole="button" onPress={close} hitSlop={12} style={styles.headerButton}>
               <ThemedText style={{ color: theme.tint }}>{result ? 'Done' : 'Cancel'}</ThemedText>
             </Pressable>
           ),
@@ -136,9 +137,7 @@ export default function ImportScreen() {
 
         {file && mapping && !result ? (
           <>
-            <ThemedText type="smallBold" themeColor="textSecondary">
-              {file.fileName.toUpperCase()} · {file.rows.length} ROWS
-            </ThemedText>
+            <SectionTitle>{`${file.fileName} · ${file.rows.length} rows`}</SectionTitle>
             <ThemedText type="small" themeColor="textSecondary">
               Check which column fills each field. Tap a field to change it.
             </ThemedText>
@@ -193,9 +192,7 @@ export default function ImportScreen() {
 
             {positions.length > 1 || !usesPositionColumns ? (
               <View style={styles.list}>
-                <ThemedText type="smallBold" themeColor="textSecondary">
-                  {usesPositionColumns ? 'ROWS WITHOUT A JOB GO TO' : 'IMPORT INTO'}
-                </ThemedText>
+                <SectionTitle>{usesPositionColumns ? 'Rows without a job go to' : 'Import into'}</SectionTitle>
                 <View style={styles.chips}>
                   {positions.map((p) => {
                     const selected = p.id === fallbackId;
@@ -219,9 +216,7 @@ export default function ImportScreen() {
 
             {preview ? (
               <View style={styles.list}>
-                <ThemedText type="smallBold" themeColor="textSecondary">
-                  PREVIEW
-                </ThemedText>
+                <SectionTitle>Preview</SectionTitle>
                 {preview.drafts.slice(0, 3).map((d, i) => {
                   const t = computeShift(d);
                   return (
