@@ -3,6 +3,7 @@
  * file, restorable on any phone. Rows keep their database column names and ids
  * so a restore reproduces the database exactly.
  */
+import { t } from '@/i18n';
 
 export const BACKUP_FORMAT = 'tip-tracker-backup';
 export const BACKUP_VERSION = 1;
@@ -103,17 +104,17 @@ export function parseBackup(text: string, currentSchemaVersion: number): ParseRe
   try {
     raw = JSON.parse(text);
   } catch {
-    return { ok: false, error: 'This file isn’t a Tipbook backup (it isn’t valid JSON).' };
+    return { ok: false, error: t('This file isn’t a Tipbook backup (it isn’t valid JSON).') };
   }
   if (typeof raw !== 'object' || raw === null || (raw as Backup).format !== BACKUP_FORMAT) {
-    return { ok: false, error: 'This file isn’t a Tipbook backup.' };
+    return { ok: false, error: t('This file isn’t a Tipbook backup.') };
   }
   const b = raw as Backup;
   if (typeof b.version !== 'number' || b.version > BACKUP_VERSION || b.schemaVersion > currentSchemaVersion) {
-    return { ok: false, error: 'This backup was made by a newer version of the app. Update the app, then try again.' };
+    return { ok: false, error: t('This backup was made by a newer version of the app. Update the app, then try again.') };
   }
   if (typeof b.tables !== 'object' || b.tables === null) {
-    return { ok: false, error: 'This backup is incomplete.' };
+    return { ok: false, error: t('This backup is incomplete.') };
   }
   const tables = { ...b.tables } as BackupTables;
   for (const table of TABLES_ADDED_LATER) {
@@ -130,9 +131,9 @@ export function parseBackup(text: string, currentSchemaVersion: number): ParseRe
 
   for (const table of Object.keys(BACKUP_COLUMNS) as TableName[]) {
     const rows = tables[table];
-    if (!Array.isArray(rows)) return { ok: false, error: `This backup is missing its ${table}.` };
+    if (!Array.isArray(rows)) return { ok: false, error: t('This backup is missing its {table}.', { table }) };
     for (const row of rows) {
-      if (typeof row !== 'object' || row === null) return { ok: false, error: `A ${table} entry is damaged.` };
+      if (typeof row !== 'object' || row === null) return { ok: false, error: t('A {table} entry is damaged.', { table }) };
       for (const column of BACKUP_COLUMNS[table]) {
         const value = (row as Row)[column];
         const bad =
@@ -142,7 +143,7 @@ export function parseBackup(text: string, currentSchemaVersion: number): ParseRe
           (column === 'overtime_rule' && !OVERTIME_RULES.has(String(value))) ||
           (column === 'overtime_double_time' && value !== 0 && value !== 1) ||
           (value !== undefined && value !== null && typeof value !== 'string' && typeof value !== 'number');
-        if (bad) return { ok: false, error: `A ${table} entry has a damaged “${column}” value.` };
+        if (bad) return { ok: false, error: t('A {table} entry has a damaged “{column}” value.', { table, column }) };
       }
     }
   }
@@ -151,11 +152,13 @@ export function parseBackup(text: string, currentSchemaVersion: number): ParseRe
   const jobIds = ids(tables.jobs);
   const positionIds = ids(tables.positions);
   const shiftIds = ids(tables.shifts);
-  if (tables.positions.length === 0) return { ok: false, error: 'This backup has no positions to restore.' };
-  if (tables.positions.some((p) => !jobIds.has(p.job_id))) return { ok: false, error: 'A position in this backup points to a missing job.' };
-  if (tables.shifts.some((s) => !positionIds.has(s.position_id))) return { ok: false, error: 'A shift in this backup points to a missing position.' };
-  if (tables.tipouts.some((t) => !shiftIds.has(t.shift_id))) return { ok: false, error: 'A tip-out in this backup points to a missing shift.' };
-  if (tables.paychecks.some((c) => !jobIds.has(c.job_id))) return { ok: false, error: 'A paycheck in this backup points to a missing job.' };
+  if (tables.positions.length === 0) return { ok: false, error: t('This backup has no positions to restore.') };
+  if (tables.positions.some((p) => !jobIds.has(p.job_id))) return { ok: false, error: t('A position in this backup points to a missing job.') };
+  if (tables.shifts.some((s) => !positionIds.has(s.position_id))) return { ok: false, error: t('A shift in this backup points to a missing position.') };
+  if (tables.tipouts.some((tipOut) => !shiftIds.has(tipOut.shift_id))) {
+    return { ok: false, error: t('A tip-out in this backup points to a missing shift.') };
+  }
+  if (tables.paychecks.some((c) => !jobIds.has(c.job_id))) return { ok: false, error: t('A paycheck in this backup points to a missing job.') };
 
   tables.settings = tables.settings.filter((s) => !DEVICE_ONLY_SETTINGS.includes(String(s.key)));
   return { ok: true, backup: { ...b, tables } };

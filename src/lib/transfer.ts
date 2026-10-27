@@ -2,6 +2,7 @@
  * CSV export of shifts, and import from this app's export or other tip apps'
  * spreadsheets. Everything here is pure so it can be tested without a device.
  */
+import { msg, t } from '@/i18n';
 import { toCsv } from '@/lib/csv';
 import type { ISODate } from '@/lib/dates';
 import { minutesBetween, minutesToInput, parseClockTime, parseDuration } from '@/lib/duration';
@@ -84,25 +85,25 @@ export function shiftsToCsv(shifts: ExportShift[]): string {
 
 /** Fields an imported column can fill. `tips` is for apps that only record one tip total. */
 export const IMPORT_FIELDS = [
-  { key: 'date', label: 'Date', required: true },
-  { key: 'cash', label: 'Cash tips' },
-  { key: 'card', label: 'Card tips' },
-  { key: 'tips', label: 'Total tips (one column)' },
-  { key: 'hours', label: 'Hours' },
-  { key: 'start', label: 'Start time' },
-  { key: 'end', label: 'End time' },
-  { key: 'break', label: 'Break' },
-  { key: 'period', label: 'Lunch or dinner' },
-  { key: 'wage', label: 'Hourly wage' },
-  { key: 'wagesEarned', label: 'Wages earned (shift total)' },
-  { key: 'tipIn', label: 'Tips from coworkers' },
-  { key: 'tipOut', label: 'Tip-out' },
-  { key: 'serviceCharge', label: 'Service charges' },
-  { key: 'sales', label: 'Sales' },
-  { key: 'covers', label: 'Covers (guests)' },
-  { key: 'job', label: 'Job' },
-  { key: 'position', label: 'Position' },
-  { key: 'notes', label: 'Notes' },
+  { key: 'date', label: msg('Date'), required: true },
+  { key: 'cash', label: msg('Cash tips') },
+  { key: 'card', label: msg('Card tips') },
+  { key: 'tips', label: msg('Total tips (one column)') },
+  { key: 'hours', label: msg('Hours') },
+  { key: 'start', label: msg('Start time') },
+  { key: 'end', label: msg('End time') },
+  { key: 'break', label: msg('Break') },
+  { key: 'period', label: msg('Lunch or dinner') },
+  { key: 'wage', label: msg('Hourly wage') },
+  { key: 'wagesEarned', label: msg('Wages earned (shift total)') },
+  { key: 'tipIn', label: msg('Tips from coworkers') },
+  { key: 'tipOut', label: msg('Tip-out') },
+  { key: 'serviceCharge', label: msg('Service charges') },
+  { key: 'sales', label: msg('Sales') },
+  { key: 'covers', label: msg('Covers (guests)') },
+  { key: 'job', label: msg('Job') },
+  { key: 'position', label: msg('Position') },
+  { key: 'notes', label: msg('Notes') },
 ] as const;
 
 export type ImportField = (typeof IMPORT_FIELDS)[number]['key'];
@@ -234,6 +235,9 @@ function parsePeriod(input: string): Period | null {
   return null;
 }
 
+const unreadableReason = (label: string, value: string) =>
+  t('Unreadable {field} "{value}"', { field: t(label).toLocaleLowerCase(), value });
+
 /** Turns data rows (header row excluded) into shift drafts, skipping rows that can't be read. */
 export function buildImportDrafts(rows: string[][], mapping: ImportMapping, firstLine = 2): ImportResult {
   const drafts: ImportDraft[] = [];
@@ -250,13 +254,13 @@ export function buildImportDrafts(rows: string[][], mapping: ImportMapping, firs
       parseMoney(decimalPoint(cell(field).replace(/^\((.*)\)$/, '$1').replace(/^-/, '')));
     const unreadable = (field: ImportField) => {
       const label = IMPORT_FIELDS.find((f) => f.key === field)?.label ?? field;
-      skipped.push({ line, reason: `Unreadable ${label.toLowerCase()} "${cell(field)}"` });
+      skipped.push({ line, reason: unreadableReason(label, cell(field)) });
     };
 
     if (SUMMARY_ROW.test(cell('date'))) return;
     const date = parseFlexibleDate(cell('date'));
     if (!date) {
-      skipped.push({ line, reason: `Unreadable date "${cell('date')}"` });
+      skipped.push({ line, reason: unreadableReason('Date', cell('date')) });
       return;
     }
 

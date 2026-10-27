@@ -71,7 +71,7 @@ describe('insights', () => {
   const insights = buildInsights(shifts, today, 0);
 
   it('ranks weekdays by real hourly, needing at least two shifts', () => {
-    expect(insights.bestWeekday).toEqual({ weekday: 5, name: 'Friday', realHourlyCents: 5000 });
+    expect(insights.bestWeekday).toEqual({ weekday: 5, name: 'Fridays', realHourlyCents: 5000 });
     expect(insights.byWeekday.map((d) => d.label)).toEqual(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
     expect(insights.byWeekday[5].summary.shiftCount).toBe(2);
   });

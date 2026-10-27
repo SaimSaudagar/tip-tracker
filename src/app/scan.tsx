@@ -9,18 +9,19 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { msg, t } from '@/i18n';
 import { track } from '@/lib/analytics';
 import { parseCheckoutSlip, type SlipField, type SlipValues } from '@/lib/checkout-slip';
 import { centsToInput, formatMoney } from '@/lib/money';
 import { recognizeText, scanSupported } from '@/lib/scan';
 
 const FIELDS: { field: SlipField; label: string; param: string }[] = [
-  { field: 'cashTips', label: 'Cash tips', param: 'cash' },
-  { field: 'cardTips', label: 'Card tips', param: 'card' },
-  { field: 'tipOut', label: 'Tip-out', param: 'tipOut' },
-  { field: 'serviceCharge', label: 'Service charges', param: 'serviceCharge' },
-  { field: 'sales', label: 'Sales', param: 'sales' },
-  { field: 'covers', label: 'Covers', param: 'covers' },
+  { field: 'cashTips', label: msg('Cash tips'), param: 'cash' },
+  { field: 'cardTips', label: msg('Card tips'), param: 'card' },
+  { field: 'tipOut', label: msg('Tip-out'), param: 'tipOut' },
+  { field: 'serviceCharge', label: msg('Service charges'), param: 'serviceCharge' },
+  { field: 'sales', label: msg('Sales'), param: 'sales' },
+  { field: 'covers', label: msg('Covers'), param: 'covers' },
 ];
 
 type State =
@@ -44,7 +45,10 @@ export default function ScanScreen() {
       if (source === 'camera') {
         const permission = await ImagePicker.requestCameraPermissionsAsync();
         if (!permission.granted) {
-          setState({ step: 'error', message: 'Camera access is off for Tipbook. Turn it on in Settings, or choose a photo instead.' });
+          setState({
+            step: 'error',
+            message: t('Camera access is off for Tipbook. Turn it on in Settings, or choose a photo instead.'),
+          });
           return;
         }
       }
@@ -57,7 +61,10 @@ export default function ScanScreen() {
       track({ name: 'slip_scanned', fieldsFound: Object.keys(values).length });
       setState(Object.keys(values).length > 0 ? { step: 'review', values } : { step: 'nothing' });
     } catch (e) {
-      setState({ step: 'error', message: `Couldn’t read that photo: ${e instanceof Error ? e.message : String(e)}` });
+      setState({
+        step: 'error',
+        message: t('Couldn’t read that photo: {error}', { error: e instanceof Error ? e.message : String(e) }),
+      });
     }
   };
 
@@ -74,10 +81,15 @@ export default function ScanScreen() {
     <ThemedView style={styles.screen}>
       <Stack.Screen
         options={{
-          title: 'Scan checkout slip',
+          title: t('Scan checkout slip'),
           headerLeft: () => (
-            <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={close} hitSlop={12} style={styles.headerButton}>
-              <ThemedText style={{ color: theme.tint }}>Close</ThemedText>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('Close')}
+              onPress={close}
+              hitSlop={12}
+              style={styles.headerButton}>
+              <ThemedText style={{ color: theme.tint }}>{t('Close')}</ThemedText>
             </Pressable>
           ),
         }}
@@ -85,61 +97,63 @@ export default function ScanScreen() {
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}>
         {!scanSupported ? (
           <View style={styles.block}>
-            <ThemedText type="smallBold">Scanning works in the Tipbook app</ThemedText>
+            <ThemedText type="smallBold">{t('Scanning works in the Tipbook app')}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              Reading a slip uses your phone’s built-in text recognition, which isn’t available in Expo Go or a browser. Install
-              a Tipbook build to try it. You can still log the shift by hand.
+              {t(
+                'Reading a slip uses your phone’s built-in text recognition, which isn’t available in Expo Go or a browser. Install a Tipbook build to try it. You can still log the shift by hand.',
+              )}
             </ThemedText>
-            <Button title="Log shift by hand" onPress={logByHand} />
+            <Button title={t('Log shift by hand')} onPress={logByHand} />
           </View>
         ) : state.step === 'choose' || state.step === 'error' ? (
           <View style={styles.block}>
             <ThemedText type="small" themeColor="textSecondary">
-              Take a photo of the checkout slip from the end of your shift. Tipbook reads the totals on your phone; the photo
-              isn’t saved or uploaded. You can check every number before saving.
+              {t(
+                'Take a photo of the checkout slip from the end of your shift. Tipbook reads the totals on your phone; the photo isn’t saved or uploaded. You can check every number before saving.',
+              )}
             </ThemedText>
             {state.step === 'error' ? (
               <ThemedText type="small" style={{ color: theme.danger }} accessibilityLiveRegion="polite">
                 {state.message}
               </ThemedText>
             ) : null}
-            {Platform.OS !== 'web' ? <Button title="Take a photo" onPress={() => read('camera')} /> : null}
-            <Button title="Choose a photo" variant="secondary" onPress={() => read('library')} />
+            {Platform.OS !== 'web' ? <Button title={t('Take a photo')} onPress={() => read('camera')} /> : null}
+            <Button title={t('Choose a photo')} variant="secondary" onPress={() => read('library')} />
           </View>
         ) : state.step === 'reading' ? (
-          <ThemedText accessibilityLiveRegion="polite">Reading your slip…</ThemedText>
+          <ThemedText accessibilityLiveRegion="polite">{t('Reading your slip…')}</ThemedText>
         ) : state.step === 'nothing' ? (
           <View style={styles.block}>
-            <ThemedText type="smallBold">No totals found</ThemedText>
+            <ThemedText type="smallBold">{t('No totals found')}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              Try again with the slip flat, well lit and filling the photo, or enter the numbers yourself.
+              {t('Try again with the slip flat, well lit and filling the photo, or enter the numbers yourself.')}
             </ThemedText>
-            <Button title="Try another photo" onPress={() => setState({ step: 'choose' })} />
-            <Button title="Log shift by hand" variant="secondary" onPress={logByHand} />
+            <Button title={t('Try another photo')} onPress={() => setState({ step: 'choose' })} />
+            <Button title={t('Log shift by hand')} variant="secondary" onPress={logByHand} />
           </View>
         ) : (
           <View style={styles.block}>
-            <ThemedText type="smallBold">Here’s what Tipbook found</ThemedText>
+            <ThemedText type="smallBold">{t('Here’s what Tipbook found')}</ThemedText>
             <ListGroup>
               {FIELDS.map(({ field, label }) => {
                 const value = state.values[field];
                 return (
                   <View key={field} style={styles.row}>
                     <ThemedText type="small" themeColor={value === undefined ? 'textSecondary' : undefined}>
-                      {label}
+                      {t(label)}
                     </ThemedText>
                     <ThemedText type="smallBold" themeColor={value === undefined ? 'textSecondary' : undefined}>
-                      {value === undefined ? 'Not found' : field === 'covers' ? String(value) : formatMoney(value)}
+                      {value === undefined ? t('Not found') : field === 'covers' ? String(value) : formatMoney(value)}
                     </ThemedText>
                   </View>
                 );
               })}
             </ListGroup>
             <ThemedText type="small" themeColor="textSecondary">
-              Next you’ll see the shift with these filled in. Add your hours and fix anything that’s off before saving.
+              {t('Next you’ll see the shift with these filled in. Add your hours and fix anything that’s off before saving.')}
             </ThemedText>
-            <Button title="Use these numbers" onPress={() => applyValues(state.values)} />
-            <Button title="Try another photo" variant="secondary" onPress={() => setState({ step: 'choose' })} />
+            <Button title={t('Use these numbers')} onPress={() => applyValues(state.values)} />
+            <Button title={t('Try another photo')} variant="secondary" onPress={() => setState({ step: 'choose' })} />
           </View>
         )}
       </ScrollView>

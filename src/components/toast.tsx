@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { BottomTabInset, MaxContentWidth, Motion, Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { t } from '@/i18n';
 
 export type Toast = { title: string; detail?: string; celebrate?: boolean };
 
@@ -69,7 +70,7 @@ export function ToastHost() {
         style={[styles.toast, { backgroundColor: theme.text, boxShadow: Shadows.raised }]}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`${toast.title}. Dismiss`}
+          accessibilityLabel={`${toast.title}. ${t('Dismiss')}`}
           onPress={() => dismiss(toast.id)}
           style={styles.content}>
           {toast.celebrate ? <View style={[styles.dot, { backgroundColor: theme.tint }]} /> : null}

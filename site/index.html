@@ -41,7 +41,9 @@
   /* Hero: the phone hangs over the next section. */
   .hero { background: linear-gradient(160deg, var(--hero-from) 0%, var(--hero-to) 100%); color: var(--on-hero); }
   .hero-grid { display: grid; grid-template-columns: 1fr; gap: 40px; align-items: center; padding-top: 40px; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
   .brand { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 22px; }
+  .language { color: var(--on-hero); font-weight: 700; font-size: 15px; }
   .brand img { border-radius: 12px; }
   .hero h1 { font-size: clamp(40px, 7vw, 64px); margin-top: 32px; font-weight: 800; }
   .lead { font-size: 19px; color: var(--on-hero-muted); margin: 16px 0 0; max-width: 520px; }
@@ -113,7 +115,10 @@
 <header class="hero">
   <div class="wrap hero-grid">
     <div>
-      <div class="brand"><img src="images/icon.png" width="44" height="44" alt="">Tipbook</div>
+      <div class="top">
+        <div class="brand"><img src="images/icon.png" width="44" height="44" alt="">Tipbook</div>
+        <a class="language" href="es.html" hreflang="es" lang="es">Español</a>
+      </div>
       <h1>Know what you really make.</h1>
       <p class="lead">The tip tracker for servers and bartenders. Log a shift in about five seconds, see your real hourly, and have your tip report ready for your employer.</p>
       <p class="soon">Coming soon to iPhone, iPad and Android.</p>
@@ -136,7 +141,7 @@
         <div class="card"><h3>Bring your history</h3><p>Import a CSV from your old tip app or a spreadsheet. Export everything, anytime, in a file any spreadsheet opens.</p></div>
         <div class="card"><h3>Private by design</h3><p>No ads, no account, and your tips never leave your phone. They’re in your phone’s own backups, and you can save a backup file whenever you like.</p></div>
       </div>
-      <ul class="extras" aria-label="Also included"><li>Home-screen and lock-screen widgets</li><li>Share your week as a picture</li><li>“Hey Siri, log my tips in Tipbook”</li><li>Shift reminders</li><li>Tip-pool calculator</li><li>Paycheck check</li><li>Dark mode</li><li>iPhone, iPad and Android</li></ul>
+      <ul class="extras" aria-label="Also included"><li>Home-screen and lock-screen widgets</li><li>Share your week as a picture</li><li>“Hey Siri, log my tips in Tipbook”</li><li>Shift reminders</li><li>Tip-pool calculator</li><li>Paycheck check</li><li>Dark mode</li><li>iPhone, iPad and Android</li><li>In English and Spanish</li></ul>
     </div>
   </section>
 
@@ -194,7 +199,7 @@
 
 <footer>
   <div class="wrap">
-    <nav aria-label="Site"><a href="support.html">Support</a><a href="privacy.html">Privacy Policy</a><a href="terms.html">Terms of Use</a></nav>
+    <nav aria-label="Site"><a href="support.html">Support</a><a href="privacy.html">Privacy Policy</a><a href="terms.html">Terms of Use</a><a href="es.html" hreflang="es" lang="es">Español</a></nav>
     <p>Tipbook keeps records only; it isn’t tax advice.</p>
   </div>
 </footer>

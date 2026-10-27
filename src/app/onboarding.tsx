@@ -13,19 +13,32 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { listPositions, savePosition, setSetting, setWeekStart } from '@/db/repo';
 import { saveReminderSettings } from '@/db/settings';
 import { useTheme } from '@/hooks/use-theme';
+import { msg, t } from '@/i18n';
 import { track } from '@/lib/analytics';
-import type { Weekday } from '@/lib/dates';
+import { weekdayName, type Weekday } from '@/lib/dates';
 import { parseMoney, parsePercent } from '@/lib/money';
 import { notificationsSupported, requestNotificationPermission } from '@/lib/notify';
 import { DEFAULT_REMINDERS, formatTime } from '@/lib/reminders-plan';
 import type { TipOutRule } from '@/lib/shift-math';
 
-const ROLES = ['Server', 'Bartender', 'Barista', 'Host', 'Busser', 'Valet', 'Casino dealer', 'Stylist', 'Barber', 'Other'];
+// In English here; the position is saved under the name shown, so it's in the person's language.
+const ROLES = [
+  msg('Server'),
+  msg('Bartender'),
+  msg('Barista'),
+  msg('Host'),
+  msg('Busser'),
+  msg('Valet'),
+  msg('Casino dealer'),
+  msg('Stylist'),
+  msg('Barber'),
+];
+const OTHER_ROLE = 'other';
 const RULES: { value: TipOutRule; label: string }[] = [
-  { value: 'none', label: 'No tip-out' },
-  { value: 'pct_tips', label: '% of my tips' },
-  { value: 'pct_sales', label: '% of my sales' },
-  { value: 'fixed', label: 'Same $ each shift' },
+  { value: 'none', label: msg('No tip-out') },
+  { value: 'pct_tips', label: msg('% of my tips') },
+  { value: 'pct_sales', label: msg('% of my sales') },
+  { value: 'fixed', label: msg('Same $ each shift') },
 ];
 const REMINDER_TIMES = ['21:00', '22:00', '23:00', '00:00', '01:00', '02:00'];
 const STEPS = 6;
@@ -52,7 +65,7 @@ export default function OnboardingScreen() {
   const wageCents = parseMoney(wage);
   const isPercent = rule === 'pct_tips' || rule === 'pct_sales';
   const ruleCents = rule === 'none' ? 0 : isPercent ? parsePercent(ruleValue) : parseMoney(ruleValue);
-  const positionName = role === 'Other' ? otherRole.trim() || 'My position' : role;
+  const positionName = role === OTHER_ROLE ? otherRole.trim() || t('My position') : t(role);
 
   const finish = async (remind: boolean) => {
     setSaving(true);
@@ -62,7 +75,7 @@ export default function OnboardingScreen() {
       const [first] = await listPositions(db);
       await savePosition(db, {
         id: first?.id,
-        jobName: jobName.trim() || 'My job',
+        jobName: jobName.trim() || t('My job'),
         name: positionName,
         hourlyWageCents: wageCents ?? 0,
         tipOutRule: ruleCents === null ? 'none' : rule,
@@ -74,7 +87,7 @@ export default function OnboardingScreen() {
       track({ name: 'onboarding_completed', reminders: allowed });
       router.replace({ pathname: '/paywall', params: { reason: 'onboarding' } });
     } catch (e) {
-      setNotice(`Something went wrong: ${e instanceof Error ? e.message : String(e)}`);
+      setNotice(t('Something went wrong: {error}', { error: e instanceof Error ? e.message : String(e) }));
       setSaving(false);
     }
   };
@@ -86,8 +99,12 @@ export default function OnboardingScreen() {
       <SafeAreaView style={styles.screen}>
         <View style={styles.topBar}>
           {step > 0 ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={() => setStep(step - 1)} hitSlop={12}>
-              <ThemedText style={{ color: theme.tint }}>‹ Back</ThemedText>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('Back')}
+              onPress={() => setStep(step - 1)}
+              hitSlop={12}>
+              <ThemedText style={{ color: theme.tint }}>{t('‹ Back')}</ThemedText>
             </Pressable>
           ) : (
             <View />
@@ -96,11 +113,11 @@ export default function OnboardingScreen() {
             style={styles.dots}
             accessible
             role="progressbar"
-            aria-label={`Step ${step + 1} of ${STEPS}`}
+            aria-label={t('Step {step} of {count}', { step: step + 1, count: STEPS })}
             aria-valuemin={1}
             aria-valuemax={STEPS}
             aria-valuenow={step + 1}
-            aria-valuetext={`Step ${step + 1} of ${STEPS}`}>
+            aria-valuetext={t('Step {step} of {count}', { step: step + 1, count: STEPS })}>
             {Array.from({ length: STEPS }, (_, i) => (
               <View
                 key={i}
@@ -117,13 +134,13 @@ export default function OnboardingScreen() {
           {step === 0 ? (
             <View style={styles.block}>
               <ThemedText type="subtitle" accessibilityRole="header">
-                Know what you really make.
+                {t('Know what you really make.')}
               </ThemedText>
               {[
-                'Log a shift in about five seconds',
-                'See your real hourly, not just your tips',
-                'Monthly tip reports, ready for your employer',
-                'No ads. No account. Your tips stay on this phone.',
+                t('Log a shift in about five seconds'),
+                t('See your real hourly, not just your tips'),
+                t('Monthly tip reports, ready for your employer'),
+                t('No ads. No account. Your tips stay on this phone.'),
               ].map((line) => (
                 <View key={line} style={styles.bullet}>
                   <ThemedText style={{ color: theme.tint }}>✓</ThemedText>
@@ -131,8 +148,9 @@ export default function OnboardingScreen() {
                 </View>
               ))}
               <ThemedText type="small" themeColor="textSecondary">
-                Switching from another tip app? Set up here first, then import your history from a CSV file on the
-                Home screen.
+                {t(
+                  'Switching from another tip app? Set up here first, then import your history from a CSV file on the Home screen.',
+                )}
               </ThemedText>
             </View>
           ) : null}
@@ -140,26 +158,27 @@ export default function OnboardingScreen() {
           {step === 1 ? (
             <View style={styles.block}>
               <ThemedText type="subtitle" accessibilityRole="header">
-                What do you do?
+                {t('What do you do?')}
               </ThemedText>
               <View style={styles.chips}>
                 {ROLES.map((r) => (
-                  <Chip key={r} label={r} selected={role === r} onPress={() => setRole(r)} />
+                  <Chip key={r} label={t(r)} selected={role === r} onPress={() => setRole(r)} />
                 ))}
+                <Chip label={t('Other')} selected={role === OTHER_ROLE} onPress={() => setRole(OTHER_ROLE)} />
               </View>
-              {role === 'Other' ? (
+              {role === OTHER_ROLE ? (
                 <TextInput
                   value={otherRole}
                   onChangeText={setOtherRole}
-                  placeholder="Your role"
+                  placeholder={t('Your role')}
                   placeholderTextColor={theme.textSecondary}
-                  accessibilityLabel="Your role"
+                  accessibilityLabel={t('Your role')}
                   maxLength={40}
                   style={[styles.input, { backgroundColor: theme.backgroundElement, color: theme.text }]}
                 />
               ) : null}
               <ThemedText type="small" themeColor="textSecondary">
-                Work more than one role? You can add more later in Settings.
+                {t('Work more than one role? You can add more later in Settings.')}
               </ThemedText>
             </View>
           ) : null}
@@ -167,25 +186,25 @@ export default function OnboardingScreen() {
           {step === 2 ? (
             <View style={styles.block}>
               <ThemedText type="subtitle" accessibilityRole="header">
-                Where do you work?
+                {t('Where do you work?')}
               </ThemedText>
               <TextInput
                 value={jobName}
                 onChangeText={setJobName}
-                placeholder="Restaurant or bar name"
+                placeholder={t('Restaurant or bar name')}
                 placeholderTextColor={theme.textSecondary}
-                accessibilityLabel="Workplace name"
+                accessibilityLabel={t('Workplace name')}
                 maxLength={60}
                 style={[styles.input, { backgroundColor: theme.backgroundElement, color: theme.text }]}
               />
               <MoneyField
-                label="Hourly wage before tips"
+                label={t('Hourly wage before tips')}
                 prefix="$"
-                suffix="/hr"
+                suffix={t('/hr')}
                 value={wage}
                 onChangeText={setWage}
-                error={wageCents === null ? 'Enter a wage like 2.13 or 15' : null}
-                hint="Used for your real hourly. Leave it empty if you’re paid tips only."
+                error={wageCents === null ? t('Enter a wage like 2.13 or 15') : null}
+                hint={t('Used for your real hourly. Leave it empty if you’re paid tips only.')}
               />
             </View>
           ) : null}
@@ -193,16 +212,16 @@ export default function OnboardingScreen() {
           {step === 3 ? (
             <View style={styles.block}>
               <ThemedText type="subtitle" accessibilityRole="header">
-                Do you tip out?
+                {t('Do you tip out?')}
               </ThemedText>
               <ThemedText themeColor="textSecondary">
-                Money you share with bussers, the bar or hosts at the end of a shift.
+                {t('Money you share with bussers, the bar or hosts at the end of a shift.')}
               </ThemedText>
               <View style={styles.chips}>
                 {RULES.map((r) => (
                   <Chip
                     key={r.value}
-                    label={r.label}
+                    label={t(r.label)}
                     selected={rule === r.value}
                     onPress={() => {
                       setRule(r.value);
@@ -213,12 +232,14 @@ export default function OnboardingScreen() {
               </View>
               {rule !== 'none' ? (
                 <MoneyField
-                  label={isPercent ? 'Percentage' : 'Amount each shift'}
+                  label={isPercent ? t('Percentage') : t('Amount each shift')}
                   prefix={isPercent ? undefined : '$'}
                   suffix={isPercent ? '%' : undefined}
                   value={ruleValue}
                   onChangeText={setRuleValue}
-                  error={ruleCents === null ? (isPercent ? 'Enter a percentage like 3' : 'Enter an amount like 15') : null}
+                  error={
+                    ruleCents === null ? (isPercent ? t('Enter a percentage like 3') : t('Enter an amount like 15')) : null
+                  }
                 />
               ) : null}
             </View>
@@ -227,14 +248,14 @@ export default function OnboardingScreen() {
           {step === 4 ? (
             <View style={styles.block}>
               <ThemedText type="subtitle" accessibilityRole="header">
-                When does your work week start?
+                {t('When does your work week start?')}
               </ThemedText>
               <View style={styles.chips}>
-                <Chip label="Sunday" selected={weekStart === 0} onPress={() => setWeekStartChoice(0)} />
-                <Chip label="Monday" selected={weekStart === 1} onPress={() => setWeekStartChoice(1)} />
+                <Chip label={weekdayName(0)} selected={weekStart === 0} onPress={() => setWeekStartChoice(0)} />
+                <Chip label={weekdayName(1)} selected={weekStart === 1} onPress={() => setWeekStartChoice(1)} />
               </View>
               <ThemedText type="small" themeColor="textSecondary">
-                Your weekly totals follow this. Match it to your pay week.
+                {t('Your weekly totals follow this. Match it to your pay week.')}
               </ThemedText>
             </View>
           ) : null}
@@ -242,19 +263,24 @@ export default function OnboardingScreen() {
           {step === 5 ? (
             <View style={styles.block}>
               <ThemedText type="subtitle" accessibilityRole="header">
-                Want a nudge after your shift?
+                {t('Want a nudge after your shift?')}
               </ThemedText>
               <ThemedText themeColor="textSecondary">
-                One reminder on nights you haven’t logged yet. Never on days you already did.
+                {t('One reminder on nights you haven’t logged yet. Never on days you already did.')}
               </ThemedText>
               <View style={styles.chips}>
-                {REMINDER_TIMES.map((t) => (
-                  <Chip key={t} label={formatTime(t)} selected={reminderTime === t} onPress={() => setReminderTime(t)} />
+                {REMINDER_TIMES.map((time) => (
+                  <Chip
+                    key={time}
+                    label={formatTime(time)}
+                    selected={reminderTime === time}
+                    onPress={() => setReminderTime(time)}
+                  />
                 ))}
               </View>
               {!notificationsSupported ? (
                 <ThemedText type="small" themeColor="textSecondary">
-                  Reminders work in the phone app, not in a browser.
+                  {t('Reminders work in the phone app, not in a browser.')}
                 </ThemedText>
               ) : null}
             </View>
@@ -266,18 +292,18 @@ export default function OnboardingScreen() {
         <View style={styles.footer}>
           {step < STEPS - 1 ? (
             <Button
-              title={step === 0 ? 'Get started' : 'Continue'}
+              title={step === 0 ? t('Get started') : t('Continue')}
               onPress={next}
               disabled={(step === 2 && wageCents === null) || (step === 3 && ruleCents === null)}
             />
           ) : (
             <>
               <Button
-                title={saving ? 'Setting up…' : `Remind me at ${formatTime(reminderTime)}`}
+                title={saving ? t('Setting up…') : t('Remind me at {time}', { time: formatTime(reminderTime) })}
                 onPress={() => finish(true)}
                 disabled={saving || !notificationsSupported}
               />
-              <Button title="Not now" variant="secondary" onPress={() => finish(false)} disabled={saving} />
+              <Button title={t('Not now')} variant="secondary" onPress={() => finish(false)} disabled={saving} />
             </>
           )}
         </View>

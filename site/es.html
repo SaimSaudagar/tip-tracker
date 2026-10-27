@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tipbook: registro de propinas para meseros y bartenders</title>
+<meta name="description" content="Registra tus propinas en segundos y ve tu pago real por hora. Informes mensuales de propinas para tu empleador y resúmenes de fin de año para los impuestos. Sin anuncios ni cuenta; tus propinas se quedan en tu teléfono.">
+<meta name="theme-color" content="#0b7a4b" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#06120e" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="images/favicon.png">
+<meta property="og:title" content="Tipbook: descubre lo que de verdad ganas">
+<meta property="og:description" content="La app de propinas para meseros y bartenders. Sin anuncios, sin cuenta.">
+<meta property="og:image" content="images/es/home.jpg">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff; --surface: #f0f0f3; --text: #0b0d0c; --muted: #575b62; --tint: #0b7a4b; --on-tint: #ffffff;
+    --tint-soft: #e3f4eb; --hero-from: #16a56e; --hero-to: #075c38; --on-hero: #ffffff; --on-hero-muted: #e3f4eb;
+    --phone: #0d1b14; --line: #e0e1e6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #000000; --surface: #17191b; --text: #f2f2f2; --muted: #b0b4ba; --tint: #34d399; --on-tint: #04271a;
+      --tint-soft: #0f2e22; --hero-from: #0f3a29; --hero-to: #06120e; --on-hero: #f2fbf6; --on-hero-muted: #b9e6cf;
+      --phone: #26302b; --line: #2e3135;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 17px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased; }
+  a { color: var(--tint); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+  h1, h2, h3 { line-height: 1.12; letter-spacing: -0.02em; margin: 0; }
+  h2 { font-size: clamp(28px, 4vw, 38px); }
+  h3 { font-size: 19px; letter-spacing: -0.01em; }
+  section { padding: 72px 0; }
+  .eyebrow { font-size: 14px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--tint); margin: 0 0 8px; }
+  .section-lead { color: var(--muted); max-width: 620px; margin: 12px 0 0; }
+
+  /* Hero: the phone hangs over the next section. */
+  .hero { background: linear-gradient(160deg, var(--hero-from) 0%, var(--hero-to) 100%); color: var(--on-hero); }
+  .hero-grid { display: grid; grid-template-columns: 1fr; gap: 40px; align-items: center; padding-top: 40px; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .brand { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 22px; }
+  .language { color: var(--on-hero); font-weight: 700; font-size: 15px; }
+  .brand img { border-radius: 12px; }
+  .hero h1 { font-size: clamp(40px, 7vw, 64px); margin-top: 32px; font-weight: 800; }
+  .lead { font-size: 19px; color: var(--on-hero-muted); margin: 16px 0 0; max-width: 520px; }
+  .stores { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+  .store { display: inline-block; padding: 14px 22px; border-radius: 14px; background: var(--on-hero); color: #075c38;
+    font-weight: 700; text-decoration: none; }
+  .soon { margin: 28px 0 0; font-weight: 700; }
+  .trust { list-style: none; padding: 0; margin: 20px 0 0; display: flex; flex-wrap: wrap; gap: 8px 20px; color: var(--on-hero-muted); font-size: 15px; }
+  .trust li::before { content: "✓ "; font-weight: 800; color: var(--on-hero); }
+  .phone { margin: 0 auto; width: min(320px, 78vw); border-radius: 44px; padding: 10px; background: var(--phone);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35); }
+  .phone img { display: block; width: 100%; height: auto; border-radius: 35px; }
+  .hero .phone { margin-bottom: -120px; }
+  @media (min-width: 860px) {
+    .hero-grid { grid-template-columns: 1.1fr 0.9fr; padding-top: 56px; }
+    .hero .phone { margin-bottom: -160px; }
+  }
+
+  /* Features */
+  .features { padding-top: 180px; }
+  .grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 36px; }
+  @media (min-width: 640px) { .grid { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 960px) { .grid { grid-template-columns: 1fr 1fr 1fr; } }
+  .card { background: var(--surface); border-radius: 20px; padding: 24px; }
+  .card p { margin: 8px 0 0; color: var(--muted); }
+  .pro { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: var(--tint); color: var(--on-tint);
+    font-size: 12px; font-weight: 700; vertical-align: 3px; letter-spacing: 0.02em; }
+  .extras { display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0 0; padding: 0; list-style: none; }
+  .extras li { padding: 8px 14px; border-radius: 999px; background: var(--tint-soft); color: var(--text); font-size: 15px; font-weight: 600; }
+
+  /* Gallery: swipes sideways on phones. */
+  .gallery { background: var(--surface); }
+  .shots { display: grid; grid-auto-flow: column; grid-auto-columns: min(250px, 70vw); gap: 24px; overflow-x: auto;
+    padding: 36px 16px 24px; margin: 0 -16px; scroll-snap-type: x mandatory; }
+  .shots figure { margin: 0; scroll-snap-align: center; }
+  .shots .phone { width: 100%; border-radius: 34px; padding: 8px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18); }
+  .shots .phone img { border-radius: 27px; }
+  .shots figcaption { text-align: center; margin-top: 14px; font-weight: 600; font-size: 15px; }
+  @media (min-width: 1100px) { .shots { justify-content: center; } }
+
+  /* Pricing */
+  .plans { display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 36px; }
+  @media (min-width: 760px) { .plans { grid-template-columns: 1fr 1fr; } }
+  .plan { border-radius: 24px; padding: 28px; background: var(--surface); }
+  .plan.featured { background: var(--tint-soft); outline: 2px solid var(--tint); }
+  .plan-price { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; margin: 10px 0 0; }
+  .plan-note { color: var(--muted); margin: 4px 0 0; font-size: 15px; font-weight: 500; letter-spacing: 0; }
+  .fine { margin-top: 16px; }
+  .checks { list-style: none; padding: 0; margin: 20px 0 0; display: grid; gap: 10px; }
+  .checks li { display: flex; gap: 10px; align-items: flex-start; }
+  .checks svg { flex-shrink: 0; margin-top: 4px; color: var(--tint); }
+
+  /* FAQ */
+  .faq-list { margin-top: 28px; border-top: 1px solid var(--line); }
+  details { border-bottom: 1px solid var(--line); }
+  summary { cursor: pointer; padding: 18px 0; font-weight: 700; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "+"; color: var(--tint); font-weight: 800; font-size: 22px; line-height: 1; }
+  details[open] summary::after { content: "–"; }
+  details p { margin: 0 0 18px; color: var(--muted); max-width: 760px; }
+
+  footer { border-top: 1px solid var(--line); padding: 32px 0 48px; color: var(--muted); font-size: 15px; }
+  footer nav { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-bottom: 8px; }
+  footer p { margin: 0; }
+  :focus-visible { outline: 3px solid var(--tint); outline-offset: 3px; border-radius: 6px; }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="top">
+        <div class="brand"><img src="images/icon.png" width="44" height="44" alt="">Tipbook</div>
+        <a class="language" href="index.html" hreflang="en" lang="en">English</a>
+      </div>
+      <h1>Descubre lo que de verdad ganas.</h1>
+      <p class="lead">La app de propinas para meseros y bartenders. Registra un turno en unos cinco segundos, ve tu pago real por hora y ten listo tu informe de propinas para tu empleador.</p>
+      <p class="soon">Muy pronto en iPhone, iPad y Android.</p>
+      <ul class="trust"><li>Sin anuncios, nunca</li><li>Sin cuenta</li><li>Tus propinas se quedan en tu teléfono</li></ul>
+    </div>
+    <div class="phone"><img src="images/es/home.jpg" width="860" height="1864" alt="La pantalla de Inicio de Tipbook: las propinas de esta semana, el avance hacia la meta semanal, el total ganado, las horas, el pago real por hora y los turnos recientes."></div>
+  </div>
+</header>
+
+<main>
+  <section class="features" aria-labelledby="features-title">
+    <div class="wrap">
+      <p class="eyebrow">Por qué Tipbook</p>
+      <h2 id="features-title">Todo lo que necesita un turno con propinas.<br>Nada que sobre.</h2>
+      <div class="grid">
+        <div class="card"><h3>Registra un turno en segundos</h3><p>Propinas en efectivo, con tarjeta, horas y listo. O toma una foto de tu ticket de cierre y Tipbook llena los totales, en tu propio teléfono.</p></div>
+        <div class="card"><h3>Tu pago real por hora</h3><p>Salario más propinas, menos lo que repartes, dividido entre las horas que de verdad trabajaste. Las horas extra se cuentan con la tarifa de tu talón de pago.</p></div>
+        <div class="card"><h3>Informes de propinas para tu empleador<span class="pro">PRO</span></h3><p>Un informe mensual de propinas, listo antes del día 10, y un resumen de fin de año para los impuestos con los cargos por servicio aparte.</p></div>
+        <div class="card"><h3>Descubre tus mejores turnos<span class="pro">PRO</span></h3><p>Tus mejores días, almuerzo frente a cena, propinas por comensal y tendencias de 12 semanas, para que sepas qué turnos tomar.</p></div>
+        <div class="card"><h3>Trae tu historial</h3><p>Importa un CSV de tu app de propinas anterior o de una hoja de cálculo. Exporta todo cuando quieras, en un archivo que abre cualquier hoja de cálculo.</p></div>
+        <div class="card"><h3>Privada desde el principio</h3><p>Sin anuncios, sin cuenta, y tus propinas nunca salen de tu teléfono. Están en las copias de seguridad de tu teléfono y puedes guardar un archivo de copia cuando quieras.</p></div>
+      </div>
+      <ul class="extras" aria-label="También incluye"><li>Widgets para la pantalla de inicio y la bloqueada</li><li>Comparte tu semana como imagen</li><li>Recordatorios después del turno</li><li>Calculadora de fondo de propinas</li><li>Revisión de cheques de pago</li><li>Modo oscuro</li><li>iPhone, iPad y Android</li><li>En español y en inglés</li></ul>
+    </div>
+  </section>
+
+  <section class="gallery" aria-labelledby="gallery-title">
+    <div class="wrap">
+      <p class="eyebrow">Un vistazo por dentro</p>
+      <h2 id="gallery-title">Hecha para el final de un turno largo.</h2>
+      <p class="section-lead">Números grandes, pocos toques y nada que estorbe.</p>
+      <div class="shots" tabindex="0" role="region" aria-label="Capturas de pantalla, se desplazan hacia los lados">
+        <figure><div class="phone"><img src="images/es/log.jpg" width="860" height="1864" loading="lazy" alt="La pantalla Registrar turno con las propinas en efectivo, con tarjeta y las horas, y los totales que suman."></div><figcaption>Registra un turno</figcaption></figure>
+        <figure><div class="phone"><img src="images/es/calendar.jpg" width="860" height="1864" loading="lazy" alt="El Calendario: cada día del mes muestra lo que pagó, con las propinas y el pago real por hora del mes arriba."></div><figcaption>Cada día de un vistazo</figcaption></figure>
+        <figure><div class="phone"><img src="images/es/reports.jpg" width="860" height="1864" loading="lazy" alt="Informes: el informe mensual de propinas para un empleador y el resumen de fin de año, cada uno con un botón para compartir el PDF."></div><figcaption>Informes para tu empleador y los impuestos</figcaption></figure>
+        <figure><div class="phone"><img src="images/es/insights.jpg" width="860" height="1864" loading="lazy" alt="Análisis: este mes hasta ahora, el mejor día de la semana, almuerzo frente a cena y la tendencia de 12 semanas."></div><figcaption>Análisis</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="pricing-title">
+    <div class="wrap">
+      <p class="eyebrow">Precios</p>
+      <h2 id="pricing-title">Gratis para registrar. Pro cuando quieras informes.</h2>
+      <div class="plans">
+        <div class="plan">
+          <h3>Gratis</h3>
+          <p class="plan-price">$0</p>
+          <p class="plan-note">Sin anuncios, sin límite de tiempo.</p>
+          <ul class="checks"><li><svg aria-hidden="true" viewBox="0 0 20 20" width="18" height="18"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Turnos ilimitados, historial y calendario</span></li><li><svg aria-hidden="true" viewBox="0 0 20 20" width="18" height="18"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Esta semana, este mes y tu pago real por hora</span></li><li><svg aria-hidden="true" viewBox="0 0 20 20" width="18" height="18"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Un trabajo con hasta dos puestos</span></li><li><svg aria-hidden="true" viewBox="0 0 20 20" width="18" height="18"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Escaneo de tickets, widgets y recordatorios</span></li><li><svg aria-hidden="true" viewBox="0 0 20 20" width="18" height="18"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Importar y exportar CSV, y copias de seguridad</span></li></ul>
+        </div>
+        <div class="plan featured">
+          <h3>Pro</h3>
+          <p class="plan-price">$24.99<span class="plan-note"> / año</span></p>
+          <p class="plan-note">14 días gratis, luego unos $2.08 al mes. O $3.99 al mes, o $49.99 una sola vez.</p>
+          <ul class="checks"><li><svg aria-hidden="true" viewBox="0 0 20 20" width="18" height="18"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Informe mensual de propinas para tu empleador, con un recordatorio antes del día 10</span></li><li><svg aria-hidden="true" viewBox="0 0 20 20" width="18" height="18"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Resumen de propinas de fin de año para los impuestos</span></li><li><svg aria-hidden="true" viewBox="0 0 20 20" width="18" height="18"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Trabajos y puestos ilimitados, con reparto de propinas automático</span></li><li><svg aria-hidden="true" viewBox="0 0 20 20" width="18" height="18"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Análisis: mejores días, almuerzo frente a cena, tendencias</span></li><li><svg aria-hidden="true" viewBox="0 0 20 20" width="18" height="18"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Tu año completo de un vistazo</span></li></ul>
+        </div>
+      </div>
+      <p class="plan-note fine">Precios en dólares estadounidenses; el App Store y Google Play muestran el precio de tu país.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="faq-title">
+    <div class="wrap">
+      <p class="eyebrow">Preguntas</p>
+      <h2 id="faq-title">Bueno saberlo</h2>
+      <div class="faq-list">
+        <details><summary>¿De verdad es gratis?</summary><p>Sí. Registrar turnos, tu historial, el calendario, los totales del mes, el escaneo de tickets, importar y exportar son gratis y sin anuncios. Pro agrega informes, análisis y más de un trabajo.</p></details>
+        <details><summary>¿La app está en español?</summary><p>Sí. Tipbook se muestra en español si tu teléfono está en español, o puedes elegirlo en Ajustes → Idioma. Los informes en PDF para tu empleador, la política de privacidad y los términos están en inglés.</p></details>
+        <details><summary>¿Dónde se guardan mis propinas?</summary><p>Solo en tu teléfono. No hay cuenta ni servidor de Tipbook. Tus propinas se incluyen en la copia de seguridad normal de iCloud o Google de tu teléfono, y en Ajustes puedes guardar un archivo de copia donde quieras, para pasarte a un teléfono nuevo.</p></details>
+        <details><summary>¿Puedo traer mis propinas de otra app?</summary><p>Sí. La mayoría de las apps de propinas pueden exportar un archivo CSV, casi siempre en Ajustes o Informes. Elígelo en Tipbook y se emparejan las columnas por nombre: propinas en efectivo y con tarjeta, reparto, horas u horas de entrada y salida, salario y ventas. Puedes cambiar cualquier columna antes de importar.</p></details>
+        <details><summary>¿Qué es el informe mensual de propinas?</summary><p>En EE. UU., los empleados que reciben $20 o más en propinas en un mes se las reportan a su empleador a más tardar el día 10 del mes siguiente. Tipbook llena un informe para cada empleador con tus turnos, listo para compartir como PDF.</p></details>
+        <details><summary>¿Tipbook hace mis impuestos?</summary><p>No. Tipbook guarda tus registros y hace informes con ellos. No es asesoría de impuestos; para eso, consulta a un profesional de impuestos.</p></details>
+        <details><summary>¿Cómo funcionan las suscripciones Pro?</summary><p>El plan anual empieza con 14 días gratis, y Tipbook te avisa 2 días antes de que termine la prueba. Las suscripciones se renuevan hasta que las canceles en los ajustes del App Store o de Google Play. De por vida es un pago único de $49.99.</p></details>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <nav aria-label="Sitio"><a href="support.html">Soporte (en inglés)</a><a href="privacy.html">Política de privacidad (en inglés)</a><a href="terms.html">Términos de uso (en inglés)</a><a href="index.html" hreflang="en" lang="en">English</a></nav>
+    <p>Tipbook solo guarda registros; no es asesoría de impuestos.</p>
+  </div>
+</footer>
+</body>
+</html>

@@ -28,6 +28,7 @@ import {
   type ShiftPeriod,
 } from '@/db/repo';
 import { useTheme } from '@/hooks/use-theme';
+import { t } from '@/i18n';
 import { track } from '@/lib/analytics';
 import { confirmDestructive } from '@/lib/confirm';
 import { errorText } from '@/lib/errors';
@@ -42,7 +43,7 @@ import {
   periodForStart,
 } from '@/lib/duration';
 import { haptic } from '@/lib/haptics';
-import { centsToInput, formatMoney, formatPercent, parseCount, parseMoney } from '@/lib/money';
+import { centsToInput, formatHourly, formatMoney, formatPercent, parseCount, parseMoney } from '@/lib/money';
 import { maybeAskForReview } from '@/lib/review-prompt';
 import { calcTipOut, computeShift, summarize } from '@/lib/shift-math';
 import { parseTipOutDrafts, type TipOutDraft } from '@/lib/tipouts';
@@ -99,16 +100,16 @@ const formFromShift = (s: Shift): Form => ({
   notes: s.notes ?? '',
 });
 
-const MONEY_ERROR = 'Enter an amount like 42 or 42.50';
+const moneyError = () => t('Enter an amount like 42 or 42.50');
 
 /** Amounts another screen can fill in (the tip pool calculator and the slip scanner). */
 const PREFILL_KEYS = ['cash', 'card', 'tipIn', 'tipOut', 'serviceCharge', 'sales', 'covers'] as const;
 type Prefill = Partial<Pick<Form, (typeof PREFILL_KEYS)[number]>>;
 
 function describeRule(p: Position) {
-  if (p.tipOutRule === 'fixed') return `${formatMoney(p.tipOutValue)} per shift`;
-  if (p.tipOutRule === 'pct_tips') return `${formatPercent(p.tipOutValue)} of tips`;
-  if (p.tipOutRule === 'pct_sales') return `${formatPercent(p.tipOutValue)} of sales`;
+  if (p.tipOutRule === 'fixed') return t('{amount} per shift', { amount: formatMoney(p.tipOutValue) });
+  if (p.tipOutRule === 'pct_tips') return t('{percent} of tips', { percent: formatPercent(p.tipOutValue) });
+  if (p.tipOutRule === 'pct_sales') return t('{percent} of sales', { percent: formatPercent(p.tipOutValue) });
   return null;
 }
 
@@ -173,7 +174,11 @@ export default function LogShiftScreen() {
           setPeriod(existing.period);
           setPeriodChosen(existing.period !== null);
           setTipOutRows(
-            existingTipOuts.map((t, i) => ({ key: `saved-${i}`, name: t.name, amount: centsToInput(t.amountCents) })),
+            existingTipOuts.map((tipOut, i) => ({
+              key: `saved-${i}`,
+              name: tipOut.name,
+              amount: centsToInput(tipOut.amountCents),
+            })),
           );
           setTipOutEdited(true);
           setShowMore(
@@ -298,14 +303,14 @@ export default function LogShiftScreen() {
         countShifts(db).then((nth) => track({ name: 'shift_logged', nth }), () => {});
         await celebrate(savedId);
       } else {
-        showToast({ title: 'Changes saved' });
+        showToast({ title: t('Changes saved') });
       }
       close();
       if (shiftId === undefined) {
         maybeAskForReview(db).catch((e) => console.warn('Review prompt failed', e));
       }
     } catch (e) {
-      showToast({ title: 'Couldn’t save this shift', detail: errorText(e) });
+      showToast({ title: t('Couldn’t save this shift'), detail: errorText(e) });
     } finally {
       setSaving(false);
     }
@@ -322,7 +327,7 @@ export default function LogShiftScreen() {
         listShiftsBetween(db, week.start, week.end),
       ]);
       const saved = monthShifts.find((s) => s.id === savedId);
-      if (!saved) throw new Error('Saved shift not found');
+      if (!saved) throw new Error(t('Saved shift not found'));
       const weekAfter = summarize(weekShifts).totalCents;
       // "This month" and the weekly goal only make sense for shifts in the current month and week.
       const isCurrentWeek = today >= week.start && today <= week.end;
@@ -336,50 +341,50 @@ export default function LogShiftScreen() {
         }),
       );
     } catch {
-      showToast({ title: 'Shift saved' });
+      showToast({ title: t('Shift saved') });
     }
   };
 
   const remove = async () => {
     if (shiftId === undefined) return;
-    const ok = await confirmDestructive('Delete this shift?', 'Its tips and hours will be removed.', 'Delete');
+    const ok = await confirmDestructive(t('Delete this shift?'), t('Its tips and hours will be removed.'), t('Delete'));
     if (!ok) return;
     try {
       await deleteShift(db, shiftId);
     } catch (e) {
-      showToast({ title: 'Couldn’t delete this shift', detail: errorText(e) });
+      showToast({ title: t('Couldn’t delete this shift'), detail: errorText(e) });
       return;
     }
     haptic.destructive();
-    showToast({ title: 'Shift deleted' });
+    showToast({ title: t('Shift deleted') });
     close();
   };
 
   const header = (
     <Stack.Screen
       options={{
-        title: shiftId !== undefined ? 'Edit shift' : 'Log shift',
+        title: shiftId !== undefined ? t('Edit shift') : t('Log shift'),
         headerLeft: () => (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Cancel"
+            accessibilityLabel={t('Cancel')}
             onPress={close}
             hitSlop={12}
             style={styles.headerButton}>
-            <ThemedText style={{ color: theme.tint }}>Cancel</ThemedText>
+            <ThemedText style={{ color: theme.tint }}>{t('Cancel')}</ThemedText>
           </Pressable>
         ),
         headerRight: () => (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Save"
+            accessibilityLabel={t('Save')}
             accessibilityState={{ disabled: !canSave }}
             onPress={save}
             disabled={!canSave}
             hitSlop={12}
             style={styles.headerButton}>
             <ThemedText type="smallBold" style={{ color: theme.tint, fontSize: 16, opacity: canSave ? 1 : 0.4 }}>
-              Save
+              {t('Save')}
             </ThemedText>
           </Pressable>
         ),
@@ -391,8 +396,8 @@ export default function LogShiftScreen() {
     return (
       <ThemedView style={styles.centered}>
         {header}
-        <ThemedText>This shift no longer exists.</ThemedText>
-        <Button title="Close" variant="secondary" onPress={close} />
+        <ThemedText>{t('This shift no longer exists.')}</ThemedText>
+        <Button title={t('Close')} variant="secondary" onPress={close} />
       </ThemedView>
     );
   }
@@ -405,7 +410,7 @@ export default function LogShiftScreen() {
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}>
-        <DateStepper value={form.date} onChange={set('date')} today={today} max={today} label="Shift date" />
+        <DateStepper value={form.date} onChange={set('date')} today={today} max={today} label={t('Shift date')} />
 
         {shiftId === undefined ? (
           <Pressable
@@ -414,7 +419,7 @@ export default function LogShiftScreen() {
             hitSlop={8}
             style={styles.scanLink}>
             <ThemedText type="smallBold" style={{ color: theme.tint }}>
-              Scan your checkout slip instead ›
+              {t('Scan your checkout slip instead ›')}
             </ThemedText>
           </Pressable>
         ) : null}
@@ -427,7 +432,7 @@ export default function LogShiftScreen() {
                 <Pressable
                   key={p.id}
                   accessibilityRole="button"
-                  accessibilityLabel={`${p.name} at ${p.jobName}`}
+                  accessibilityLabel={t('{position} at {job}', { position: p.name, job: p.jobName })}
                   accessibilityState={{ selected }}
                   onPress={() => setForm((f) => ({ ...f, positionId: p.id }))}
                   style={[styles.chip, { backgroundColor: selected ? theme.tint : theme.backgroundElement }]}>
@@ -442,44 +447,46 @@ export default function LogShiftScreen() {
 
         <View style={styles.row}>
           <MoneyField
-            label="Cash tips"
+            label={t('Cash tips')}
             prefix="$"
             value={form.cash}
             onChangeText={set('cash')}
-            error={cash === null ? MONEY_ERROR : null}
+            error={cash === null ? moneyError() : null}
             autoFocus={shiftId === undefined}
             returnKeyType="next"
           />
           <MoneyField
-            label="Card tips"
+            label={t('Card tips')}
             prefix="$"
             value={form.card}
             onChangeText={set('card')}
-            error={card === null ? MONEY_ERROR : null}
+            error={card === null ? moneyError() : null}
           />
         </View>
 
         <MoneyField
-          label="Hours worked"
-          suffix="hrs"
+          label={t('Hours worked')}
+          suffix={t('hrs')}
           value={usingTimes && timedMinutes !== null ? minutesToInput(timedMinutes) : form.hours}
           editable={!usingTimes}
           onChangeText={set('hours')}
-          error={!usingTimes && minutes === null ? 'Enter hours like 6.5 or 6:30 (24 max)' : null}
+          error={!usingTimes && minutes === null ? t('Enter hours like 6.5 or 6:30 (24 max)') : null}
           hint={
             usingTimes
-              ? `${formatClock(startTime!)} – ${formatClock(endTime!)}${breakMinutes ? `, ${breakMinutes} min break` : ''}`
+              ? `${formatClock(startTime!)} – ${formatClock(endTime!)}${
+                  breakMinutes ? t(', {minutes} min break', { minutes: breakMinutes }) : ''
+                }`
               : undefined
           }
         />
 
         <View style={styles.periodRow}>
           <ThemedText type="small" themeColor="textSecondary">
-            Shift
+            {t('Shift')}
           </ThemedText>
           <Chip
-            label="Lunch · AM"
-            accessibilityLabel="Lunch, AM shift"
+            label={t('Lunch · AM')}
+            accessibilityLabel={t('Lunch, AM shift')}
             selected={effectivePeriod === 'am'}
             onPress={() => {
               setPeriodChosen(true);
@@ -487,8 +494,8 @@ export default function LogShiftScreen() {
             }}
           />
           <Chip
-            label="Dinner · PM"
-            accessibilityLabel="Dinner, PM shift"
+            label={t('Dinner · PM')}
+            accessibilityLabel={t('Dinner, PM shift')}
             selected={effectivePeriod === 'pm'}
             onPress={() => {
               setPeriodChosen(true);
@@ -503,7 +510,7 @@ export default function LogShiftScreen() {
           onPress={() => setShowMore((v) => !v)}
           style={styles.moreToggle}>
           <ThemedText type="smallBold" style={{ color: theme.tint }}>
-            {showMore ? 'Hide details' : 'Tip-outs, service charges & more'}
+            {showMore ? t('Hide details') : t('Tip-outs, service charges & more')}
           </ThemedText>
         </Pressable>
 
@@ -511,13 +518,19 @@ export default function LogShiftScreen() {
           <View style={styles.more}>
             <View style={styles.timesBlock}>
               <ThemedText type="small" themeColor="textSecondary">
-                Start & end times (optional; they fill in hours worked)
+                {t('Start & end times (optional; they fill in hours worked)')}
               </ThemedText>
               <View style={styles.row}>
-                <TimeField label="Start" placeholder="4:30pm" value={form.start} onChangeText={set('start')} invalid={startTime === null} />
-                <TimeField label="End" placeholder="11pm" value={form.end} onChangeText={set('end')} invalid={endTime === null} />
                 <TimeField
-                  label="Break (min)"
+                  label={t('Start')}
+                  placeholder="4:30pm"
+                  value={form.start}
+                  onChangeText={set('start')}
+                  invalid={startTime === null}
+                />
+                <TimeField label={t('End')} placeholder="11pm" value={form.end} onChangeText={set('end')} invalid={endTime === null} />
+                <TimeField
+                  label={t('Break (min)')}
                   placeholder="0"
                   value={form.breakMinutes}
                   onChangeText={set('breakMinutes')}
@@ -527,13 +540,13 @@ export default function LogShiftScreen() {
               </View>
               {startTime === null || endTime === null ? (
                 <ThemedText type="small" style={{ color: theme.danger }}>
-                  Enter times like 4:30pm or 16:30.
+                  {t('Enter times like 4:30pm or 16:30.')}
                 </ThemedText>
               ) : null}
             </View>
             <View style={styles.row}>
               <MoneyField
-                label="Tip-out paid"
+                label={t('Tip-out paid')}
                 prefix="$"
                 value={
                   usingNames
@@ -547,30 +560,32 @@ export default function LogShiftScreen() {
                   setTipOutEdited(true);
                   set('tipOut')(v);
                 }}
-                error={!usingNames && tipOut === null ? MONEY_ERROR : null}
+                error={!usingNames && tipOut === null ? moneyError() : null}
                 hint={
                   usingNames
-                    ? `Total for ${namedTipOuts.entries.length} ${namedTipOuts.entries.length === 1 ? 'person' : 'people'}`
+                    ? namedTipOuts.entries.length === 1
+                      ? t('Total for 1 person')
+                      : t('Total for {count} people', { count: namedTipOuts.entries.length })
                     : usingAutoTipOut && position
-                      ? `Auto: ${describeRule(position)}`
+                      ? t('Auto: {rule}', { rule: describeRule(position) ?? '' })
                       : hasRule && !isPro && position
-                        ? `Pro fills this in: ${describeRule(position)}`
-                        : 'To bussers, bar, hosts'
+                        ? t('Pro fills this in: {rule}', { rule: describeRule(position) ?? '' })
+                        : t('To bussers, bar, hosts')
                 }
               />
               <MoneyField
-                label="Tips from coworkers"
+                label={t('Tips from coworkers')}
                 prefix="$"
                 value={form.tipIn}
                 onChangeText={set('tipIn')}
-                error={tipIn === null ? MONEY_ERROR : null}
-                hint="Tip share or pool"
+                error={tipIn === null ? moneyError() : null}
+                hint={t('Tip share or pool')}
               />
             </View>
 
             <View style={styles.names}>
               <ThemedText type="small" themeColor="textSecondary">
-                Tipped out to (optional, for your IRS tip record)
+                {t('Tipped out to (optional, for your IRS tip record)')}
               </ThemedText>
               {tipOutRows.map((row) => (
                 <View key={row.key} style={styles.nameRow}>
@@ -579,9 +594,9 @@ export default function LogShiftScreen() {
                     onChangeText={(name) =>
                       setTipOutRows((rows) => rows.map((r) => (r.key === row.key ? { ...r, name } : r)))
                     }
-                    placeholder="Name or role"
+                    placeholder={t('Name or role')}
                     placeholderTextColor={theme.textSecondary}
-                    accessibilityLabel="Tipped out to"
+                    accessibilityLabel={t('Tipped out to')}
                     maxLength={40}
                     style={[styles.nameInput, { backgroundColor: theme.backgroundElement, color: theme.text }]}
                   />
@@ -592,14 +607,14 @@ export default function LogShiftScreen() {
                     }
                     placeholder="$0"
                     placeholderTextColor={theme.textSecondary}
-                    accessibilityLabel={`Amount for ${row.name || 'this person'}`}
+                    accessibilityLabel={t('Amount for {name}', { name: row.name || t('this person') })}
                     inputMode="decimal"
                     keyboardType="decimal-pad"
                     style={[styles.amountInput, { backgroundColor: theme.backgroundElement, color: theme.text }]}
                   />
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={`Remove ${row.name || 'this person'}`}
+                    accessibilityLabel={t('Remove {name}', { name: row.name || t('this person') })}
                     onPress={() => setTipOutRows((rows) => rows.filter((r) => r.key !== row.key))}
                     hitSlop={8}
                     style={styles.removeName}>
@@ -609,7 +624,7 @@ export default function LogShiftScreen() {
               ))}
               {usingNames && !namedTipOuts.valid ? (
                 <ThemedText type="small" style={{ color: theme.danger }}>
-                  Give each person a name and an amount.
+                  {t('Give each person a name and an amount.')}
                 </ThemedText>
               ) : null}
               <View style={styles.chips}>
@@ -619,13 +634,13 @@ export default function LogShiftScreen() {
                     <Chip
                       key={name}
                       label={`+ ${name}`}
-                      accessibilityLabel={`Add ${name}`}
+                      accessibilityLabel={t('Add {name}', { name })}
                       selected={false}
                       onPress={() => setTipOutRows((rows) => [...rows, newRow(name)])}
                     />
                   ))}
                 <Chip
-                  label="+ Add person"
+                  label={t('+ Add person')}
                   selected={false}
                   onPress={() => setTipOutRows((rows) => [...rows, newRow()])}
                 />
@@ -634,44 +649,44 @@ export default function LogShiftScreen() {
 
             <View style={styles.row}>
               <MoneyField
-                label="Service charges"
+                label={t('Service charges')}
                 prefix="$"
                 value={form.serviceCharge}
                 onChangeText={set('serviceCharge')}
-                error={serviceCharge === null ? MONEY_ERROR : null}
-                hint="Auto-gratuity, kept apart from tips"
+                error={serviceCharge === null ? moneyError() : null}
+                hint={t('Auto-gratuity, kept apart from tips')}
               />
               <MoneyField
-                label="Sales"
+                label={t('Sales')}
                 prefix="$"
                 value={form.sales}
                 onChangeText={set('sales')}
-                error={sales === null ? MONEY_ERROR : null}
-                hint="Optional"
+                error={sales === null ? moneyError() : null}
+                hint={t('Optional')}
               />
             </View>
             <View style={styles.row}>
               <MoneyField
-                label="Covers"
+                label={t('Covers')}
                 value={form.covers}
                 onChangeText={set('covers')}
                 inputMode="numeric"
                 keyboardType="number-pad"
-                error={covers === null ? 'Enter a whole number' : null}
-                hint="Guests served (optional)"
+                error={covers === null ? t('Enter a whole number') : null}
+                hint={t('Guests served (optional)')}
               />
               <View style={styles.rowSpacer} />
             </View>
             <View style={styles.notesWrapper}>
               <ThemedText type="small" themeColor="textSecondary">
-                Notes
+                {t('Notes')}
               </ThemedText>
               <TextInput
                 value={form.notes}
                 onChangeText={set('notes')}
-                placeholder="Big party, patio, double…"
+                placeholder={t('Big party, patio, double…')}
                 placeholderTextColor={theme.textSecondary}
-                accessibilityLabel="Notes"
+                accessibilityLabel={t('Notes')}
                 maxLength={200}
                 style={[styles.notes, { backgroundColor: theme.backgroundElement, color: theme.text }]}
               />
@@ -680,29 +695,29 @@ export default function LogShiftScreen() {
         ) : null}
 
         <View style={[styles.summary, { backgroundColor: theme.tintSoft }]}>
-          <SummaryLine label="Net tips" value={totals ? formatMoney(totals.netTipsCents) : '—'} strong />
+          <SummaryLine label={t('Net tips')} value={totals ? formatMoney(totals.netTipsCents) : '—'} strong />
           <SummaryLine
-            label={hourlyWageCents > 0 ? `Wages (${formatMoney(hourlyWageCents)}/hr)` : 'Wages'}
+            label={hourlyWageCents > 0 ? t('Wages ({rate})', { rate: formatHourly(hourlyWageCents) }) : t('Wages')}
             value={totals ? formatMoney(totals.wagesCents) : '—'}
           />
-          <SummaryLine label="Total earned" value={totals ? formatMoney(totals.totalCents) : '—'} />
+          <SummaryLine label={t('Total earned')} value={totals ? formatMoney(totals.totalCents) : '—'} />
           <SummaryLine
-            label="Real hourly"
-            value={totals?.realHourlyCents != null ? `${formatMoney(totals.realHourlyCents)}/hr` : '—'}
+            label={t('Real hourly')}
+            value={totals?.realHourlyCents != null ? formatHourly(totals.realHourlyCents) : '—'}
           />
         </View>
 
         <Button
-          title={saving ? 'Saving…' : shiftId !== undefined ? 'Save changes' : 'Save shift'}
+          title={saving ? t('Saving…') : shiftId !== undefined ? t('Save changes') : t('Save shift')}
           onPress={save}
           disabled={!canSave}
         />
         {isEmpty ? (
           <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
-            Enter tips or hours to save.
+            {t('Enter tips or hours to save.')}
           </ThemedText>
         ) : null}
-        {shiftId !== undefined ? <Button title="Delete shift" variant="danger" onPress={remove} /> : null}
+        {shiftId !== undefined ? <Button title={t('Delete shift')} variant="danger" onPress={remove} /> : null}
       </ScrollView>
     </ThemedView>
   );

@@ -1,11 +1,12 @@
 /**
- * Builds the public website in site/: the Tipbook landing page (index.html), the support page
+ * Builds the public website in site/: the Tipbook landing page in English (index.html) and
+ * Spanish (es.html), the support page
  * (support.html, the store listings' Support URL), and the privacy policy and terms pages from
  * docs/privacy-policy.md and docs/terms-of-use.md. Run `npm run site` after editing either doc or the page text here, then upload the
  * site/ folder (see docs/launch-checklist.md).
  *
  * Images in site/images/ are web-sized copies of the store screenshots' raw screens and the app
- * icon; replace them when the app's screens change.
+ * icon (site/images/es/ has the Spanish screens); replace them when the app's screens change.
  */
 const fs = require('fs');
 const path = require('path');
@@ -130,6 +131,7 @@ const EXTRAS = [
   'Paycheck check',
   'Dark mode',
   'iPhone, iPad and Android',
+  'In English and Spanish',
 ];
 
 const GALLERY = [
@@ -197,6 +199,196 @@ const FAQ = [
     a: `The yearly plan starts with 14 days free, and Tipbook reminds you 2 days before the trial ends. Subscriptions renew until you cancel them in your App Store or Google Play settings. Lifetime is a one-time ${prices.lifetime} purchase.`,
   },
 ];
+
+/** The landing page's text in each language. Support, privacy and terms are in English only. */
+const COPY = {
+  en: {
+    title: `${appName}: tip tracker for servers and bartenders`,
+    description:
+      'Log tips in seconds and see your real hourly. Monthly tip reports for your employer, year-end summaries for tax time. No ads, no account; your tips stay on your phone.',
+    ogTitle: `${appName}: know what you really make`,
+    ogDescription: 'The tip tracker for servers and bartenders. No ads, no account.',
+    h1: 'Know what you really make.',
+    lead: 'The tip tracker for servers and bartenders. Log a shift in about five seconds, see your real hourly, and have your tip report ready for your employer.',
+    trust: ['No ads, ever', 'No account', 'Your tips stay on your phone'],
+    heroAlt:
+      'Tipbook’s Home screen: this week’s tips, progress toward a weekly goal, total earned, hours and real hourly, and recent shifts.',
+    soon: 'Coming soon to iPhone, iPad and Android.',
+    appStore: 'Download on the App Store',
+    googlePlay: 'Get it on Google Play',
+    featuresEyebrow: 'Why Tipbook',
+    featuresTitle: ['Everything a tipped shift needs.', 'Nothing it doesn’t.'],
+    features: FEATURES,
+    extrasLabel: 'Also included',
+    extras: EXTRAS,
+    galleryEyebrow: 'A look inside',
+    galleryTitle: 'Made for the end of a long shift.',
+    galleryLead: 'Big numbers, few taps, and nothing in your way.',
+    galleryLabel: 'Screenshots, scrolls sideways',
+    gallery: GALLERY,
+    images: 'images',
+    pricingEyebrow: 'Pricing',
+    pricingTitle: 'Free to track. Pro when you want reports.',
+    free: 'Free',
+    freeNote: 'No ads, no time limit.',
+    freeItems: FREE,
+    perYear: ' / year',
+    proNote: `14 days free, then about ${annualPerMonth} a month. Or ${prices.monthly} a month, or ${prices.lifetime} once.`,
+    proItems: PRO,
+    pricesNote: 'Prices in US dollars; the App Store and Google Play show your local price.',
+    faqEyebrow: 'Questions',
+    faqTitle: 'Good to know',
+    faq: FAQ,
+    navLabel: 'Site',
+    support: 'Support',
+    privacy: 'Privacy Policy',
+    terms: 'Terms of Use',
+    footer: `${appName} keeps records only; it isn’t tax advice.`,
+    other: { href: 'es.html', lang: 'es', label: 'Español' },
+  },
+  es: {
+    title: `${appName}: registro de propinas para meseros y bartenders`,
+    description:
+      'Registra tus propinas en segundos y ve tu pago real por hora. Informes mensuales de propinas para tu empleador y resúmenes de fin de año para los impuestos. Sin anuncios ni cuenta; tus propinas se quedan en tu teléfono.',
+    ogTitle: `${appName}: descubre lo que de verdad ganas`,
+    ogDescription: 'La app de propinas para meseros y bartenders. Sin anuncios, sin cuenta.',
+    h1: 'Descubre lo que de verdad ganas.',
+    lead: 'La app de propinas para meseros y bartenders. Registra un turno en unos cinco segundos, ve tu pago real por hora y ten listo tu informe de propinas para tu empleador.',
+    trust: ['Sin anuncios, nunca', 'Sin cuenta', 'Tus propinas se quedan en tu teléfono'],
+    heroAlt:
+      'La pantalla de Inicio de Tipbook: las propinas de esta semana, el avance hacia la meta semanal, el total ganado, las horas, el pago real por hora y los turnos recientes.',
+    soon: 'Muy pronto en iPhone, iPad y Android.',
+    appStore: 'Descárgala en el App Store',
+    googlePlay: 'Disponible en Google Play',
+    featuresEyebrow: 'Por qué Tipbook',
+    featuresTitle: ['Todo lo que necesita un turno con propinas.', 'Nada que sobre.'],
+    features: [
+      {
+        title: 'Registra un turno en segundos',
+        text: 'Propinas en efectivo, con tarjeta, horas y listo. O toma una foto de tu ticket de cierre y Tipbook llena los totales, en tu propio teléfono.',
+      },
+      {
+        title: 'Tu pago real por hora',
+        text: 'Salario más propinas, menos lo que repartes, dividido entre las horas que de verdad trabajaste. Las horas extra se cuentan con la tarifa de tu talón de pago.',
+      },
+      {
+        title: 'Informes de propinas para tu empleador',
+        text: 'Un informe mensual de propinas, listo antes del día 10, y un resumen de fin de año para los impuestos con los cargos por servicio aparte.',
+        pro: true,
+      },
+      {
+        title: 'Descubre tus mejores turnos',
+        text: 'Tus mejores días, almuerzo frente a cena, propinas por comensal y tendencias de 12 semanas, para que sepas qué turnos tomar.',
+        pro: true,
+      },
+      {
+        title: 'Trae tu historial',
+        text: 'Importa un CSV de tu app de propinas anterior o de una hoja de cálculo. Exporta todo cuando quieras, en un archivo que abre cualquier hoja de cálculo.',
+      },
+      {
+        title: 'Privada desde el principio',
+        text: 'Sin anuncios, sin cuenta, y tus propinas nunca salen de tu teléfono. Están en las copias de seguridad de tu teléfono y puedes guardar un archivo de copia cuando quieras.',
+      },
+    ],
+    extrasLabel: 'También incluye',
+    extras: [
+      'Widgets para la pantalla de inicio y la bloqueada',
+      'Comparte tu semana como imagen',
+      'Recordatorios después del turno',
+      'Calculadora de fondo de propinas',
+      'Revisión de cheques de pago',
+      'Modo oscuro',
+      'iPhone, iPad y Android',
+      'En español y en inglés',
+    ],
+    galleryEyebrow: 'Un vistazo por dentro',
+    galleryTitle: 'Hecha para el final de un turno largo.',
+    galleryLead: 'Números grandes, pocos toques y nada que estorbe.',
+    galleryLabel: 'Capturas de pantalla, se desplazan hacia los lados',
+    gallery: [
+      {
+        image: 'log',
+        caption: 'Registra un turno',
+        alt: 'La pantalla Registrar turno con las propinas en efectivo, con tarjeta y las horas, y los totales que suman.',
+      },
+      {
+        image: 'calendar',
+        caption: 'Cada día de un vistazo',
+        alt: 'El Calendario: cada día del mes muestra lo que pagó, con las propinas y el pago real por hora del mes arriba.',
+      },
+      {
+        image: 'reports',
+        caption: 'Informes para tu empleador y los impuestos',
+        alt: 'Informes: el informe mensual de propinas para un empleador y el resumen de fin de año, cada uno con un botón para compartir el PDF.',
+      },
+      {
+        image: 'insights',
+        caption: 'Análisis',
+        alt: 'Análisis: este mes hasta ahora, el mejor día de la semana, almuerzo frente a cena y la tendencia de 12 semanas.',
+      },
+    ],
+    images: 'images/es',
+    pricingEyebrow: 'Precios',
+    pricingTitle: 'Gratis para registrar. Pro cuando quieras informes.',
+    free: 'Gratis',
+    freeNote: 'Sin anuncios, sin límite de tiempo.',
+    freeItems: [
+      'Turnos ilimitados, historial y calendario',
+      'Esta semana, este mes y tu pago real por hora',
+      'Un trabajo con hasta dos puestos',
+      'Escaneo de tickets, widgets y recordatorios',
+      'Importar y exportar CSV, y copias de seguridad',
+    ],
+    perYear: ' / año',
+    proNote: `14 días gratis, luego unos ${annualPerMonth} al mes. O ${prices.monthly} al mes, o ${prices.lifetime} una sola vez.`,
+    proItems: [
+      'Informe mensual de propinas para tu empleador, con un recordatorio antes del día 10',
+      'Resumen de propinas de fin de año para los impuestos',
+      'Trabajos y puestos ilimitados, con reparto de propinas automático',
+      'Análisis: mejores días, almuerzo frente a cena, tendencias',
+      'Tu año completo de un vistazo',
+    ],
+    pricesNote: 'Precios en dólares estadounidenses; el App Store y Google Play muestran el precio de tu país.',
+    faqEyebrow: 'Preguntas',
+    faqTitle: 'Bueno saberlo',
+    faq: [
+      {
+        q: '¿De verdad es gratis?',
+        a: 'Sí. Registrar turnos, tu historial, el calendario, los totales del mes, el escaneo de tickets, importar y exportar son gratis y sin anuncios. Pro agrega informes, análisis y más de un trabajo.',
+      },
+      {
+        q: '¿La app está en español?',
+        a: 'Sí. Tipbook se muestra en español si tu teléfono está en español, o puedes elegirlo en Ajustes → Idioma. Los informes en PDF para tu empleador, la política de privacidad y los términos están en inglés.',
+      },
+      {
+        q: '¿Dónde se guardan mis propinas?',
+        a: 'Solo en tu teléfono. No hay cuenta ni servidor de Tipbook. Tus propinas se incluyen en la copia de seguridad normal de iCloud o Google de tu teléfono, y en Ajustes puedes guardar un archivo de copia donde quieras, para pasarte a un teléfono nuevo.',
+      },
+      {
+        q: '¿Puedo traer mis propinas de otra app?',
+        a: 'Sí. La mayoría de las apps de propinas pueden exportar un archivo CSV, casi siempre en Ajustes o Informes. Elígelo en Tipbook y se emparejan las columnas por nombre: propinas en efectivo y con tarjeta, reparto, horas u horas de entrada y salida, salario y ventas. Puedes cambiar cualquier columna antes de importar.',
+      },
+      {
+        q: '¿Qué es el informe mensual de propinas?',
+        a: 'En EE. UU., los empleados que reciben $20 o más en propinas en un mes se las reportan a su empleador a más tardar el día 10 del mes siguiente. Tipbook llena un informe para cada empleador con tus turnos, listo para compartir como PDF.',
+      },
+      {
+        q: '¿Tipbook hace mis impuestos?',
+        a: 'No. Tipbook guarda tus registros y hace informes con ellos. No es asesoría de impuestos; para eso, consulta a un profesional de impuestos.',
+      },
+      {
+        q: '¿Cómo funcionan las suscripciones Pro?',
+        a: `El plan anual empieza con 14 días gratis, y Tipbook te avisa 2 días antes de que termine la prueba. Las suscripciones se renuevan hasta que las canceles en los ajustes del App Store o de Google Play. De por vida es un pago único de ${prices.lifetime}.`,
+      },
+    ],
+    navLabel: 'Sitio',
+    support: 'Soporte (en inglés)',
+    privacy: 'Política de privacidad (en inglés)',
+    terms: 'Términos de uso (en inglés)',
+    footer: `${appName} solo guarda registros; no es asesoría de impuestos.`,
+    other: { href: 'index.html', lang: 'en', label: 'English' },
+  },
+};
 
 // Steps name the app's own buttons, so keep them in step with the screens.
 const SUPPORT = [
@@ -299,30 +491,27 @@ ${SUPPORT.map((s) => `<h2 id="${s.id}">${escape(s.title)}</h2>\n<ol>${s.steps.ma
     `Help with ${appName}: logging shifts, moving to a new phone, importing, reports, overtime, widgets, reminders and subscriptions.`,
   );
 
-function storeButtons() {
+function storeButtons(copy) {
   const links = [
-    STORE_LINKS.appStore && `<a class="store" href="${escape(STORE_LINKS.appStore)}">Download on the App Store</a>`,
-    STORE_LINKS.googlePlay && `<a class="store" href="${escape(STORE_LINKS.googlePlay)}">Get it on Google Play</a>`,
+    STORE_LINKS.appStore && `<a class="store" href="${escape(STORE_LINKS.appStore)}">${escape(copy.appStore)}</a>`,
+    STORE_LINKS.googlePlay && `<a class="store" href="${escape(STORE_LINKS.googlePlay)}">${escape(copy.googlePlay)}</a>`,
   ].filter(Boolean);
-  return links.length
-    ? `<div class="stores">${links.join('\n')}</div>`
-    : '<p class="soon">Coming soon to iPhone, iPad and Android.</p>';
+  return links.length ? `<div class="stores">${links.join('\n')}</div>` : `<p class="soon">${escape(copy.soon)}</p>`;
 }
 
 const check =
   '<svg aria-hidden="true" viewBox="0 0 20 20" width="18" height="18"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const list = (items) => `<ul class="checks">${items.map((i) => `<li>${check}<span>${escape(i)}</span></li>`).join('')}</ul>`;
 
-const landing = () => `<!doctype html>
-<html lang="en">
+const landing = (lang) => {
+  const copy = COPY[lang];
+  return `<!doctype html>
+<html lang="${lang}">
 <head>
-${head(
-  `${appName}: tip tracker for servers and bartenders`,
-  'Log tips in seconds and see your real hourly. Monthly tip reports for your employer, year-end summaries for tax time. No ads, no account; your tips stay on your phone.',
-)}
-<meta property="og:title" content="${escape(appName)}: know what you really make">
-<meta property="og:description" content="The tip tracker for servers and bartenders. No ads, no account.">
-<meta property="og:image" content="images/home.jpg">
+${head(copy.title, copy.description)}
+<meta property="og:title" content="${escape(copy.ogTitle)}">
+<meta property="og:description" content="${escape(copy.ogDescription)}">
+<meta property="og:image" content="${copy.images}/home.jpg">
 <style>
   :root {
     color-scheme: light dark;
@@ -353,7 +542,9 @@ ${head(
   /* Hero: the phone hangs over the next section. */
   .hero { background: linear-gradient(160deg, var(--hero-from) 0%, var(--hero-to) 100%); color: var(--on-hero); }
   .hero-grid { display: grid; grid-template-columns: 1fr; gap: 40px; align-items: center; padding-top: 40px; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
   .brand { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 22px; }
+  .language { color: var(--on-hero); font-weight: 700; font-size: 15px; }
   .brand img { border-radius: 12px; }
   .hero h1 { font-size: clamp(40px, 7vw, 64px); margin-top: 32px; font-weight: 800; }
   .lead { font-size: 19px; color: var(--on-hero-muted); margin: 16px 0 0; max-width: 520px; }
@@ -425,67 +616,70 @@ ${head(
 <header class="hero">
   <div class="wrap hero-grid">
     <div>
-      <div class="brand"><img src="images/icon.png" width="44" height="44" alt="">${escape(appName)}</div>
-      <h1>Know what you really make.</h1>
-      <p class="lead">The tip tracker for servers and bartenders. Log a shift in about five seconds, see your real hourly, and have your tip report ready for your employer.</p>
-      ${storeButtons()}
-      <ul class="trust"><li>No ads, ever</li><li>No account</li><li>Your tips stay on your phone</li></ul>
+      <div class="top">
+        <div class="brand"><img src="images/icon.png" width="44" height="44" alt="">${escape(appName)}</div>
+        <a class="language" href="${copy.other.href}" hreflang="${copy.other.lang}" lang="${copy.other.lang}">${escape(copy.other.label)}</a>
+      </div>
+      <h1>${escape(copy.h1)}</h1>
+      <p class="lead">${escape(copy.lead)}</p>
+      ${storeButtons(copy)}
+      <ul class="trust">${copy.trust.map((item) => `<li>${escape(item)}</li>`).join('')}</ul>
     </div>
-    <div class="phone"><img src="images/home.jpg" width="860" height="1864" alt="Tipbook’s Home screen: this week’s tips, progress toward a weekly goal, total earned, hours and real hourly, and recent shifts."></div>
+    <div class="phone"><img src="${copy.images}/home.jpg" width="860" height="1864" alt="${escape(copy.heroAlt)}"></div>
   </div>
 </header>
 
 <main>
   <section class="features" aria-labelledby="features-title">
     <div class="wrap">
-      <p class="eyebrow">Why Tipbook</p>
-      <h2 id="features-title">Everything a tipped shift needs.<br>Nothing it doesn’t.</h2>
+      <p class="eyebrow">${escape(copy.featuresEyebrow)}</p>
+      <h2 id="features-title">${copy.featuresTitle.map(escape).join('<br>')}</h2>
       <div class="grid">
-        ${FEATURES.map((f) => `<div class="card"><h3>${escape(f.title)}${f.pro ? '<span class="pro">PRO</span>' : ''}</h3><p>${escape(f.text)}</p></div>`).join('\n        ')}
+        ${copy.features.map((f) => `<div class="card"><h3>${escape(f.title)}${f.pro ? '<span class="pro">PRO</span>' : ''}</h3><p>${escape(f.text)}</p></div>`).join('\n        ')}
       </div>
-      <ul class="extras" aria-label="Also included">${EXTRAS.map((e) => `<li>${escape(e)}</li>`).join('')}</ul>
+      <ul class="extras" aria-label="${escape(copy.extrasLabel)}">${copy.extras.map((e) => `<li>${escape(e)}</li>`).join('')}</ul>
     </div>
   </section>
 
   <section class="gallery" aria-labelledby="gallery-title">
     <div class="wrap">
-      <p class="eyebrow">A look inside</p>
-      <h2 id="gallery-title">Made for the end of a long shift.</h2>
-      <p class="section-lead">Big numbers, few taps, and nothing in your way.</p>
-      <div class="shots" tabindex="0" role="region" aria-label="Screenshots, scrolls sideways">
-        ${GALLERY.map((g) => `<figure><div class="phone"><img src="images/${g.image}.jpg" width="860" height="1864" loading="lazy" alt="${escape(g.alt)}"></div><figcaption>${escape(g.caption)}</figcaption></figure>`).join('\n        ')}
+      <p class="eyebrow">${escape(copy.galleryEyebrow)}</p>
+      <h2 id="gallery-title">${escape(copy.galleryTitle)}</h2>
+      <p class="section-lead">${escape(copy.galleryLead)}</p>
+      <div class="shots" tabindex="0" role="region" aria-label="${escape(copy.galleryLabel)}">
+        ${copy.gallery.map((g) => `<figure><div class="phone"><img src="${copy.images}/${g.image}.jpg" width="860" height="1864" loading="lazy" alt="${escape(g.alt)}"></div><figcaption>${escape(g.caption)}</figcaption></figure>`).join('\n        ')}
       </div>
     </div>
   </section>
 
   <section aria-labelledby="pricing-title">
     <div class="wrap">
-      <p class="eyebrow">Pricing</p>
-      <h2 id="pricing-title">Free to track. Pro when you want reports.</h2>
+      <p class="eyebrow">${escape(copy.pricingEyebrow)}</p>
+      <h2 id="pricing-title">${escape(copy.pricingTitle)}</h2>
       <div class="plans">
         <div class="plan">
-          <h3>Free</h3>
+          <h3>${escape(copy.free)}</h3>
           <p class="plan-price">$0</p>
-          <p class="plan-note">No ads, no time limit.</p>
-          ${list(FREE)}
+          <p class="plan-note">${escape(copy.freeNote)}</p>
+          ${list(copy.freeItems)}
         </div>
         <div class="plan featured">
           <h3>Pro</h3>
-          <p class="plan-price">${escape(prices.annual)}<span class="plan-note"> / year</span></p>
-          <p class="plan-note">14 days free, then about ${escape(annualPerMonth)} a month. Or ${escape(prices.monthly)} a month, or ${escape(prices.lifetime)} once.</p>
-          ${list(PRO)}
+          <p class="plan-price">${escape(prices.annual)}<span class="plan-note">${escape(copy.perYear)}</span></p>
+          <p class="plan-note">${escape(copy.proNote)}</p>
+          ${list(copy.proItems)}
         </div>
       </div>
-      <p class="plan-note fine">Prices in US dollars; the App Store and Google Play show your local price.</p>
+      <p class="plan-note fine">${escape(copy.pricesNote)}</p>
     </div>
   </section>
 
   <section aria-labelledby="faq-title">
     <div class="wrap">
-      <p class="eyebrow">Questions</p>
-      <h2 id="faq-title">Good to know</h2>
+      <p class="eyebrow">${escape(copy.faqEyebrow)}</p>
+      <h2 id="faq-title">${escape(copy.faqTitle)}</h2>
       <div class="faq-list">
-        ${FAQ.map((f) => `<details><summary>${escape(f.q)}</summary><p>${escape(f.a)}</p></details>`).join('\n        ')}
+        ${copy.faq.map((f) => `<details><summary>${escape(f.q)}</summary><p>${escape(f.a)}</p></details>`).join('\n        ')}
       </div>
     </div>
   </section>
@@ -493,13 +687,14 @@ ${head(
 
 <footer>
   <div class="wrap">
-    <nav aria-label="Site"><a href="support.html">Support</a><a href="privacy.html">Privacy Policy</a><a href="terms.html">Terms of Use</a></nav>
-    <p>${escape(appName)} keeps records only; it isn’t tax advice.</p>
+    <nav aria-label="${escape(copy.navLabel)}"><a href="support.html">${escape(copy.support)}</a><a href="privacy.html">${escape(copy.privacy)}</a><a href="terms.html">${escape(copy.terms)}</a><a href="${copy.other.href}" hreflang="${copy.other.lang}" lang="${copy.other.lang}">${escape(copy.other.label)}</a></nav>
+    <p>${escape(copy.footer)}</p>
   </div>
 </footer>
 </body>
 </html>
 `;
+};
 
 const docs = [
   { source: 'privacy-policy.md', target: 'privacy.html', title: `${appName} Privacy Policy` },
@@ -514,13 +709,19 @@ for (const doc of docs) {
   if (placeholders) console.warn(`${doc.source} still has placeholders: ${[...new Set(placeholders)].join(', ')}`);
   fs.writeFileSync(path.join(out, doc.target), legalPage(doc.title, html));
 }
-fs.writeFileSync(path.join(out, 'index.html'), landing());
+fs.writeFileSync(path.join(out, 'index.html'), landing('en'));
+fs.writeFileSync(path.join(out, 'es.html'), landing('es'));
 fs.writeFileSync(path.join(out, 'support.html'), supportPage());
 if (!supportEmail) console.warn('support.html has no contact email: set SUPPORT_EMAIL in src/constants/app.ts.');
 
-const missing = ['icon.png', 'favicon.png', 'home.jpg', ...GALLERY.map((g) => `${g.image}.jpg`)].filter(
-  (file) => !fs.existsSync(path.join(out, 'images', file)),
-);
-if (missing.length) console.warn(`site/images is missing: ${missing.join(', ')}`);
+const missing = [
+  'images/icon.png',
+  'images/favicon.png',
+  ...Object.values(COPY).flatMap((copy) => [
+    `${copy.images}/home.jpg`,
+    ...copy.gallery.map((g) => `${copy.images}/${g.image}.jpg`),
+  ]),
+].filter((file) => !fs.existsSync(path.join(out, file)));
+if (missing.length) console.warn(`site/ is missing: ${missing.join(', ')}`);
 if (!STORE_LINKS.appStore && !STORE_LINKS.googlePlay) console.log('No store links yet, so the page says "Coming soon".');
-console.log(`Wrote ${path.relative(root, out)}/index.html, support.html, privacy.html and terms.html`);
+console.log(`Wrote ${path.relative(root, out)}/index.html, es.html, support.html, privacy.html and terms.html`);

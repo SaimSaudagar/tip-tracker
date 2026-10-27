@@ -34,15 +34,16 @@ import { SCHEMA_VERSION } from '@/db/migrations';
 import { readReminderSettings, saveReminderSettings } from '@/db/settings';
 import { useDbQuery } from '@/db/use-db-query';
 import { useTheme } from '@/hooks/use-theme';
+import { LANGUAGE_OPTIONS, parseLanguagePreference, t, type LanguagePreference } from '@/i18n';
 import { track } from '@/lib/analytics';
 import { APPEARANCE_OPTIONS, parseAppearance, type AppearancePreference } from '@/lib/appearance';
 import { parseBackup } from '@/lib/backup';
 import { confirmDestructive } from '@/lib/confirm';
 import { errorText } from '@/lib/errors';
-import { formatDayLabel, toISODate, todayISO, type Weekday } from '@/lib/dates';
+import { formatDayLabel, toISODate, todayISO, weekdayName, weekdayShortName, type Weekday } from '@/lib/dates';
 import { CSV, JSON_FILE, readPickedFile, shareTextFile } from '@/lib/files';
 import { haptic } from '@/lib/haptics';
-import { centsToInput, formatMoney, formatPercent, parseMoney } from '@/lib/money';
+import { centsToInput, formatHourly, formatMoney, formatPercent, parseMoney } from '@/lib/money';
 import { notificationsSupported, requestNotificationPermission, scheduleTestReminder } from '@/lib/notify';
 import { FREE_POSITION_LIMIT } from '@/lib/pro';
 import { buildSampleShifts } from '@/lib/sample-data';
@@ -51,26 +52,25 @@ import { shiftsToCsv } from '@/lib/transfer';
 import { usePro } from '@/purchases/pro-context';
 
 function describePosition(p: Position) {
-  const wage = p.hourlyWageCents > 0 ? `${formatMoney(p.hourlyWageCents)}/hr` : 'No hourly wage';
+  const wage = p.hourlyWageCents > 0 ? formatHourly(p.hourlyWageCents) : t('No hourly wage');
   const rule =
     p.tipOutRule === 'fixed'
-      ? `tip-out ${formatMoney(p.tipOutValue)}`
+      ? t('tip-out {amount}', { amount: formatMoney(p.tipOutValue) })
       : p.tipOutRule === 'pct_tips'
-        ? `tip-out ${formatPercent(p.tipOutValue)} of tips`
+        ? t('tip-out {percent} of tips', { percent: formatPercent(p.tipOutValue) })
         : p.tipOutRule === 'pct_sales'
-          ? `tip-out ${formatPercent(p.tipOutValue)} of sales`
+          ? t('tip-out {percent} of sales', { percent: formatPercent(p.tipOutValue) })
           : null;
   return [wage, rule].filter(Boolean).join(' · ');
 }
 
-const WEEK_STARTS: { value: Weekday; label: string }[] = [
-  { value: 0, label: 'Sunday' },
-  { value: 1, label: 'Monday' },
-];
+const WEEK_STARTS: Weekday[] = [0, 1];
 const REMINDER_TIMES = ['21:00', '22:00', '23:00', '00:00', '01:00', '02:00'];
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const WEEKDAYS: Weekday[] = [0, 1, 2, 3, 4, 5, 6];
 
-const PERMISSION_OFF = 'Notifications are off for Tipbook. Turn them on in your phone’s Settings app, then try again.';
+const permissionOff = () =>
+  t('Notifications are off for Tipbook. Turn them on in your phone’s Settings app, then try again.');
+const shiftCount = (count: number) => (count === 1 ? t('1 shift') : t('{count} shifts', { count }));
 
 export default function SettingsScreen() {
   const theme = useTheme();
@@ -97,6 +97,7 @@ export default function SettingsScreen() {
       reminders: readReminderSettings(settings),
       lastBackup: settings.last_backup_at ?? null,
       appearance: parseAppearance(settings.appearance),
+      language: parseLanguagePreference(settings.language),
     };
   }, []);
   const { data } = useDbQuery(load);
@@ -113,12 +114,12 @@ export default function SettingsScreen() {
       (change.weeklyRecap && !reminders.weeklyRecap);
     try {
       if (turningOn && !(await requestNotificationPermission())) {
-        setReminderMessage(PERMISSION_OFF);
+        setReminderMessage(permissionOff());
         return;
       }
       await saveReminderSettings(db, { ...reminders, ...change });
     } catch (e) {
-      setReminderMessage(`Couldn’t change reminders: ${errorText(e)}`);
+      setReminderMessage(t('Couldn’t change reminders: {error}', { error: errorText(e) }));
     }
   };
 
@@ -138,7 +139,7 @@ export default function SettingsScreen() {
     try {
       const shifts = await listAllShifts(db);
       if (shifts.length === 0) {
-        setExportMessage('No shifts to export yet.');
+        setExportMessage(t('No shifts to export yet.'));
         return;
       }
       const tipOuts = await listTipOutsBetween(db, '0000-01-01', '9999-12-31');
@@ -147,10 +148,10 @@ export default function SettingsScreen() {
         shiftsToCsv(shifts.map((s) => ({ ...s, tipOuts: tipOuts.get(s.id) ?? [] }))),
         CSV,
       );
-      setExportMessage(`Exported ${shifts.length} shift${shifts.length === 1 ? '' : 's'}.`);
+      setExportMessage(t('Exported {shifts}.', { shifts: shiftCount(shifts.length) }));
       track({ name: 'report_exported', type: 'csv' });
     } catch (e) {
-      setExportMessage(`Export failed: ${e instanceof Error ? e.message : String(e)}`);
+      setExportMessage(t('Export failed: {error}', { error: errorText(e) }));
     }
   };
 
@@ -163,9 +164,13 @@ export default function SettingsScreen() {
       await setSetting(db, 'last_backup_at', today);
       track({ name: 'report_exported', type: 'backup' });
       const count = backup.tables.shifts.length;
-      setBackupMessage({ text: `Backed up ${count} shift${count === 1 ? '' : 's'}. Keep the file somewhere safe, like iCloud Drive or Google Drive.` });
+      setBackupMessage({
+        text: t('Backed up {shifts}. Keep the file somewhere safe, like iCloud Drive or Google Drive.', {
+          shifts: shiftCount(count),
+        }),
+      });
     } catch (e) {
-      setBackupMessage({ text: `Backup failed: ${e instanceof Error ? e.message : String(e)}`, error: true });
+      setBackupMessage({ text: t('Backup failed: {error}', { error: errorText(e) }), error: true });
     }
   };
 
@@ -184,44 +189,55 @@ export default function SettingsScreen() {
       }
       const count = parsed.backup.tables.shifts.length;
       const exportedAt = new Date(parsed.backup.exportedAt);
-      const made = Number.isNaN(exportedAt.getTime()) ? 'an unknown date' : formatDayLabel(toISODate(exportedAt), todayISO());
+      const made = Number.isNaN(exportedAt.getTime())
+        ? t('an unknown date')
+        : formatDayLabel(toISODate(exportedAt), todayISO());
       const ok = await confirmDestructive(
-        'Replace everything on this phone?',
-        `This backup from ${made} has ${count} shift${count === 1 ? '' : 's'}. Everything currently in the app will be replaced by it.`,
-        'Replace',
+        t('Replace everything on this phone?'),
+        t('This backup from {date} has {shifts}. Everything currently in the app will be replaced by it.', {
+          date: made,
+          shifts: shiftCount(count),
+        }),
+        t('Replace'),
       );
       if (!ok) return;
       await restoreBackup(db, parsed.backup);
-      setBackupMessage({ text: `Restored ${count} shift${count === 1 ? '' : 's'} from ${made}.` });
+      setBackupMessage({ text: t('Restored {shifts} from {date}.', { shifts: shiftCount(count), date: made }) });
     } catch (e) {
-      setBackupMessage({ text: `Restore failed, nothing was changed: ${e instanceof Error ? e.message : String(e)}`, error: true });
+      setBackupMessage({ text: t('Restore failed, nothing was changed: {error}', { error: errorText(e) }), error: true });
     }
   };
 
   const restorePro = async () => {
     setProMessage(null);
     try {
-      setProMessage((await restorePurchases()) ? 'Pro restored. Thanks for your support!' : 'No previous purchase found for this account.');
+      setProMessage(
+        (await restorePurchases())
+          ? t('Pro restored. Thanks for your support!')
+          : t('No previous purchase found for this account.'),
+      );
     } catch (e) {
-      setProMessage(`Couldn’t restore purchases: ${e instanceof Error ? e.message : String(e)}`);
+      setProMessage(t('Couldn’t restore purchases: {error}', { error: errorText(e) }));
     }
   };
 
   const eraseEverything = async () => {
     const ok = await confirmDestructive(
-      'Delete all data?',
-      'Every shift, position, paycheck and setting on this phone will be erased, and the app will start over. This can’t be undone, so back up first if you might want them later.',
-      'Delete everything',
+      t('Delete all data?'),
+      t(
+        'Every shift, position, paycheck and setting on this phone will be erased, and the app will start over. This can’t be undone, so back up first if you might want them later.',
+      ),
+      t('Delete everything'),
     );
     if (!ok) return;
     try {
       await deleteAllData(db);
     } catch (e) {
-      showToast({ title: 'Couldn’t delete your data, nothing was changed', detail: errorText(e) });
+      showToast({ title: t('Couldn’t delete your data, nothing was changed'), detail: errorText(e) });
       return;
     }
     haptic.destructive();
-    showToast({ title: 'All data deleted' });
+    showToast({ title: t('All data deleted') });
   };
 
   const loadSampleShifts = async () => {
@@ -241,7 +257,7 @@ export default function SettingsScreen() {
       `\n\n—\nTipbook ${Constants.expoConfig?.version ?? ''} on ${Platform.OS} ${String(Platform.Version)}`,
     );
     Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`).catch(() =>
-      showToast({ title: 'No email app found', detail: `Write to ${SUPPORT_EMAIL}` }),
+      showToast({ title: t('No email app found'), detail: t('Write to {email}', { email: SUPPORT_EMAIL }) }),
     );
   };
 
@@ -250,20 +266,20 @@ export default function SettingsScreen() {
       <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
         <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
           <ThemedText type="subtitle" accessibilityRole="header">
-            Settings
+            {t('Settings')}
           </ThemedText>
 
           <View style={[styles.proCard, { backgroundColor: isPro ? theme.backgroundElement : theme.tintSoft }]}>
-            <ThemedText type="smallBold">{isPro ? 'Tipbook Pro is active' : 'Tipbook Pro'}</ThemedText>
+            <ThemedText type="smallBold">{isPro ? t('Tipbook Pro is active') : 'Tipbook Pro'}</ThemedText>
             <ThemedText type="small" themeColor={isPro ? 'textSecondary' : undefined}>
               {isPro
-                ? 'Thanks for supporting an app with no ads. Manage your subscription in your App Store or Google Play account.'
-                : 'Reports for your employer and tax time, automatic tip-outs, every job you work, and your year at a glance.'}
+                ? t('Thanks for supporting an app with no ads. Manage your subscription in your App Store or Google Play account.')
+                : t('Reports for your employer and tax time, automatic tip-outs, every job you work, and your year at a glance.')}
             </ThemedText>
             {!isPro ? (
               <>
-                <Button title="See Pro" onPress={() => showPaywall('settings')} />
-                <Button title="Restore purchases" variant="secondary" onPress={restorePro} />
+                <Button title={t('See Pro')} onPress={() => showPaywall('settings')} />
+                <Button title={t('Restore purchases')} variant="secondary" onPress={restorePro} />
               </>
             ) : null}
             {proMessage ? (
@@ -281,13 +297,13 @@ export default function SettingsScreen() {
             ) : null}
           </View>
 
-          <Section title="Jobs & positions">
+          <Section title={t('Jobs & positions')}>
             {data?.positions.map((p) => (
               <Pressable
                 key={p.id}
                 accessibilityRole="button"
-                accessibilityLabel={`${p.name} at ${p.jobName}, ${describePosition(p)}`}
-                accessibilityHint="Edit this position"
+                accessibilityLabel={`${t('{position} at {job}', { position: p.name, job: p.jobName })}, ${describePosition(p)}`}
+                accessibilityHint={t('Edit this position')}
                 onPress={() => router.push({ pathname: '/position', params: { id: String(p.id) } })}
                 style={({ pressed }) => [
                   styles.row,
@@ -301,21 +317,21 @@ export default function SettingsScreen() {
                 </ThemedText>
               </Pressable>
             ))}
-            <Button title="Add a position" variant="secondary" onPress={addPosition} />
+            <Button title={t('Add a position')} variant="secondary" onPress={addPosition} />
             <ThemedText type="small" themeColor="textSecondary">
-              Set a wage and tip-out rule per position. Server and bartender at the same place can differ.
+              {t('Set a wage and tip-out rule per position. Server and bartender at the same place can differ.')}
             </ThemedText>
           </Section>
 
-          <Section title="Reminders">
+          <Section title={t('Reminders')}>
             {!notificationsSupported ? (
               <ThemedText type="small" themeColor="textSecondary">
-                Reminders work in the phone app, not in a browser.
+                {t('Reminders work in the phone app, not in a browser.')}
               </ThemedText>
             ) : null}
             <ToggleRow
-              label="After-shift reminder"
-              hint="Only on days you haven’t logged a shift yet."
+              label={t('After-shift reminder')}
+              hint={t('Only on days you haven’t logged a shift yet.')}
               value={!!reminders?.enabled}
               disabled={!notificationsSupported || !reminders}
               onValueChange={(on) => updateReminders({ enabled: on })}
@@ -323,42 +339,42 @@ export default function SettingsScreen() {
             {reminders?.enabled ? (
               <>
                 <View style={styles.chips}>
-                  {REMINDER_TIMES.map((t) => (
+                  {REMINDER_TIMES.map((time) => (
                     <Chip
-                      key={t}
-                      label={formatTime(t)}
-                      accessibilityLabel={`Remind me at ${formatTime(t)}`}
-                      selected={reminders.time === t}
-                      onPress={() => updateReminders({ time: t })}
+                      key={time}
+                      label={formatTime(time)}
+                      accessibilityLabel={t('Remind me at {time}', { time: formatTime(time) })}
+                      selected={reminders.time === time}
+                      onPress={() => updateReminders({ time })}
                     />
                   ))}
                 </View>
                 <ThemedText type="small" themeColor="textSecondary">
-                  On these days
+                  {t('On these days')}
                 </ThemedText>
                 <View style={styles.chips}>
-                  {DAY_NAMES.map((name, day) => (
+                  {WEEKDAYS.map((day) => (
                     <Chip
-                      key={name}
-                      label={name.slice(0, 3)}
-                      accessibilityLabel={name}
-                      selected={reminders.days.includes(day as Weekday)}
-                      onPress={() => toggleDay(day as Weekday)}
+                      key={day}
+                      label={weekdayShortName(day)}
+                      accessibilityLabel={weekdayName(day)}
+                      selected={reminders.days.includes(day)}
+                      onPress={() => toggleDay(day)}
                     />
                   ))}
                 </View>
               </>
             ) : null}
             <ToggleRow
-              label="Weekly recap"
-              hint="The morning after your week ends: what you made and your real hourly. The amounts show in the notification."
+              label={t('Weekly recap')}
+              hint={t('The morning after your week ends: what you made and your real hourly. The amounts show in the notification.')}
               value={!!reminders?.weeklyRecap}
               disabled={!notificationsSupported || !reminders}
               onValueChange={(on) => updateReminders({ weeklyRecap: on })}
             />
             <ToggleRow
-              label={isPro ? 'Monthly report reminder' : 'Monthly report reminder · Pro'}
-              hint="On the 8th, a nudge that last month’s tip report is due to your employer by the 10th."
+              label={isPro ? t('Monthly report reminder') : t('Monthly report reminder · Pro')}
+              hint={t('On the 8th, a nudge that last month’s tip report is due to your employer by the 10th.')}
               value={isPro && !!reminders?.reportReminder}
               disabled={!notificationsSupported || !reminders}
               onValueChange={(on) => (isPro ? updateReminders({ reportReminder: on }) : showPaywall('reports'))}
@@ -378,7 +394,7 @@ export default function SettingsScreen() {
                     setTestMessage(
                       (await scheduleTestReminder(60))
                         ? 'Scheduled. Leave the app or lock your phone; it arrives in about a minute. Tap it to open Log shift.'
-                        : PERMISSION_OFF,
+                        : permissionOff(),
                     );
                   }}
                 />
@@ -391,20 +407,20 @@ export default function SettingsScreen() {
             ) : null}
           </Section>
 
-          <Section title="Weekly goal">
+          <Section title={t('Weekly goal')}>
             {data ? <GoalField goalCents={data.weeklyGoal} onSave={(cents) => setWeeklyGoal(db, cents)} /> : null}
             <ThemedText type="small" themeColor="textSecondary">
-              What you aim to earn each week, tips plus wages. Home shows how close you are. Leave it empty for no goal.
+              {t('What you aim to earn each week, tips plus wages. Home shows how close you are. Leave it empty for no goal.')}
             </ThemedText>
           </Section>
 
-          <Section title="Week starts on">
+          <Section title={t('Week starts on')}>
             <View style={styles.segment}>
-              {WEEK_STARTS.map(({ value, label }) => (
+              {WEEK_STARTS.map((value) => (
                 <SegmentItem
                   key={value}
-                  label={label}
-                  accessibilityLabel={`Week starts on ${label}`}
+                  label={weekdayName(value)}
+                  accessibilityLabel={t('Week starts on {day}', { day: weekdayName(value) })}
                   selected={data?.weekStart === value}
                   onPress={() => setWeekStart(db, value)}
                 />
@@ -412,13 +428,13 @@ export default function SettingsScreen() {
             </View>
           </Section>
 
-          <Section title="Appearance">
+          <Section title={t('Appearance')}>
             <View style={styles.segment}>
               {APPEARANCE_OPTIONS.map(({ value, label }) => (
                 <SegmentItem
                   key={value}
-                  label={label}
-                  accessibilityLabel={`Appearance: ${label}`}
+                  label={t(label)}
+                  accessibilityLabel={t('Appearance: {option}', { option: t(label) })}
                   selected={data?.appearance === value}
                   onPress={() => setSetting(db, 'appearance', value satisfies AppearancePreference)}
                 />
@@ -426,20 +442,34 @@ export default function SettingsScreen() {
             </View>
           </Section>
 
-          <Section title="Your data">
+          <Section title={t('Language')}>
+            <View style={styles.segment}>
+              {LANGUAGE_OPTIONS.map(({ value, label }) => (
+                <SegmentItem
+                  key={value}
+                  // The language names stay in their own language, so they're findable whatever is showing.
+                  label={value === 'system' ? t(label) : label}
+                  accessibilityLabel={`${t('Language')}: ${value === 'system' ? t(label) : label}`}
+                  selected={data?.language === value}
+                  onPress={() => setSetting(db, 'language', value satisfies LanguagePreference)}
+                />
+              ))}
+            </View>
+          </Section>
+
+          <Section title={t('Your data')}>
             <ThemedText type="small" themeColor="textSecondary">
-              Your tips are stored only on this phone and included in your phone’s regular backups. No account, no
-              ads.
+              {t('Your tips are stored only on this phone and included in your phone’s regular backups. No account, no ads.')}
             </ThemedText>
             <View style={[styles.backupCard, { backgroundColor: theme.backgroundElement }]}>
-              <ThemedText type="smallBold">Full backup</ThemedText>
+              <ThemedText type="smallBold">{t('Full backup')}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 {data?.lastBackup
-                  ? `Last backup: ${formatDayLabel(data.lastBackup, todayISO())}`
-                  : 'Not backed up yet. One file holds every shift, position and setting, so you can move to a new phone.'}
+                  ? t('Last backup: {date}', { date: formatDayLabel(data.lastBackup, todayISO()) })
+                  : t('Not backed up yet. One file holds every shift, position and setting, so you can move to a new phone.')}
               </ThemedText>
-              <Button title="Back up now" onPress={backUp} />
-              <Button title="Restore from a backup" variant="secondary" onPress={restore} />
+              <Button title={t('Back up now')} onPress={backUp} />
+              <Button title={t('Restore from a backup')} variant="secondary" onPress={restore} />
               {backupMessage ? (
                 <ThemedText
                   type="small"
@@ -449,24 +479,27 @@ export default function SettingsScreen() {
                 </ThemedText>
               ) : null}
             </View>
-            <Button title="Export all shifts (CSV)" variant="secondary" onPress={exportCsv} />
+            <Button title={t('Export all shifts (CSV)')} variant="secondary" onPress={exportCsv} />
             {exportMessage ? (
               <ThemedText type="small" themeColor="textSecondary" accessibilityLiveRegion="polite">
                 {exportMessage}
               </ThemedText>
             ) : null}
-            <Button title="Import from another app (CSV)" variant="secondary" onPress={() => router.push('/import')} />
-            <Button title="Delete all data" variant="danger" onPress={eraseEverything} />
+            <Button title={t('Import from another app (CSV)')} variant="secondary" onPress={() => router.push('/import')} />
+            <Button title={t('Delete all data')} variant="danger" onPress={eraseEverything} />
           </Section>
 
-          <Section title="Tools">
-            <LinkRow label="Tip pool calculator" onPress={() => router.push('/tip-pool')} />
+          <Section title={t('Tools')}>
+            <LinkRow label={t('Tip pool calculator')} onPress={() => router.push('/tip-pool')} />
           </Section>
 
-          <Section title="About">
-            <LinkRow label="Privacy policy" onPress={() => router.push({ pathname: '/legal', params: { doc: 'privacy' } })} />
-            <LinkRow label="Terms of use" onPress={() => router.push({ pathname: '/legal', params: { doc: 'terms' } })} />
-            {SUPPORT_EMAIL ? <LinkRow label="Contact support" onPress={contactSupport} /> : null}
+          <Section title={t('About')}>
+            <LinkRow
+              label={t('Privacy policy')}
+              onPress={() => router.push({ pathname: '/legal', params: { doc: 'privacy' } })}
+            />
+            <LinkRow label={t('Terms of use')} onPress={() => router.push({ pathname: '/legal', params: { doc: 'terms' } })} />
+            {SUPPORT_EMAIL ? <LinkRow label={t('Contact support')} onPress={contactSupport} /> : null}
           </Section>
 
           {__DEV__ ? (
@@ -476,7 +509,7 @@ export default function SettingsScreen() {
           ) : null}
 
           <ThemedText type="small" themeColor="textSecondary" style={styles.version}>
-            Tipbook {Constants.expoConfig?.version ?? ''} · Records only, not tax advice.
+            Tipbook {Constants.expoConfig?.version ?? ''} · {t('Records only, not tax advice.')}
           </ThemedText>
         </ScrollView>
       </SafeAreaView>
@@ -504,20 +537,20 @@ function GoalField({ goalCents, onSave }: { goalCents: number | null; onSave: (c
       await onSave(parsed > 0 ? parsed : null);
       setDraft(null);
     } catch (e) {
-      showToast({ title: 'Couldn’t save your goal', detail: errorText(e) });
+      showToast({ title: t('Couldn’t save your goal'), detail: errorText(e) });
     }
   };
   return (
     <MoneyField
-      label="Goal per week"
+      label={t('Goal per week')}
       prefix="$"
-      placeholder="No goal"
+      placeholder={t('No goal')}
       value={value}
       onChangeText={setDraft}
       onBlur={commit}
       onSubmitEditing={commit}
       returnKeyType="done"
-      error={parsed === null ? 'Enter an amount like 800' : null}
+      error={parsed === null ? t('Enter an amount like 800') : null}
     />
   );
 }

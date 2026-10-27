@@ -4,6 +4,7 @@ import { useRouter, type Href } from 'expo-router';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 
+import { t } from '@/i18n';
 import { track } from '@/lib/analytics';
 import type { PlannedNotification } from '@/lib/reminders-plan';
 
@@ -25,7 +26,7 @@ Notifications.setNotificationHandler({
 async function ensureChannel() {
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-      name: 'Reminders',
+      name: t('Reminders'),
       importance: AndroidImportance.DEFAULT,
     });
   }

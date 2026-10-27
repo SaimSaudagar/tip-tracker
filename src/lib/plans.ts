@@ -4,6 +4,8 @@
  * because the paywall must show exactly what the store will charge.
  */
 
+import { t } from '@/i18n';
+
 export type PlanId = 'annual' | 'monthly' | 'lifetime' | 'annual_month_trial';
 
 export type Plan = {
@@ -31,48 +33,47 @@ export const DEFAULT_PRICES: Record<PlanId, StorePrice> = {
   annual_month_trial: { priceString: '$24.99', pricePerMonthString: '$2.08' },
 };
 
-const TRIAL_TERMS = 'No payment now. We’ll remind you 2 days before your trial ends.';
-
 export function buildPlan(id: PlanId, price: StorePrice = DEFAULT_PRICES[id]): Plan {
   const p = price.priceString;
   const perMonth = price.pricePerMonthString;
+  const trialTerms = t('No payment now. We’ll remind you 2 days before your trial ends.');
   switch (id) {
     case 'annual':
       return {
         id,
-        title: 'Yearly',
-        price: `${p}/year`,
-        detail: perMonth ? `14 days free, then ${perMonth}/month` : '14 days free',
-        terms: `${TRIAL_TERMS} Then ${p} a year, renewing until you cancel in Settings.`,
-        cta: 'Start my free 14 days',
-        badge: 'Best value',
+        title: t('Yearly'),
+        price: t('{price}/year', { price: p }),
+        detail: perMonth ? t('14 days free, then {price}/month', { price: perMonth }) : t('14 days free'),
+        terms: `${trialTerms} ${t('Then {price} a year, renewing until you cancel in Settings.', { price: p })}`,
+        cta: t('Start my free 14 days'),
+        badge: t('Best value'),
       };
     case 'monthly':
       return {
         id,
-        title: 'Monthly',
-        price: `${p}/month`,
-        detail: 'No trial. Cancel anytime.',
-        terms: `${p} a month, renewing until you cancel in Settings.`,
-        cta: `Subscribe for ${p}/month`,
+        title: t('Monthly'),
+        price: t('{price}/month', { price: p }),
+        detail: t('No trial. Cancel anytime.'),
+        terms: t('{price} a month, renewing until you cancel in Settings.', { price: p }),
+        cta: t('Subscribe for {price}/month', { price: p }),
       };
     case 'lifetime':
       return {
         id,
-        title: 'Lifetime',
-        price: `${p} once`,
-        detail: 'Pay once, keep Pro forever.',
-        terms: 'One-time purchase. No subscription.',
-        cta: `Buy Pro for ${p}`,
+        title: t('Lifetime'),
+        price: t('{price} once', { price: p }),
+        detail: t('Pay once, keep Pro forever.'),
+        terms: t('One-time purchase. No subscription.'),
+        cta: t('Buy Pro for {price}', { price: p }),
       };
     case 'annual_month_trial':
       return {
         id,
-        title: 'Yearly',
-        price: `${p}/year`,
-        detail: `1 month free, then ${p}/year`,
-        terms: `${TRIAL_TERMS} Then ${p} a year, renewing until you cancel in Settings.`,
-        cta: 'Try Pro free for a month',
+        title: t('Yearly'),
+        price: t('{price}/year', { price: p }),
+        detail: t('1 month free, then {price}/year', { price: p }),
+        terms: `${trialTerms} ${t('Then {price} a year, renewing until you cancel in Settings.', { price: p })}`,
+        cta: t('Try Pro free for a month'),
       };
   }
 }

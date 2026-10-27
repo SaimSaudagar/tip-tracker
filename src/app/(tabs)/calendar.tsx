@@ -16,10 +16,11 @@ import { useDbQuery } from '@/db/use-db-query';
 import { useTheme } from '@/hooks/use-theme';
 import { useToday } from '@/hooks/use-today';
 import { useWideLayout } from '@/hooks/use-wide-layout';
+import { t } from '@/i18n';
 import { buildMonthGrid, formatCellAmount, shiftMonth, summarizeByDay, weekdayInitials } from '@/lib/calendar';
-import { formatDayLabel, formatMonthYear, monthRange } from '@/lib/dates';
+import { addDays, formatDayLabel, formatMonthYear, monthRange } from '@/lib/dates';
 import { formatDuration } from '@/lib/duration';
-import { formatMoney } from '@/lib/money';
+import { formatHourly, formatMoney } from '@/lib/money';
 import { summarizeRange } from '@/lib/shift-math';
 
 const CELL_MAX_FONT_SCALE = 1.3;
@@ -64,7 +65,7 @@ export default function CalendarScreen() {
             <View style={styles.monthBar}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Previous month"
+                accessibilityLabel={t('Previous month')}
                 onPress={() => goToMonth(-1)}
                 hitSlop={12}
                 style={styles.arrow}>
@@ -75,7 +76,7 @@ export default function CalendarScreen() {
               </ThemedText>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Next month"
+                accessibilityLabel={t('Next month')}
                 disabled={isCurrentMonth}
                 onPress={() => goToMonth(1)}
                 hitSlop={12}
@@ -85,13 +86,13 @@ export default function CalendarScreen() {
             </View>
 
             <View style={[styles.summary, { backgroundColor: theme.backgroundElement }]}>
-              <SummaryStat label="Tips" value={monthSummary ? formatMoney(monthSummary.netTipsCents) : '—'} />
-              <SummaryStat label="Hours" value={monthSummary ? formatDuration(monthSummary.minutesWorked) : '—'} />
+              <SummaryStat label={t('Tips')} value={monthSummary ? formatMoney(monthSummary.netTipsCents) : '—'} />
+              <SummaryStat label={t('Hours')} value={monthSummary ? formatDuration(monthSummary.minutesWorked) : '—'} />
               <SummaryStat
-                label="Real hourly"
-                value={monthSummary?.realHourlyCents != null ? `${formatMoney(monthSummary.realHourlyCents)}/hr` : '—'}
+                label={t('Real hourly')}
+                value={monthSummary?.realHourlyCents != null ? formatHourly(monthSummary.realHourlyCents) : '—'}
               />
-              <SummaryStat label="Shifts" value={monthSummary ? String(monthSummary.shiftCount) : '—'} />
+              <SummaryStat label={t('Shifts')} value={monthSummary ? String(monthSummary.shiftCount) : '—'} />
             </View>
 
             <View style={styles.weekRow}>
@@ -114,7 +115,9 @@ export default function CalendarScreen() {
                         key={cell.date}
                         accessibilityRole="button"
                         accessibilityState={{ selected: isSelected, disabled: isFuture }}
-                        accessibilityLabel={`${formatDayLabel(cell.date, today)}${day ? `, ${formatMoney(day.netTipsCents)} in tips` : ', no shifts'}`}
+                        accessibilityLabel={`${formatDayLabel(cell.date, today)}, ${
+                          day ? t('{amount} in tips', { amount: formatMoney(day.netTipsCents) }) : t('no shifts')
+                        }`}
                         disabled={isFuture}
                         onPress={() => setSelected(cell.date)}
                         style={[
@@ -156,7 +159,7 @@ export default function CalendarScreen() {
 
             {data && dayShifts.length === 0 ? (
               <ThemedText type="small" themeColor="textSecondary">
-                No shifts logged this day.
+                {t('No shifts logged this day.')}
               </ThemedText>
             ) : null}
 
@@ -173,7 +176,13 @@ export default function CalendarScreen() {
 
             {selected <= today ? (
               <Button
-                title={`Log a shift for ${formatDayLabel(selected, today).replace(/^Today$/, 'today').replace(/^Yesterday$/, 'yesterday')}`}
+                title={
+                  selected === today
+                    ? t('Log a shift for today')
+                    : selected === addDays(today, -1)
+                      ? t('Log a shift for yesterday')
+                      : t('Log a shift for {day}', { day: formatDayLabel(selected, today) })
+                }
                 variant="secondary"
                 onPress={() => router.push({ pathname: '/log-shift', params: { date: selected } })}
               />
@@ -188,7 +197,7 @@ export default function CalendarScreen() {
 function SummaryStat({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.stat}>
-      <ThemedText type="small" themeColor="textSecondary">
+      <ThemedText type="small" themeColor="textSecondary" style={styles.statLabel}>
         {label}
       </ThemedText>
       <ThemedText type="smallBold">{value}</ThemedText>
@@ -236,11 +245,18 @@ const styles = StyleSheet.create({
   summary: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    // Values line up even when a label wraps (longer in Spanish).
+    alignItems: 'flex-end',
+    gap: Spacing.two,
     borderRadius: Spacing.three,
     padding: Spacing.three,
   },
   stat: {
     gap: Spacing.half,
+  },
+  // A long label ("Pago real por hora" in Spanish) wraps rather than squeezing the numbers.
+  statLabel: {
+    maxWidth: 96,
   },
   grid: {
     gap: Spacing.one,

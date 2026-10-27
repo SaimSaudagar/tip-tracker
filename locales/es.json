@@ -1,0 +1,12 @@
+{
+  "ios": {
+    "NSCameraUsageDescription": "Tipbook usa la cámara para leer los totales de tu ticket de cierre. La foto se queda en tu teléfono.",
+    "NSPhotoLibraryUsageDescription": "Tipbook lee los totales de la foto de tu ticket de cierre. La foto se queda en tu teléfono."
+  },
+  "android": {
+    "shortcut_log_shift_short": "Registrar turno",
+    "shortcut_log_shift_long": "Registrar un turno",
+    "shortcut_scan_slip_short": "Escanear ticket",
+    "shortcut_scan_slip_long": "Escanear un ticket de cierre"
+  }
+}

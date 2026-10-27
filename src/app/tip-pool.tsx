@@ -9,6 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { t } from '@/i18n';
 import { formatDuration, parseDuration } from '@/lib/duration';
 import { centsToInput, formatMoney, parseMoney } from '@/lib/money';
 import { describeTipPool, splitTipPool, type SplitMode } from '@/lib/tip-pool';
@@ -22,7 +23,7 @@ export default function TipPoolScreen() {
   const [total, setTotal] = useState('');
   const [mode, setMode] = useState<SplitMode>('hours');
   const [rows, setRows] = useState<Row[]>([
-    { key: 'row-0', name: 'Me', hours: '' },
+    { key: 'row-0', name: t('Me'), hours: '' },
     { key: 'row-1', name: '', hours: '' },
   ]);
 
@@ -30,7 +31,7 @@ export default function TipPoolScreen() {
   const filled = rows.filter((r) => r.name.trim() !== '' || r.hours.trim() !== '');
   const members = filled.map((r, i) => ({
     key: r.key,
-    name: r.name.trim() || `Person ${i + 1}`,
+    name: r.name.trim() || t('Person {number}', { number: i + 1 }),
     minutes: parseDuration(r.hours),
     missingHours: r.hours.trim() === '',
   }));
@@ -60,10 +61,15 @@ export default function TipPoolScreen() {
     <ThemedView style={styles.screen}>
       <Stack.Screen
         options={{
-          title: 'Tip pool',
+          title: t('Tip pool'),
           headerLeft: () => (
-            <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={close} hitSlop={12} style={styles.headerButton}>
-              <ThemedText style={{ color: theme.tint }}>Close</ThemedText>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('Close')}
+              onPress={close}
+              hitSlop={12}
+              style={styles.headerButton}>
+              <ThemedText style={{ color: theme.tint }}>{t('Close')}</ThemedText>
             </Pressable>
           ),
         }}
@@ -74,21 +80,21 @@ export default function TipPoolScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}>
         <ThemedText type="small" themeColor="textSecondary">
-          Split a shared pool between the team, by hours worked or equally. Nothing here is saved.
+          {t('Split a shared pool between the team, by hours worked or equally. Nothing here is saved.')}
         </ThemedText>
 
         <MoneyField
-          label="Tip pool total"
+          label={t('Tip pool total')}
           prefix="$"
           value={total}
           onChangeText={setTotal}
           autoFocus
-          error={totalCents === null ? 'Enter an amount like 480 or 480.50' : null}
+          error={totalCents === null ? t('Enter an amount like 480 or 480.50') : null}
         />
 
         <View style={styles.chips}>
-          <Chip label="By hours" selected={mode === 'hours'} onPress={() => setMode('hours')} />
-          <Chip label="Equally" selected={mode === 'equal'} onPress={() => setMode('equal')} />
+          <Chip label={t('By hours')} selected={mode === 'hours'} onPress={() => setMode('hours')} />
+          <Chip label={t('Equally')} selected={mode === 'equal'} onPress={() => setMode('equal')} />
         </View>
 
         <View style={styles.people}>
@@ -97,9 +103,9 @@ export default function TipPoolScreen() {
               <TextInput
                 value={row.name}
                 onChangeText={(name) => updateRow(row.key, { name })}
-                placeholder={`Person ${i + 1}`}
+                placeholder={t('Person {number}', { number: i + 1 })}
                 placeholderTextColor={theme.textSecondary}
-                accessibilityLabel={`Name ${i + 1}`}
+                accessibilityLabel={t('Name {number}', { number: i + 1 })}
                 maxLength={30}
                 style={[styles.nameInput, { backgroundColor: theme.backgroundElement, color: theme.text }]}
               />
@@ -107,9 +113,11 @@ export default function TipPoolScreen() {
                 <TextInput
                   value={row.hours}
                   onChangeText={(hours) => updateRow(row.key, { hours })}
-                  placeholder="hrs"
+                  placeholder={t('hrs')}
                   placeholderTextColor={theme.textSecondary}
-                  accessibilityLabel={`Hours for ${row.name || `person ${i + 1}`}`}
+                  accessibilityLabel={t('Hours for {name}', {
+                    name: row.name || t('person {number}', { number: i + 1 }),
+                  })}
                   inputMode="decimal"
                   keyboardType="decimal-pad"
                   style={[styles.hoursInput, { backgroundColor: theme.backgroundElement, color: theme.text }]}
@@ -117,7 +125,7 @@ export default function TipPoolScreen() {
               ) : null}
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`Remove ${row.name || `person ${i + 1}`}`}
+                accessibilityLabel={t('Remove {name}', { name: row.name || t('person {number}', { number: i + 1 }) })}
                 disabled={rows.length <= 1}
                 onPress={() => setRows((current) => current.filter((r) => r.key !== row.key))}
                 hitSlop={8}
@@ -128,14 +136,14 @@ export default function TipPoolScreen() {
           ))}
           <View style={styles.chips}>
             <Chip
-              label="+ Add person"
+              label={t('+ Add person')}
               selected={false}
               onPress={() => setRows((current) => [...current, { key: `row-${nextKey.current++}`, name: '', hours: '' }])}
             />
           </View>
           {hoursProblem ? (
             <ThemedText type="small" style={{ color: theme.danger }}>
-              Enter hours like 6.5 or 6:30 for everyone.
+              {t('Enter hours like 6.5 or 6:30 for everyone.')}
             </ThemedText>
           ) : null}
         </View>
@@ -156,14 +164,14 @@ export default function TipPoolScreen() {
 
         {myShare ? (
           <Button
-            title={`Log my ${formatMoney(myShare.amountCents)} in a shift`}
+            title={t('Log my {amount} in a shift', { amount: formatMoney(myShare.amountCents) })}
             onPress={() => router.replace({ pathname: '/log-shift', params: { tipIn: centsToInput(myShare.amountCents) } })}
           />
         ) : null}
-        {shares ? <Button title="Share the split" variant="secondary" onPress={share} /> : null}
+        {shares ? <Button title={t('Share the split')} variant="secondary" onPress={share} /> : null}
         {myShare ? (
           <ThemedText type="small" themeColor="textSecondary">
-            Your share goes in as tips from coworkers. If you put your own tips into the pool, enter those as tip-out.
+            {t('Your share goes in as tips from coworkers. If you put your own tips into the pool, enter those as tip-out.')}
           </ThemedText>
         ) : null}
       </ScrollView>

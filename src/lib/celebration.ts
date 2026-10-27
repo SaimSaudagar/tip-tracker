@@ -1,9 +1,8 @@
 /** The message shown after a shift is saved: a real highlight when there is one, otherwise a plain confirmation. */
-import { formatMoney } from '@/lib/money';
+import { t } from '@/i18n';
+import { fromISODate, weekdayName, type ISODate } from '@/lib/dates';
+import { formatHourly, formatMoney } from '@/lib/money';
 import { computeShift, type ShiftAmounts } from '@/lib/shift-math';
-import { fromISODate, type ISODate } from '@/lib/dates';
-
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export type Celebration = { title: string; detail: string; celebrate: boolean };
 
@@ -28,33 +27,42 @@ export function celebrationFor({
   weekTotalAfter: number;
   goalCents: number | null;
 }): Celebration {
-  const t = computeShift(saved);
-  const hourly = t.realHourlyCents !== null ? ` · ${formatMoney(t.realHourlyCents)}/hr` : '';
-  const plain = { title: 'Shift saved', detail: `${formatMoney(t.netTipsCents)} in tips${hourly}`, celebrate: false };
+  const totals = computeShift(saved);
+  const hourly = totals.realHourlyCents !== null ? ` · ${formatHourly(totals.realHourlyCents)}` : '';
+  const tipsLine = t('{amount} in tips', { amount: formatMoney(totals.netTipsCents) }) + hourly;
+  const plain = { title: t('Shift saved'), detail: tipsLine, celebrate: false };
 
   if (goalCents !== null && weekTotalBefore < goalCents && weekTotalAfter >= goalCents) {
-    return { title: 'Weekly goal reached', detail: `${formatMoney(weekTotalAfter)} earned this week`, celebrate: true };
+    return {
+      title: t('Weekly goal reached'),
+      detail: t('{amount} earned this week', { amount: formatMoney(weekTotalAfter) }),
+      celebrate: true,
+    };
   }
 
   const others = monthShifts.filter((s) => s.id !== saved.id);
 
   const weekday = fromISODate(saved.date).getDay();
   const sameDay = others.filter((s) => fromISODate(s.date).getDay() === weekday);
-  if (sameDay.length >= 1 && t.netTipsCents > 0 && sameDay.every((s) => computeShift(s).netTipsCents < t.netTipsCents)) {
-    return {
-      title: `Best ${DAY_NAMES[weekday]} this month`,
-      detail: `${formatMoney(t.netTipsCents)} in tips${hourly}`,
-      celebrate: true,
-    };
+  if (
+    sameDay.length >= 1 &&
+    totals.netTipsCents > 0 &&
+    sameDay.every((s) => computeShift(s).netTipsCents < totals.netTipsCents)
+  ) {
+    return { title: t('Best {day} this month', { day: weekdayName(weekday) }), detail: tipsLine, celebrate: true };
   }
 
   const timed = others.filter((s) => s.minutesWorked > 0);
   if (
-    t.realHourlyCents !== null &&
+    totals.realHourlyCents !== null &&
     timed.length >= 2 &&
-    timed.every((s) => (computeShift(s).realHourlyCents ?? 0) < t.realHourlyCents!)
+    timed.every((s) => (computeShift(s).realHourlyCents ?? 0) < totals.realHourlyCents!)
   ) {
-    return { title: 'Best hourly this month', detail: `${formatMoney(t.realHourlyCents)}/hr real hourly`, celebrate: true };
+    return {
+      title: t('Best hourly this month'),
+      detail: t('{amount} real hourly', { amount: formatHourly(totals.realHourlyCents) }),
+      celebrate: true,
+    };
   }
 
   return plain;

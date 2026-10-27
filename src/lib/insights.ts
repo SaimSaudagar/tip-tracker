@@ -7,6 +7,8 @@ import {
   fromISODate,
   isInRange,
   monthRange,
+  weekdayPlural,
+  weekdayShortName,
   weekRange,
   type DateRange,
   type ISODate,
@@ -23,9 +25,6 @@ export type InsightShift = ShiftAmounts & {
   positionName: string;
 };
 
-const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
 /** A day or half-day needs this many shifts before it's called "best". */
 export const MIN_SHIFTS_FOR_RANKING = 2;
 
@@ -36,6 +35,7 @@ export type ShiftHighlight = { id: number; date: ISODate; positionName: string; 
 export type Insights = {
   shiftCount: number;
   byWeekday: WeekdayStat[];
+  /** `name` is plural for headings: "Fridays" ("Los viernes"). */
   bestWeekday: { weekday: Weekday; name: string; realHourlyCents: number } | null;
   byPeriod: { am: PeriodSummary; pm: PeriodSummary; untagged: number };
   bestShifts: ShiftHighlight[];
@@ -58,7 +58,7 @@ export function buildInsights(shifts: InsightShift[], today: ISODate, weekStart:
     const weekday = ((weekStart + i) % 7) as Weekday;
     return {
       weekday,
-      label: DAY_LABELS[weekday],
+      label: weekdayShortName(weekday),
       summary: summarize(shifts.filter((s) => fromISODate(s.date).getDay() === weekday)),
     };
   });
@@ -67,7 +67,7 @@ export function buildInsights(shifts: InsightShift[], today: ISODate, weekStart:
     .filter((d) => d.summary.shiftCount >= MIN_SHIFTS_FOR_RANKING && d.summary.realHourlyCents !== null)
     .sort((a, b) => b.summary.realHourlyCents! - a.summary.realHourlyCents!);
   const bestWeekday = ranked.length >= 2
-    ? { weekday: ranked[0].weekday, name: DAY_NAMES[ranked[0].weekday], realHourlyCents: ranked[0].summary.realHourlyCents! }
+    ? { weekday: ranked[0].weekday, name: weekdayPlural(ranked[0].weekday), realHourlyCents: ranked[0].summary.realHourlyCents! }
     : null;
 
   const bestShifts = shifts

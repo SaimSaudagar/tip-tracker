@@ -3,6 +3,7 @@
  * whole cents and always add up to the pool exactly: after rounding down, the leftover
  * cents go to the people with the largest remainders (earlier rows win ties).
  */
+import { t } from '@/i18n';
 import { formatDuration } from '@/lib/duration';
 import { formatMoney } from '@/lib/money';
 
@@ -39,6 +40,9 @@ export function describeTipPool(totalCents: number, shares: PoolShare[], mode: S
       ? `${s.name}: ${formatMoney(s.amountCents)} (${formatDuration(s.minutes)})`
       : `${s.name}: ${formatMoney(s.amountCents)}`,
   );
-  const how = mode === 'hours' ? 'by hours worked' : 'equally';
-  return [`Tip pool ${formatMoney(totalCents)}, split ${how}:`, ...lines].join('\n');
+  const heading =
+    mode === 'hours'
+      ? t('Tip pool {total}, split by hours worked:', { total: formatMoney(totalCents) })
+      : t('Tip pool {total}, split equally:', { total: formatMoney(totalCents) });
+  return [heading, ...lines].join('\n');
 }

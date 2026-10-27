@@ -10,28 +10,29 @@ import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { getSettings, setSetting } from '@/db/repo';
 import { useTheme } from '@/hooks/use-theme';
+import { msg, t } from '@/i18n';
 import { track } from '@/lib/analytics';
 import { requestNotificationPermission } from '@/lib/notify';
 import type { PaywallReason } from '@/lib/pro';
 import { usePro, type Plan, type PlanId } from '@/purchases/pro-context';
 
 const HEADLINES: Record<PaywallReason, string> = {
-  onboarding: 'Track every tip. No ads. Ever.',
-  settings: 'Track every tip. No ads. Ever.',
-  jobs: 'Track more than one job',
-  positions: 'Add every position you work',
-  tipout: 'Let Pro do your tip-out math',
-  year: 'See your whole year',
-  reports: 'Tip reports, ready when you need them',
-  insights: 'Find out which shifts pay best',
+  onboarding: msg('Track every tip. No ads. Ever.'),
+  settings: msg('Track every tip. No ads. Ever.'),
+  jobs: msg('Track more than one job'),
+  positions: msg('Add every position you work'),
+  tipout: msg('Let Pro do your tip-out math'),
+  year: msg('See your whole year'),
+  reports: msg('Tip reports, ready when you need them'),
+  insights: msg('Find out which shifts pay best'),
 };
 
 const BENEFITS = [
-  'Year-end tip summary for tax time',
-  'Monthly tip report for your employer, with a reminder before the 10th',
-  'Unlimited jobs and positions, with automatic tip-outs',
-  'Insights: your best days, lunch vs dinner, and 12-week trends',
-  'Your year at a glance: totals and real hourly',
+  msg('Year-end tip summary for tax time'),
+  msg('Monthly tip report for your employer, with a reminder before the 10th'),
+  msg('Unlimited jobs and positions, with automatic tip-outs'),
+  msg('Insights: your best days, lunch vs dinner, and 12-week trends'),
+  msg('Your year at a glance: totals and real hourly'),
 ];
 
 export default function PaywallScreen() {
@@ -89,9 +90,9 @@ export default function PaywallScreen() {
         if (trial) await requestNotificationPermission().catch(() => false);
         close();
       } else if (result === 'unavailable') {
-        setMessage('Purchases aren’t available yet. Please try again later.');
+        setMessage(t('Purchases aren’t available yet. Please try again later.'));
       } else if (result === 'failed') {
-        setMessage('The purchase didn’t go through. Please try again.');
+        setMessage(t('The purchase didn’t go through. Please try again.'));
       }
     } finally {
       setBusy(false);
@@ -103,9 +104,9 @@ export default function PaywallScreen() {
     setMessage(null);
     try {
       if (await restore()) close();
-      else setMessage('No previous purchase found for this account.');
+      else setMessage(t('No previous purchase found for this account.'));
     } catch (e) {
-      setMessage(`Couldn’t restore purchases: ${e instanceof Error ? e.message : String(e)}`);
+      setMessage(t('Couldn’t restore purchases: {error}', { error: e instanceof Error ? e.message : String(e) }));
     } finally {
       setBusy(false);
     }
@@ -115,7 +116,7 @@ export default function PaywallScreen() {
     <ThemedView style={styles.screen}>
       <SafeAreaView style={styles.screen}>
         <View style={styles.topBar}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={closeOrOffer} hitSlop={16}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t('Close')} onPress={closeOrOffer} hitSlop={16}>
             <ThemedText style={[styles.close, { color: theme.textSecondary }]}>✕</ThemedText>
           </Pressable>
         </View>
@@ -124,21 +125,21 @@ export default function PaywallScreen() {
           {exitOffer ? (
             <View style={styles.block}>
               <ThemedText type="subtitle" accessibilityRole="header">
-                Try Pro free for a month instead?
+                {t('Try Pro free for a month instead?')}
               </ThemedText>
               <ThemedText themeColor="textSecondary">
-                A full month to see your real hourly, reports and tip-outs at work. No payment now.
+                {t('A full month to see your real hourly, reports and tip-outs at work. No payment now.')}
               </ThemedText>
             </View>
           ) : (
             <View style={styles.block}>
               <ThemedText type="subtitle" accessibilityRole="header">
-                {HEADLINES[reason]}
+                {t(HEADLINES[reason])}
               </ThemedText>
               {BENEFITS.map((b) => (
                 <View key={b} style={styles.bullet}>
                   <ThemedText style={{ color: theme.tint }}>✓</ThemedText>
-                  <ThemedText style={styles.bulletText}>{b}</ThemedText>
+                  <ThemedText style={styles.bulletText}>{t(b)}</ThemedText>
                 </View>
               ))}
             </View>
@@ -192,29 +193,29 @@ export default function PaywallScreen() {
         </ScrollView>
 
         <View style={styles.footer}>
-          <Button title={busy ? 'One moment…' : plan.cta} onPress={buy} disabled={busy} />
+          <Button title={busy ? t('One moment…') : plan.cta} onPress={buy} disabled={busy} />
           <ThemedText type="small" themeColor="textSecondary" style={styles.center}>
             {plan.terms}
           </ThemedText>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={exitOffer ? 'No thanks, use the free plan' : 'Continue with free plan'}
+            accessibilityLabel={exitOffer ? t('No thanks, use the free plan') : t('Continue with free plan')}
             onPress={dismiss}
             hitSlop={8}
             style={styles.freeLink}>
             <ThemedText type="smallBold" style={[styles.center, { color: theme.tint }]}>
-              {exitOffer ? 'No thanks, use the free plan' : 'Continue with free plan'}
+              {exitOffer ? t('No thanks, use the free plan') : t('Continue with free plan')}
             </ThemedText>
           </Pressable>
           <View style={styles.links}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Restore purchases"
+              accessibilityLabel={t('Restore purchases')}
               onPress={restorePurchases}
               disabled={busy}
               hitSlop={8}>
               <ThemedText type="small" themeColor="textSecondary">
-                Restore purchases
+                {t('Restore purchases')}
               </ThemedText>
             </Pressable>
             <ThemedText type="small" themeColor="textSecondary">
@@ -225,7 +226,7 @@ export default function PaywallScreen() {
               onPress={() => router.push({ pathname: '/legal', params: { doc: 'terms' } })}
               hitSlop={8}>
               <ThemedText type="small" themeColor="textSecondary">
-                Terms
+                {t('Terms')}
               </ThemedText>
             </Pressable>
             <ThemedText type="small" themeColor="textSecondary">
@@ -236,7 +237,7 @@ export default function PaywallScreen() {
               onPress={() => router.push({ pathname: '/legal', params: { doc: 'privacy' } })}
               hitSlop={8}>
               <ThemedText type="small" themeColor="textSecondary">
-                Privacy
+                {t('Privacy')}
               </ThemedText>
             </Pressable>
           </View>

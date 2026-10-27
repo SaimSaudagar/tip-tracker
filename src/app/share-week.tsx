@@ -13,6 +13,7 @@ import { getWeekStart, listShiftsBetween } from '@/db/repo';
 import { useDbQuery } from '@/db/use-db-query';
 import { useTheme } from '@/hooks/use-theme';
 import { useToday } from '@/hooks/use-today';
+import { t } from '@/i18n';
 import { track } from '@/lib/analytics';
 import { weekRange } from '@/lib/dates';
 import { errorText } from '@/lib/errors';
@@ -47,10 +48,10 @@ export default function ShareWeekScreen() {
   const shareImage = async () => {
     setBusy(true);
     try {
-      await shareViewAsImage(cardRef, IMAGE.width, IMAGE.height, 'My week in tips');
+      await shareViewAsImage(cardRef, IMAGE.width, IMAGE.height, t('My week in tips'));
       track({ name: 'week_shared', format: 'image' });
     } catch (e) {
-      showToast({ title: 'Couldn’t share the picture', detail: errorText(e) });
+      showToast({ title: t('Couldn’t share the picture'), detail: errorText(e) });
     } finally {
       setBusy(false);
     }
@@ -62,13 +63,13 @@ export default function ShareWeekScreen() {
       // Browsers without a share sheet get the text on the clipboard instead.
       if (Platform.OS === 'web' && typeof navigator !== 'undefined' && !navigator.share) {
         await navigator.clipboard.writeText(card.text);
-        showToast({ title: 'Copied to the clipboard' });
+        showToast({ title: t('Copied to the clipboard') });
       } else {
         await Share.share({ message: card.text });
       }
       track({ name: 'week_shared', format: 'text' });
     } catch (e) {
-      showToast({ title: 'Couldn’t share your week', detail: errorText(e) });
+      showToast({ title: t('Couldn’t share your week'), detail: errorText(e) });
     }
   };
 
@@ -76,16 +77,20 @@ export default function ShareWeekScreen() {
     <ThemedView style={styles.screen}>
       <Stack.Screen
         options={{
-          title: 'Share my week',
+          title: t('Share my week'),
           headerLeft: () => (
             <Pressable accessibilityRole="button" onPress={close} hitSlop={12} style={styles.headerButton}>
-              <ThemedText style={{ color: theme.tint }}>Close</ThemedText>
+              <ThemedText style={{ color: theme.tint }}>{t('Close')}</ThemedText>
             </Pressable>
           ),
         }}
       />
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}>
-        {error ? <ThemedText style={{ color: theme.danger }}>Couldn’t load your week: {error.message}</ThemedText> : null}
+        {error ? (
+          <ThemedText style={{ color: theme.danger }}>
+            {t('Couldn’t load your week: {error}', { error: error.message })}
+          </ThemedText>
+        ) : null}
         {card ? (
           <>
             <View style={{ width: WEEK_CARD_SIZE.width * scale, height: WEEK_CARD_SIZE.height * scale }}>
@@ -94,18 +99,18 @@ export default function ShareWeekScreen() {
               </View>
             </View>
             <ThemedText type="small" themeColor="textSecondary" style={styles.note}>
-              Only what’s on the card is shared. Your shifts stay on this phone.
+              {t('Only what’s on the card is shared. Your shifts stay on this phone.')}
             </ThemedText>
             {imageShareSupported ? (
               <Button
-                title={busy ? 'Getting it ready…' : 'Share picture'}
+                title={busy ? t('Getting it ready…') : t('Share picture')}
                 onPress={shareImage}
                 disabled={busy}
                 style={styles.button}
               />
             ) : null}
             <Button
-              title="Share as text"
+              title={t('Share as text')}
               variant={imageShareSupported ? 'secondary' : 'primary'}
               onPress={shareText}
               style={styles.button}

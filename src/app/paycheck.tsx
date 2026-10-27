@@ -14,6 +14,7 @@ import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { deletePaycheck, getPaycheck, listJobs, listJobShiftsBetween, savePaycheck, type Job } from '@/db/repo';
 import { useDbQuery } from '@/db/use-db-query';
 import { useTheme } from '@/hooks/use-theme';
+import { msg, t } from '@/i18n';
 import { confirmDestructive } from '@/lib/confirm';
 import { errorText } from '@/lib/errors';
 import { addDays, fromISODate, todayISO, type ISODate } from '@/lib/dates';
@@ -26,10 +27,10 @@ import { formatShortDate } from '@/lib/reminders-plan';
 type PeriodKind = 'none' | 'week' | 'two-weeks' | 'custom';
 
 const PERIOD_CHOICES: { value: PeriodKind; label: string }[] = [
-  { value: 'none', label: 'Not set' },
-  { value: 'week', label: '1 week' },
-  { value: 'two-weeks', label: '2 weeks' },
-  { value: 'custom', label: 'Custom' },
+  { value: 'none', label: msg('Not set') },
+  { value: 'week', label: msg('1 week') },
+  { value: 'two-weeks', label: msg('2 weeks') },
+  { value: 'custom', label: msg('Custom') },
 ];
 const PERIOD_DAYS: Partial<Record<PeriodKind, number>> = { week: 7, 'two-weeks': 14 };
 
@@ -159,10 +160,10 @@ export default function PaycheckScreen() {
         notes: form.notes.trim() || null,
       });
       haptic.success();
-      showToast({ title: paycheckId === undefined ? 'Paycheck saved' : 'Changes saved' });
+      showToast({ title: paycheckId === undefined ? t('Paycheck saved') : t('Changes saved') });
       close();
     } catch (e) {
-      showToast({ title: 'Couldn’t save this paycheck', detail: errorText(e) });
+      showToast({ title: t('Couldn’t save this paycheck'), detail: errorText(e) });
     } finally {
       setSaving(false);
     }
@@ -170,44 +171,44 @@ export default function PaycheckScreen() {
 
   const remove = async () => {
     if (paycheckId === undefined) return;
-    const ok = await confirmDestructive('Delete this paycheck?', 'This can’t be undone.', 'Delete');
+    const ok = await confirmDestructive(t('Delete this paycheck?'), t('This can’t be undone.'), t('Delete'));
     if (!ok) return;
     try {
       await deletePaycheck(db, paycheckId);
     } catch (e) {
-      showToast({ title: 'Couldn’t delete this paycheck', detail: errorText(e) });
+      showToast({ title: t('Couldn’t delete this paycheck'), detail: errorText(e) });
       return;
     }
     haptic.destructive();
-    showToast({ title: 'Paycheck deleted' });
+    showToast({ title: t('Paycheck deleted') });
     close();
   };
 
   const header = (
     <Stack.Screen
       options={{
-        title: paycheckId !== undefined ? 'Edit paycheck' : 'Add paycheck',
+        title: paycheckId !== undefined ? t('Edit paycheck') : t('Add paycheck'),
         headerLeft: () => (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Cancel"
+            accessibilityLabel={t('Cancel')}
             onPress={close}
             hitSlop={12}
             style={styles.headerButton}>
-            <ThemedText style={{ color: theme.tint }}>Cancel</ThemedText>
+            <ThemedText style={{ color: theme.tint }}>{t('Cancel')}</ThemedText>
           </Pressable>
         ),
         headerRight: () => (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Save"
+            accessibilityLabel={t('Save')}
             accessibilityState={{ disabled: !canSave }}
             onPress={save}
             disabled={!canSave}
             hitSlop={12}
             style={styles.headerButton}>
             <ThemedText type="smallBold" style={{ color: theme.tint, fontSize: 16, opacity: canSave ? 1 : 0.4 }}>
-              Save
+              {t('Save')}
             </ThemedText>
           </Pressable>
         ),
@@ -219,8 +220,8 @@ export default function PaycheckScreen() {
     return (
       <ThemedView style={styles.centered}>
         {header}
-        <ThemedText>This paycheck no longer exists.</ThemedText>
-        <Button title="Close" variant="secondary" onPress={close} />
+        <ThemedText>{t('This paycheck no longer exists.')}</ThemedText>
+        <Button title={t('Close')} variant="secondary" onPress={close} />
       </ThemedView>
     );
   }
@@ -248,42 +249,42 @@ export default function PaycheckScreen() {
 
         <View style={styles.field}>
           <ThemedText type="small" themeColor="textSecondary">
-            Pay date
+            {t('Pay date')}
           </ThemedText>
-          <DateStepper value={form.payDate} onChange={set('payDate')} today={today} label="Pay date" />
+          <DateStepper value={form.payDate} onChange={set('payDate')} today={today} label={t('Pay date')} />
         </View>
 
         <View style={styles.row}>
           <View style={styles.half}>
             <MoneyField
-              label="Take-home (net)"
+              label={t('Take-home (net)')}
               prefix="$"
               value={form.net}
               onChangeText={set('net')}
-              error={form.net.trim() !== '' && net === null ? 'Enter an amount like 812.40' : null}
+              error={form.net.trim() !== '' && net === null ? t('Enter an amount like 812.40') : null}
             />
           </View>
           <View style={styles.half}>
             <MoneyField
-              label="Gross (optional)"
+              label={t('Gross (optional)')}
               prefix="$"
               value={form.gross}
               onChangeText={set('gross')}
-              error={gross === null ? 'Enter an amount like 1,040.00' : null}
+              error={gross === null ? t('Enter an amount like 1,040.00') : null}
             />
           </View>
         </View>
 
         <View style={styles.field}>
           <ThemedText type="small" themeColor="textSecondary">
-            Pay period, to check it against your shifts
+            {t('Pay period, to check it against your shifts')}
           </ThemedText>
           <View style={styles.chips}>
             {PERIOD_CHOICES.map((c) => (
               <Chip
                 key={c.value}
-                label={c.label}
-                accessibilityLabel={`Pay period: ${c.label}`}
+                label={t(c.label)}
+                accessibilityLabel={t('Pay period: {option}', { option: t(c.label) })}
                 selected={form.periodKind === c.value}
                 onPress={() => setPeriodKind(c.value)}
               />
@@ -292,13 +293,13 @@ export default function PaycheckScreen() {
           {form.periodKind === 'custom' ? (
             <>
               <ThemedText type="small" themeColor="textSecondary">
-                First day
+                {t('First day')}
               </ThemedText>
               <DateStepper
                 value={form.periodStart}
                 onChange={set('periodStart')}
                 today={today}
-                label="Period first day"
+                label={t('Period first day')}
               />
             </>
           ) : null}
@@ -306,15 +307,23 @@ export default function PaycheckScreen() {
             <>
               <ThemedText type="small" themeColor="textSecondary">
                 {form.periodKind === 'custom'
-                  ? 'Last day'
-                  : `Last day (${PERIOD_DAYS[form.periodKind]} days, starting ${formatShortDate(form.periodStart)})`}
+                  ? t('Last day')
+                  : t('Last day ({count} days, starting {date})', {
+                      count: PERIOD_DAYS[form.periodKind] ?? daysBetween(form.periodStart, form.periodEnd),
+                      date: formatShortDate(form.periodStart),
+                    })}
               </ThemedText>
-              <DateStepper value={form.periodEnd} onChange={setPeriodEnd} today={today} label="Period last day" />
+              <DateStepper
+                value={form.periodEnd}
+                onChange={setPeriodEnd}
+                today={today}
+                label={t('Period last day')}
+              />
             </>
           ) : null}
           {!periodValid ? (
             <ThemedText type="small" style={{ color: theme.danger }}>
-              The first day must be on or before the last day.
+              {t('The first day must be on or before the last day.')}
             </ThemedText>
           ) : null}
         </View>
@@ -323,11 +332,11 @@ export default function PaycheckScreen() {
 
         <View style={styles.field}>
           <ThemedText type="small" themeColor="textSecondary">
-            Notes
+            {t('Notes')}
           </ThemedText>
           <TextInput
-            accessibilityLabel="Notes"
-            placeholder="Check number, missing hours…"
+            accessibilityLabel={t('Notes')}
+            placeholder={t('Check number, missing hours…')}
             placeholderTextColor={theme.textSecondary}
             value={form.notes}
             onChangeText={set('notes')}
@@ -336,7 +345,7 @@ export default function PaycheckScreen() {
           />
         </View>
 
-        {paycheckId !== undefined ? <Button title="Delete paycheck" variant="danger" onPress={remove} /> : null}
+        {paycheckId !== undefined ? <Button title={t('Delete paycheck')} variant="danger" onPress={remove} /> : null}
       </ScrollView>
     </ThemedView>
   );
@@ -354,41 +363,48 @@ function Comparison({
   const matches = diff !== null && Math.abs(diff) <= PAYCHECK_TOLERANCE_CENTS;
   return (
     <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
-      <ThemedText type="smallBold">What you logged for this period</ThemedText>
+      <ThemedText type="smallBold">{t('What you logged for this period')}</ThemedText>
       {comparison.shiftCount === 0 ? (
         <ThemedText type="small" themeColor="textSecondary">
-          No shifts logged for this job in these dates.
+          {t('No shifts logged for this job in these dates.')}
         </ThemedText>
       ) : (
         <>
           <Line
-            label={`${comparison.shiftCount} shift${comparison.shiftCount === 1 ? '' : 's'}`}
+            label={
+              comparison.shiftCount === 1 ? t('1 shift') : t('{count} shifts', { count: comparison.shiftCount })
+            }
             value={formatDuration(comparison.minutesWorked)}
           />
-          <Line label="Wages" value={formatMoney(comparison.wagesCents)} />
-          <Line label="Card tips" value={formatMoney(comparison.cardTipsCents)} />
+          <Line label={t('Wages')} value={formatMoney(comparison.wagesCents)} />
+          <Line label={t('Card tips')} value={formatMoney(comparison.cardTipsCents)} />
           {comparison.serviceChargeCents > 0 ? (
-            <Line label="Service charges" value={formatMoney(comparison.serviceChargeCents)} />
+            <Line label={t('Service charges')} value={formatMoney(comparison.serviceChargeCents)} />
           ) : null}
           <View style={[styles.rule, { backgroundColor: theme.backgroundSelected }]} />
-          <Line label="Expected gross" value={formatMoney(comparison.expectedCents)} bold />
+          <Line label={t('Expected gross')} value={formatMoney(comparison.expectedCents)} bold />
         </>
       )}
       {diff !== null && comparison.shiftCount > 0 ? (
         <ThemedText type="smallBold" style={{ color: matches ? theme.tint : theme.danger }}>
           {matches
-            ? '✓ Your gross matches what you logged.'
+            ? t('✓ Your gross matches what you logged.')
             : diff < 0
-              ? `Your gross is ${formatMoney(-diff)} less than you logged. Worth checking your hours and card tips with your manager.`
-              : `Your gross is ${formatMoney(diff)} more than you logged. A bonus, overtime, or a shift you didn’t log?`}
+              ? t(
+                  'Your gross is {amount} less than you logged. Worth checking your hours and card tips with your manager.',
+                  { amount: formatMoney(-diff) },
+                )
+              : t('Your gross is {amount} more than you logged. A bonus, overtime, or a shift you didn’t log?', {
+                  amount: formatMoney(diff),
+                })}
         </ThemedText>
       ) : gross === null && comparison.shiftCount > 0 ? (
         <ThemedText type="small" themeColor="textSecondary">
-          Add the gross amount from your pay stub to check it.
+          {t('Add the gross amount from your pay stub to check it.')}
         </ThemedText>
       ) : null}
       <ThemedText type="small" themeColor="textSecondary">
-        Cash tips aren’t included: you already have them. Wages use each position’s hourly rate.
+        {t('Cash tips aren’t included: you already have them. Wages use each position’s hourly rate.')}
       </ThemedText>
     </View>
   );

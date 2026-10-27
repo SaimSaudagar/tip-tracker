@@ -4,7 +4,7 @@ Text for each store's "What's new" box. The App Store allows 4,000 characters an
 
 ## 1.0.0 (first release)
 
-**Google Play, "Release notes"** (455 characters):
+**Google Play, "Release notes"** (480 characters):
 
 ```
 Welcome to Tipbook, the tip tracker with no ads and no account.
@@ -15,8 +15,24 @@ Welcome to Tipbook, the tip tracker with no ads and no account.
 • Monthly tip report for your employer, and a year-end summary (Pro)
 • Import your history from another tip app or a spreadsheet
 • Widgets, reminders and overtime
+• In English and Spanish
 
 Your tips stay on your phone. Questions? See the support link on our store page.
+```
+
+**Google Play, Spanish (es-US)** (477 characters):
+
+```
+Bienvenido a Tipbook, la app de propinas sin anuncios ni cuenta.
+
+• Registra un turno en 5 segundos o escanea tu ticket de cierre
+• Tu pago real por hora: salario + propinas, menos el reparto
+• Un calendario con lo que pagó cada día
+• Informe mensual para tu empleador y resumen anual (Pro)
+• Importa tu historial de otra app o de una hoja de cálculo
+• Widgets, recordatorios y horas extra
+
+Tus propinas se quedan en tu teléfono. ¿Dudas? Mira el enlace de soporte en la tienda.
 ```
 
 **App Store:** the first version has no "What's New" text; use the promotional text in `docs/store-listing.md`.

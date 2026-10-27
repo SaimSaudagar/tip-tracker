@@ -61,6 +61,8 @@ The build runs in the cloud (about 15 minutes). Open the link it prints on your 
 3. Build: `npx eas-cli@latest build --profile preview --platform ios`
 4. Then try: "Hey Siri, log my tips in Tipbook", the Tipbook widget (home screen and lock screen), and Scan slip.
 
+On either phone, also try Spanish: Settings → Language → Español (or set the phone to Spanish). Tap Scan slip → Take a photo to see the camera permission prompt in Spanish, and long-press the icon on Android for the Spanish shortcut names.
+
 Preview builds behave like the store version, so the Developer switches in Settings are hidden. For live reloading while you code, use a development build instead: `npx expo install expo-dev-client`, then `--profile development`. After installing `expo-dev-client`, `npx expo start` opens development builds by default; press `s` to switch back to Expo Go. Buy with a sandbox (Apple) or license-tester (Google) account to test purchases.
 
 ## 6. Before you submit
@@ -69,6 +71,7 @@ Preview builds behave like the store version, so the Developer switches in Setti
 - [ ] Run `npx expo-doctor` on your PC. The cloud session couldn't reach Expo's servers for two of its checks.
 - [ ] Optional: crash reporting with Sentry (`npx expo install @sentry/react-native`, needs a development build) and analytics by connecting PostHog or Aptabase in `src/lib/analytics.ts`. Either one means updating the privacy policy and the store privacy labels.
 - [ ] Fill in the App Store privacy labels and the Play Console Data safety form to match the privacy policy. RevenueCat's documentation lists what its SDK collects.
+- [ ] Spanish listing: add the **Spanish (Mexico)** localization in App Store Connect and **Spanish (United States)** in the Play Console, with the text in `docs/store-listing-es.md` and the screenshots in `docs/store-screenshots/es/`.
 - [ ] Screenshots and listing text: `docs/store-listing.md`. The app supports iPad, so App Store Connect asks for iPad screenshots too (`docs/store-screenshots/ipad-13/`). If you'd rather skip iPad review for the first release, set `ios.supportsTablet` to `false` in `app.json`; iPads then run the iPhone layout.
 - [ ] Build and submit:
 
@@ -81,4 +84,5 @@ In the iOS "Notes for reviewer", explain what makes the app different: no ads, n
 
 ## Known gaps
 
-- **Slip scanning has only been tested on made-up slips.** Real photos from different POS systems (Toast, Square, Clover, Aloha…) are needed to tune it.
+- **Slip scanning has only been tested on made-up slips.** Real photos from different POS systems (Toast, Square, Clover, Aloha…) are needed to tune it. It reads the English labels POS systems print, whatever language the app is in.
+- **The Spanish hasn't been read by a native speaker yet.** Before launch, ask a Spanish-speaking server or bartender to go through the app (Settings → Language → Español) and the Spanish store text; corrections go in `src/i18n/es.ts`.

@@ -2,13 +2,12 @@
  * The "share my week" card: this week's numbers, formatted once for the image and for the
  * plain-text version shared where images can't be.
  */
+import { t } from '@/i18n';
 import { buildWeekBars } from '@/lib/dashboard';
-import { formatRange, fromISODate, weekRange, type ISODate, type Weekday } from '@/lib/dates';
+import { formatRange, fromISODate, weekdayName, weekRange, type ISODate, type Weekday } from '@/lib/dates';
 import { formatDuration } from '@/lib/duration';
-import { formatMoney } from '@/lib/money';
+import { formatHourly, formatMoney } from '@/lib/money';
 import { summarizeRange, type ShiftAmounts } from '@/lib/shift-math';
-
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export type WeekCard = {
   range: string;
@@ -36,19 +35,19 @@ export function buildWeekCard<T extends ShiftAmounts & { date: ISODate }>(
   const top = days.reduce((best, d) => (d.totalCents > best.totalCents ? d : best), days[0]);
   const bestDay =
     top.totalCents > 0
-      ? { day: DAY_NAMES[fromISODate(top.date).getDay()], amount: formatMoney(top.totalCents, { wholeDollars: true }) }
+      ? { day: weekdayName(fromISODate(top.date).getDay()), amount: formatMoney(top.totalCents, { wholeDollars: true }) }
       : null;
   const range = formatRange(week, today);
-  const hourly = s.realHourlyCents === null ? null : `${formatMoney(s.realHourlyCents)}/hr`;
+  const hourly = s.realHourlyCents === null ? null : formatHourly(s.realHourlyCents);
   const tips = formatMoney(s.netTipsCents);
   const earned = formatMoney(s.totalCents);
   const hours = formatDuration(s.minutesWorked);
 
   const text = [
-    `My week in tips (${range}): ${tips} in tips, ${earned} earned in ${hours}`,
-    hourly ? `, ${hourly} real hourly` : '',
-    bestDay ? `. Best day: ${bestDay.day}.` : '.',
-    ' Tracked with Tipbook.',
+    t('My week in tips ({range}): {tips} in tips, {earned} earned in {hours}', { range, tips, earned, hours }),
+    hourly ? t(', {hourly} real hourly', { hourly }) : '',
+    bestDay ? t('. Best day: {day}.', { day: bestDay.day }) : '.',
+    t(' Tracked with Tipbook.'),
   ].join('');
 
   return {

@@ -5,7 +5,7 @@
 import { goalProgress } from '@/lib/dashboard';
 import { formatRange, weekRange, type ISODate, type Weekday } from '@/lib/dates';
 import { formatDuration } from '@/lib/duration';
-import { formatMoney } from '@/lib/money';
+import { formatHourly, formatMoney } from '@/lib/money';
 import { summarizeRange, type ShiftAmounts } from '@/lib/shift-math';
 
 export type WidgetSnapshot = {
@@ -37,7 +37,7 @@ export function buildWidgetSnapshot<T extends ShiftAmounts & { date: ISODate }>(
     tips: formatMoney(s.netTipsCents),
     earned: formatMoney(s.totalCents),
     hours: formatDuration(s.minutesWorked),
-    hourly: s.realHourlyCents === null ? '—' : `${formatMoney(s.realHourlyCents)}/hr`,
+    hourly: s.realHourlyCents === null ? '—' : formatHourly(s.realHourlyCents),
     shifts: s.shiftCount,
     goalPercent: progress === null ? -1 : Math.round(progress * 100),
   };

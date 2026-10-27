@@ -1,6 +1,7 @@
 import { FlexWidget, TextWidget, type ColorProp } from 'react-native-android-widget';
 
 import { LOG_SHIFT_URL } from '@/constants/app';
+import { t } from '@/i18n';
 import { todayISO } from '@/lib/dates';
 import type { WidgetSnapshot } from '@/lib/widget-snapshot';
 
@@ -19,12 +20,14 @@ function WeekWidget({ snapshot, scheme }: { snapshot: WidgetSnapshot; scheme: ke
   // After the week ends, show an empty new week until the app refreshes the numbers.
   const stale = todayISO() > snapshot.weekEnd;
   const tips = stale ? '$0.00' : snapshot.tips;
-  const detail = stale ? 'Open Tipbook to update' : `${snapshot.earned} earned · ${snapshot.hourly}`;
+  const detail = stale
+    ? t('Open Tipbook to update')
+    : t('{earned} earned · {hourly}', { earned: snapshot.earned, hourly: snapshot.hourly });
   return (
     <FlexWidget
       clickAction="OPEN_URI"
       clickActionData={{ uri: LOG_SHIFT_URL }}
-      accessibilityLabel={`Tipbook. Tips this week ${tips}. ${detail}. Tap to log a shift.`}
+      accessibilityLabel={t('Tipbook. Tips this week {tips}. {detail}. Tap to log a shift.', { tips, detail })}
       style={{
         height: 'match_parent',
         width: 'match_parent',
@@ -35,7 +38,10 @@ function WeekWidget({ snapshot, scheme }: { snapshot: WidgetSnapshot; scheme: ke
         justifyContent: 'space-between',
       }}>
       <FlexWidget style={{ flexDirection: 'row', justifyContent: 'space-between', width: 'match_parent' }}>
-        <TextWidget text="TIPS THIS WEEK" style={{ fontSize: 12, fontWeight: '700', color: c.muted, letterSpacing: 0.05 }} />
+        <TextWidget
+          text={t('Tips this week').toLocaleUpperCase()}
+          style={{ fontSize: 12, fontWeight: '700', color: c.muted, letterSpacing: 0.05 }}
+        />
         <TextWidget text={stale ? '' : snapshot.weekLabel} style={{ fontSize: 12, color: c.muted }} />
       </FlexWidget>
       <TextWidget text={tips} style={{ fontSize: 32, fontWeight: '700', color: c.text }} maxLines={1} />
@@ -47,7 +53,7 @@ function WeekWidget({ snapshot, scheme }: { snapshot: WidgetSnapshot; scheme: ke
       ) : null}
       <FlexWidget style={{ flexDirection: 'row', justifyContent: 'space-between', width: 'match_parent' }}>
         <TextWidget text={detail} style={{ fontSize: 13, color: c.muted }} maxLines={1} />
-        <TextWidget text="+ Log" style={{ fontSize: 13, fontWeight: '700', color: c.text }} />
+        <TextWidget text={t('+ Log')} style={{ fontSize: 13, fontWeight: '700', color: c.text }} />
       </FlexWidget>
     </FlexWidget>
   );

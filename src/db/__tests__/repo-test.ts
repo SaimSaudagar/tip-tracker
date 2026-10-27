@@ -149,7 +149,7 @@ describe('import', () => {
 });
 
 describe('delete all data', () => {
-  it('erases everything but purchase settings and starts over', async () => {
+  it('erases everything but purchase settings and the language, and starts over', async () => {
     const position = await starterPosition();
     await saveShiftWithTipOuts(db, shift(position.id), [{ name: 'Bar', amountCents: 500 }]);
     await db.runAsync("INSERT INTO paychecks (job_id, pay_date, net_cents) VALUES (?, '2026-10-30', 50000)", position.jobId);
@@ -157,6 +157,7 @@ describe('delete all data', () => {
     await setSetting(db, 'weekly_goal_cents', '80000');
     await setSetting(db, 'pro_override', '1');
     await setSetting(db, 'trial_ends_at', '2026-11-09');
+    await setSetting(db, 'language', 'es');
 
     await deleteAllData(db);
 
@@ -164,7 +165,12 @@ describe('delete all data', () => {
       expect(await db.getFirstAsync<{ n: number }>(`SELECT COUNT(*) AS n FROM ${table}`)).toEqual({ n: 0 });
     }
     expect(await listPositions(db)).toMatchObject([{ jobName: 'My job', name: 'Server' }]);
-    expect(await getSettings(db)).toEqual({ week_start: '0', pro_override: '1', trial_ends_at: '2026-11-09' });
+    expect(await getSettings(db)).toEqual({
+      week_start: '0',
+      pro_override: '1',
+      trial_ends_at: '2026-11-09',
+      language: 'es',
+    });
   });
 });
 

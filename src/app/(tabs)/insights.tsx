@@ -16,16 +16,18 @@ import { getWeekStart, listShiftsBetween } from '@/db/repo';
 import { useDbQuery } from '@/db/use-db-query';
 import { useTheme } from '@/hooks/use-theme';
 import { useToday } from '@/hooks/use-today';
+import { t } from '@/i18n';
+import { formatShortDate } from '@/lib/dates';
 import { formatDuration } from '@/lib/duration';
 import { buildInsights, formatChange, insightsLoadRange, percentChange } from '@/lib/insights';
-import { formatMoney, formatPercent } from '@/lib/money';
-import { formatShortDate } from '@/lib/reminders-plan';
+import { formatHourly, formatMoney, formatPercent } from '@/lib/money';
 import type { PeriodSummary } from '@/lib/shift-math';
 import { usePro } from '@/purchases/pro-context';
 
 const TREND_WEEKS = 12;
 
-const hourly = (cents: number | null) => (cents === null ? '—' : `${formatMoney(cents)}/hr`);
+const hourly = (cents: number | null) => (cents === null ? '—' : formatHourly(cents));
+const shiftCount = (count: number) => (count === 1 ? t('1 shift') : t('{count} shifts', { count }));
 
 export default function InsightsScreen() {
   const theme = useTheme();
@@ -56,24 +58,24 @@ export default function InsightsScreen() {
       <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
         <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
           <ThemedText type="subtitle" accessibilityRole="header">
-            Insights
+            {t('Insights')}
           </ThemedText>
 
           {error ? (
-            <ThemedText style={{ color: theme.danger }}>Couldn’t load your shifts: {error.message}</ThemedText>
+            <ThemedText style={{ color: theme.danger }}>{t('Couldn’t load your shifts: {error}', { error: error.message })}</ThemedText>
           ) : null}
 
           {!isPro ? (
             <View style={[styles.card, { backgroundColor: theme.tintSoft }]}>
               <ThemedText type="amount" style={{ color: theme.tint }}>
-                See what pays best
+                {t('See what pays best')}
               </ThemedText>
-              <ThemedText type="small">Pro looks across your shifts so you can pick up the right ones:</ThemedText>
+              <ThemedText type="small">{t('Pro looks across your shifts so you can pick up the right ones:')}</ThemedText>
               {[
-                'Your best day of the week, by real hourly',
-                'Lunch vs dinner shifts',
-                'Twelve weeks of earnings at a glance',
-                'Your best shifts and your tips as a share of sales',
+                t('Your best day of the week, by real hourly'),
+                t('Lunch vs dinner shifts'),
+                t('Twelve weeks of earnings at a glance'),
+                t('Your best shifts and your tips as a share of sales'),
               ].map((line) => (
                 <View key={line} style={styles.bullet}>
                   <ThemedText style={{ color: theme.tint }}>✓</ThemedText>
@@ -83,16 +85,17 @@ export default function InsightsScreen() {
                 </View>
               ))}
               {insights?.bestWeekday ? (
-                <ThemedText type="smallBold">Your best day is already in your data.</ThemedText>
+                <ThemedText type="smallBold">{t('Your best day is already in your data.')}</ThemedText>
               ) : null}
-              <Button title="Unlock with Pro" onPress={showPaywall} />
+              <Button title={t('Unlock with Pro')} onPress={showPaywall} />
             </View>
           ) : insights && insights.shiftCount === 0 ? (
             <View style={[styles.card, styles.empty, { backgroundColor: theme.backgroundElement }]}>
-              <ThemedText type="smallBold">Nothing to show yet</ThemedText>
+              <ThemedText type="smallBold">{t('Nothing to show yet')}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.center}>
-                Log a few shifts and your patterns show up here: your best days, lunch vs dinner, and how your weeks are
-                trending.
+                {t(
+                  'Log a few shifts and your patterns show up here: your best days, lunch vs dinner, and how your weeks are trending.',
+                )}
               </ThemedText>
             </View>
           ) : insights && data ? (
@@ -103,14 +106,17 @@ export default function InsightsScreen() {
                 dayOfMonth={insights.monthToDate.dayOfMonth}
               />
 
-              <Card title="Best day">
+              <Card title={t('Best day')}>
                 <ThemedText type="amount">
-                  {insights.bestWeekday ? `${insights.bestWeekday.name}s` : 'Not enough shifts yet'}
+                  {insights.bestWeekday ? insights.bestWeekday.name : t('Not enough shifts yet')}
                 </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
                   {insights.bestWeekday
-                    ? `${hourly(insights.bestWeekday.realHourlyCents)} real hourly, tips plus wages, over the last ${TREND_WEEKS} weeks.`
-                    : 'Log at least two shifts on two different days of the week to see which pays best.'}
+                    ? t('{hourly} real hourly, tips plus wages, over the last {weeks} weeks.', {
+                        hourly: hourly(insights.bestWeekday.realHourlyCents),
+                        weeks: TREND_WEEKS,
+                      })
+                    : t('Log at least two shifts on two different days of the week to see which pays best.')}
                 </ThemedText>
                 <BarChart
                   bars={insights.byWeekday.map((d) => ({
@@ -119,43 +125,46 @@ export default function InsightsScreen() {
                     value: d.summary.realHourlyCents ?? 0,
                     highlight: d.weekday === insights.bestWeekday?.weekday,
                   }))}
-                  accessibilityLabel={`Real hourly by day: ${insights.byWeekday
-                    .map(
-                      (d) =>
-                        `${d.label} ${d.summary.realHourlyCents === null ? 'no shifts' : hourly(d.summary.realHourlyCents)}`,
-                    )
-                    .join(', ')}`}
+                  accessibilityLabel={t('Real hourly by day: {days}', {
+                    days: insights.byWeekday
+                      .map(
+                        (d) =>
+                          `${d.label} ${d.summary.realHourlyCents === null ? t('no shifts') : hourly(d.summary.realHourlyCents)}`,
+                      )
+                      .join(', '),
+                  })}
                 />
               </Card>
 
-              <Card title="Lunch vs dinner">
+              <Card title={t('Lunch vs dinner')}>
                 {insights.byPeriod.am.shiftCount + insights.byPeriod.pm.shiftCount === 0 ? (
                   <ThemedText type="small" themeColor="textSecondary">
-                    Tag shifts as Lunch or Dinner when you log them, and they’ll be compared here.
+                    {t('Tag shifts as Lunch or Dinner when you log them, and they’ll be compared here.')}
                   </ThemedText>
                 ) : (
                   <View style={styles.split}>
-                    <PeriodColumn label="Lunch · AM" summary={insights.byPeriod.am} />
+                    <PeriodColumn label={t('Lunch · AM')} summary={insights.byPeriod.am} />
                     <View style={[styles.divider, { backgroundColor: theme.backgroundSelected }]} />
-                    <PeriodColumn label="Dinner · PM" summary={insights.byPeriod.pm} />
+                    <PeriodColumn label={t('Dinner · PM')} summary={insights.byPeriod.pm} />
                   </View>
                 )}
                 {insights.byPeriod.untagged > 0 &&
                 insights.byPeriod.am.shiftCount + insights.byPeriod.pm.shiftCount > 0 ? (
                   <ThemedText type="small" themeColor="textSecondary">
-                    {insights.byPeriod.untagged} shift
-                    {insights.byPeriod.untagged === 1 ? ' isn’t' : 's aren’t'} tagged and not counted.
+                    {insights.byPeriod.untagged === 1
+                      ? t('1 shift isn’t tagged and not counted.')
+                      : t('{count} shifts aren’t tagged and not counted.', { count: insights.byPeriod.untagged })}
                   </ThemedText>
                 ) : null}
               </Card>
 
-              <Card title={`Last ${TREND_WEEKS} weeks`}>
+              <Card title={t('Last {weeks} weeks', { weeks: TREND_WEEKS })}>
                 <WeeklyTrend points={insights.weeklyTrend} />
               </Card>
 
               {insights.bestShifts.length > 0 ? (
                 <View style={styles.section}>
-                  <SectionTitle>Best shifts by real hourly</SectionTitle>
+                  <SectionTitle>{t('Best shifts by real hourly')}</SectionTitle>
                   <ListGroup>
                     {insights.bestShifts.map((best) => {
                       const shift = data.shifts.find((s) => s.id === best.id);
@@ -167,28 +176,30 @@ export default function InsightsScreen() {
                 </View>
               ) : null}
 
-              <Card title="Tips vs sales">
+              <Card title={t('Tips vs sales')}>
                 {insights.tipRateOfSales ? (
                   <>
                     <ThemedText type="amount">{formatPercent(insights.tipRateOfSales.bps)}</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
-                      Cash and card tips as a share of your sales, across {insights.tipRateOfSales.shifts} shift
-                      {insights.tipRateOfSales.shifts === 1 ? '' : 's'} with sales logged.
+                      {t('Cash and card tips as a share of your sales, across {shifts} with sales logged.', {
+                        shifts: shiftCount(insights.tipRateOfSales.shifts),
+                      })}
                     </ThemedText>
                   </>
                 ) : (
                   <ThemedText type="small" themeColor="textSecondary">
-                    Add your sales when you log a shift to see what share of them you take home in tips.
+                    {t('Add your sales when you log a shift to see what share of them you take home in tips.')}
                   </ThemedText>
                 )}
               </Card>
 
               {insights.tipsPerCover ? (
-                <Card title="Tips per guest">
+                <Card title={t('Tips per guest')}>
                   <ThemedText type="amount">{formatMoney(insights.tipsPerCover.cents)}</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">
-                    Cash and card tips per cover, across {insights.tipsPerCover.shifts} shift
-                    {insights.tipsPerCover.shifts === 1 ? '' : 's'} with covers logged.
+                    {t('Cash and card tips per guest, across {shifts} with guests logged.', {
+                      shifts: shiftCount(insights.tipsPerCover.shifts),
+                    })}
                   </ThemedText>
                 </Card>
               ) : null}
@@ -222,7 +233,7 @@ function MonthCard({
   const theme = useTheme();
   const change = percentChange(lastMonth.totalCents, thisMonth.totalCents);
   return (
-    <Card title="This month so far">
+    <Card title={t('This month so far')}>
       <ThemedText type="amount">{formatMoney(thisMonth.totalCents)}</ThemedText>
       <ThemedText
         type="small"
@@ -230,13 +241,22 @@ function MonthCard({
           color: change === null ? theme.textSecondary : change >= 0 ? theme.tint : theme.danger,
         }}>
         {change === null
-          ? 'Nothing logged in the same days last month to compare with.'
-          : `${formatChange(change)} vs the first ${dayOfMonth} day${dayOfMonth === 1 ? '' : 's'} of last month (${formatMoney(lastMonth.totalCents)})`}
+          ? t('Nothing logged in the same days last month to compare with.')
+          : dayOfMonth === 1
+            ? t('{change} vs the first day of last month ({amount})', {
+                change: formatChange(change),
+                amount: formatMoney(lastMonth.totalCents),
+              })
+            : t('{change} vs the first {days} days of last month ({amount})', {
+                change: formatChange(change),
+                days: dayOfMonth,
+                amount: formatMoney(lastMonth.totalCents),
+              })}
       </ThemedText>
-      <View style={styles.split}>
-        <Stat label="Tips" value={formatMoney(thisMonth.netTipsCents)} />
-        <Stat label="Hours" value={formatDuration(thisMonth.minutesWorked)} />
-        <Stat label="Real hourly" value={hourly(thisMonth.realHourlyCents)} />
+      <View style={[styles.split, styles.stats]}>
+        <Stat label={t('Tips')} value={formatMoney(thisMonth.netTipsCents)} />
+        <Stat label={t('Hours')} value={formatDuration(thisMonth.minutesWorked)} />
+        <Stat label={t('Real hourly')} value={hourly(thisMonth.realHourlyCents)} />
       </View>
     </Card>
   );
@@ -251,8 +271,10 @@ function PeriodColumn({ label, summary }: { label: string; summary: PeriodSummar
       <ThemedText type="amount">{hourly(summary.realHourlyCents)}</ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
         {summary.shiftCount === 0
-          ? 'No shifts'
-          : `${summary.shiftCount} shift${summary.shiftCount === 1 ? '' : 's'} · ${formatMoney(Math.round(summary.netTipsCents / summary.shiftCount))} tips each`}
+          ? t('No shifts')
+          : `${shiftCount(summary.shiftCount)} · ${t('{amount} tips each', {
+              amount: formatMoney(Math.round(summary.netTipsCents / summary.shiftCount)),
+            })}`}
       </ThemedText>
     </View>
   );
@@ -269,12 +291,15 @@ function WeeklyTrend({ points }: { points: ReturnType<typeof buildInsights>['wee
   return (
     <>
       <ThemedText type="amount">
-        {average === null ? '—' : `${formatMoney(average, { wholeDollars: true })} a week`}
+        {average === null ? '—' : t('{amount} a week', { amount: formatMoney(average, { wholeDollars: true }) })}
       </ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
         {best
-          ? `Average total earned in weeks you worked. Best week: ${formatShortDate(best.range.start)}, ${formatMoney(best.summary.totalCents, { wholeDollars: true })}.`
-          : 'No shifts in the last few weeks.'}
+          ? t('Average total earned in weeks you worked. Best week: {week}, {amount}.', {
+              week: formatShortDate(best.range.start),
+              amount: formatMoney(best.summary.totalCents, { wholeDollars: true }),
+            })
+          : t('No shifts in the last few weeks.')}
       </ThemedText>
       <BarChart
         height={100}
@@ -284,19 +309,23 @@ function WeeklyTrend({ points }: { points: ReturnType<typeof buildInsights>['wee
           value: p.summary.totalCents,
           highlight: i === points.length - 1,
         }))}
-        accessibilityLabel={`Total earned per week: ${points
-          .map(
-            (p) =>
-              `week of ${formatShortDate(p.range.start)} ${formatMoney(p.summary.totalCents, { wholeDollars: true })}`,
-          )
-          .join(', ')}`}
+        accessibilityLabel={t('Total earned per week: {weeks}', {
+          weeks: points
+            .map((p) =>
+              t('week of {date} {amount}', {
+                date: formatShortDate(p.range.start),
+                amount: formatMoney(p.summary.totalCents, { wholeDollars: true }),
+              }),
+            )
+            .join(', '),
+        })}
       />
       <View style={styles.axis}>
         <ThemedText type="small" themeColor="textSecondary">
           {points.length > 0 ? formatShortDate(points[0].range.start) : ''}
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          This week
+          {t('This week')}
         </ThemedText>
       </View>
     </>
@@ -352,6 +381,10 @@ const styles = StyleSheet.create({
   split: {
     flexDirection: 'row',
     gap: Spacing.three,
+  },
+  // Values line up even when a label wraps (longer in Spanish).
+  stats: {
+    alignItems: 'flex-end',
   },
   column: {
     flex: 1,

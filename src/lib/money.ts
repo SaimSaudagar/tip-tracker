@@ -2,6 +2,7 @@
  * Money is always stored and calculated as integer cents, and percentages as
  * basis points (1% = 100 bps), so no money math ever touches floating point.
  */
+import { t } from '@/i18n';
 
 const MAX_CENTS = 999_999_999; // $9,999,999.99
 const MAX_BPS = 10_000; // 100%
@@ -28,6 +29,11 @@ export function formatMoney(cents: number, { wholeDollars = false } = {}): strin
   const abs = Math.abs(Math.round(cents));
   if (wholeDollars) return `${sign}$${withCommas(Math.round(abs / 100))}`;
   return `${sign}$${withCommas(Math.floor(abs / 100))}.${pad2(abs % 100)}`;
+}
+
+/** An hourly rate: "$31.30/hr" ("$31.30/h" in Spanish). */
+export function formatHourly(cents: number): string {
+  return t('{amount}/hr', { amount: formatMoney(cents) });
 }
 
 /** Turns stored cents back into editable text: 0 -> "", 1200 -> "12", 1250 -> "12.50". */

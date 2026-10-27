@@ -3,10 +3,12 @@
  * thing; update both together. Placeholders in [brackets] need real values before release.
  */
 
+import { msg } from '@/i18n';
+
 export type LegalDoc = { title: string; updated: string; sections: { heading: string; body: string }[] };
 
 export const PRIVACY_POLICY: LegalDoc = {
-  title: 'Privacy Policy',
+  title: msg('Privacy Policy'),
   updated: 'October 27, 2026',
   sections: [
     {
@@ -45,7 +47,7 @@ export const PRIVACY_POLICY: LegalDoc = {
 };
 
 export const TERMS: LegalDoc = {
-  title: 'Terms of Use',
+  title: msg('Terms of Use'),
   updated: 'October 26, 2026',
   sections: [
     {

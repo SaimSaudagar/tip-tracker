@@ -1,5 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { t } from '@/i18n';
 import { weekRange, type ISODate, type Weekday } from '@/lib/dates';
 import { computeOvertime, NO_OVERTIME, type JobOvertime, type OvertimeRule } from '@/lib/overtime';
 import type { SampleShift } from '@/lib/sample-data';
@@ -353,8 +354,11 @@ export async function removeSetting(db: SQLiteDatabase, key: string): Promise<vo
   await db.runAsync('DELETE FROM settings WHERE key = ?', key);
 }
 
-/** Settings about purchases and one-time prompts, which survive "Delete all data". */
-const KEPT_ON_ERASE = ['pro_override', 'trial_ends_at', 'exit_offer_shown', 'review_asked_on'];
+/**
+ * Settings about purchases and one-time prompts, which survive "Delete all data", and the
+ * app's language, so onboarding afterwards is in the language the person picked.
+ */
+const KEPT_ON_ERASE = ['pro_override', 'trial_ends_at', 'exit_offer_shown', 'review_asked_on', 'language'];
 
 /**
  * Erases every job, position, shift, tip-out, paycheck and setting, leaving the
@@ -481,7 +485,7 @@ export async function removePosition(db: SQLiteDatabase, id: number): Promise<'a
   const active = await db.getFirstAsync<{ n: number }>(
     'SELECT COUNT(*) AS n FROM positions WHERE archived_at IS NULL',
   );
-  if ((active?.n ?? 0) <= 1) throw new Error('Keep at least one position to log shifts against.');
+  if ((active?.n ?? 0) <= 1) throw new Error(t('Keep at least one position to log shifts against.'));
 
   const used = await db.getFirstAsync<{ n: number }>('SELECT COUNT(*) AS n FROM shifts WHERE position_id = ?', id);
   const outcome = (used?.n ?? 0) > 0 ? 'archived' : 'deleted';

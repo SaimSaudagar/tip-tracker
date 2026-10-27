@@ -1,4 +1,5 @@
 /** Time worked is stored as whole minutes. */
+import { byLanguage, t } from '@/i18n';
 
 const MAX_MINUTES = 24 * 60;
 
@@ -39,8 +40,8 @@ export function formatDuration(minutes: number): string {
 export function spokenDuration(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  const hours = `${h} ${h === 1 ? 'hour' : 'hours'}`;
-  const mins = `${m} ${m === 1 ? 'minute' : 'minutes'}`;
+  const hours = h === 1 ? t('1 hour') : t('{count} hours', { count: h });
+  const mins = m === 1 ? t('1 minute') : t('{count} minutes', { count: m });
   if (h === 0 && m > 0) return mins;
   return m === 0 ? hours : `${hours} ${mins}`;
 }
@@ -68,10 +69,10 @@ export function parseClockTime(input: string): string | null {
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }
 
-/** "17:30" -> "5:30 PM", "09:00" -> "9 AM". */
+/** "17:30" -> "5:30 PM", "09:00" -> "9 AM" ("5:30 p. m." in Spanish). */
 export function formatClock(time: string): string {
   const [h, m] = time.split(':').map(Number);
-  const suffix = h < 12 ? 'AM' : 'PM';
+  const suffix = byLanguage({ en: h < 12 ? 'AM' : 'PM', es: h < 12 ? 'a. m.' : 'p. m.' });
   const hour = h % 12 === 0 ? 12 : h % 12;
   return m === 0 ? `${hour} ${suffix}` : `${hour}:${String(m).padStart(2, '0')} ${suffix}`;
 }

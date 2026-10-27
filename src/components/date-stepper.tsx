@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { t } from '@/i18n';
 import { addDays, formatDayLabel, type ISODate } from '@/lib/dates';
 
 type Props = {
@@ -24,7 +25,7 @@ export function DateStepper({ value, onChange, today, max, label }: Props) {
     <View style={[styles.row, { backgroundColor: theme.backgroundElement }]}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${prefix}previous day`}
+        accessibilityLabel={`${prefix}${t('previous day')}`}
         onPress={() => onChange(addDays(value, -1))}
         hitSlop={8}
         style={styles.arrow}>
@@ -35,7 +36,7 @@ export function DateStepper({ value, onChange, today, max, label }: Props) {
       </ThemedText>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${prefix}next day`}
+        accessibilityLabel={`${prefix}${t('next day')}`}
         disabled={atMax}
         onPress={() => onChange(addDays(value, 1))}
         hitSlop={8}

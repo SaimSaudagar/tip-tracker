@@ -5,12 +5,14 @@
 import { useSyncExternalStore } from 'react';
 import { Appearance, Platform } from 'react-native';
 
+import { msg } from '@/i18n';
+
 export type AppearancePreference = 'system' | 'light' | 'dark';
 
 export const APPEARANCE_OPTIONS: { value: AppearancePreference; label: string }[] = [
-  { value: 'system', label: 'Automatic' },
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
+  { value: 'system', label: msg('Automatic') },
+  { value: 'light', label: msg('Light') },
+  { value: 'dark', label: msg('Dark') },
 ];
 
 export function parseAppearance(value: string | undefined): AppearancePreference {

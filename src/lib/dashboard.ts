@@ -1,6 +1,7 @@
 import {
   addDays,
   monthRange,
+  weekdayInitial,
   weekRange,
   yearRange,
   type DateRange,
@@ -23,8 +24,6 @@ export function dashboardLoadRange(today: ISODate, weekStart: Weekday): DateRang
 
 export type DayBar = { date: ISODate; label: string; totalCents: number; lastWeekTotalCents: number };
 
-const INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-
 /** Total earned per day this week, next to the same weekday last week. */
 export function buildWeekBars<T extends ShiftAmounts & { date: ISODate }>(
   shifts: T[],
@@ -37,7 +36,7 @@ export function buildWeekBars<T extends ShiftAmounts & { date: ISODate }>(
     const date = addDays(week.start, i);
     return {
       date,
-      label: INITIALS[(weekStart + i) % 7],
+      label: weekdayInitial((weekStart + i) % 7),
       totalCents: totalOn(date),
       lastWeekTotalCents: totalOn(addDays(date, -7)),
     };

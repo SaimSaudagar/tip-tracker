@@ -1,5 +1,7 @@
 import { Alert, Platform } from 'react-native';
 
+import { t } from '@/i18n';
+
 /** Asks before a destructive action. React Native's Alert does nothing on web, so web uses window.confirm. */
 export function confirmDestructive(title: string, message: string, confirmLabel: string): Promise<boolean> {
   if (Platform.OS === 'web') return Promise.resolve(window.confirm(`${title}\n\n${message}`));
@@ -9,7 +11,7 @@ export function confirmDestructive(title: string, message: string, confirmLabel:
       title,
       message,
       [
-        { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+        { text: t('Cancel'), style: 'cancel', onPress: () => resolve(false) },
         { text: confirmLabel, style: 'destructive', onPress: () => resolve(true) },
       ],
       { cancelable: true, onDismiss: () => resolve(false) },

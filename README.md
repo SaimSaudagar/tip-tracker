@@ -19,6 +19,8 @@ npm run web
 
 The web version is for development only. It stores data in the browser, and reminders and the share sheet only work on phones.
 
+The app is in English and Spanish. It follows the phone's language, or pick one in **Settings → Language**.
+
 In development builds, turn on **Settings → Developer: simulate Pro** to try Pro features before RevenueCat is connected, and use **Settings → Developer: add 12 weeks of sample shifts** to fill every screen with realistic data (Delete all data removes it).
 
 ## Features that need a Tipbook build
@@ -71,6 +73,7 @@ npm run test:e2e    # clicks through the app in a browser (first time: npx playw
 | `src/app/tip-pool.tsx` / `src/lib/tip-pool.ts` | Tip pool calculator: split by hours or equally, exact to the cent |
 | `src/app/share-week.tsx` / `src/lib/week-card.ts` | "Share my week" (from Home): a 1080 × 1350 picture of the week, or text; `src/lib/share-image.ts` saves the picture |
 | `src/lib/appearance.ts` | Light / dark / automatic choice, applied app-wide |
+| `src/i18n/` | English and Spanish: `t()`, the Spanish dictionary (`es.ts`) and the test that keeps it complete; `locales/es.json` has the Spanish permission prompts and Android shortcut names |
 | `src/lib/analytics.ts` | The launch plan's funnel events; nothing is sent until a service is connected |
 | `src/constants/app.ts` | Support email (the Settings row is hidden while it's empty) |
 | `src/lib/reminders-plan.ts` / `notify.ts` | Reminder planning (pure, tested) and local notification scheduling |
@@ -93,7 +96,7 @@ npm run test:e2e    # clicks through the app in a browser (first time: npx playw
 | `src/lib/overtime.ts` | Overtime per job: over 40 hours a week or 8 a day, at the paystub rate or a federal estimate |
 | `src/lib/widget-snapshot.ts` / `src/widgets/` | What the home-screen widgets show, and keeping them up to date |
 | `index.ts` | App entry: Expo Router plus the Android widget task |
-| `scripts/build-site.js` → `site/` | `npm run site` builds the public website: the landing page, the support page, and the privacy and terms pages from `docs/` |
-| `docs/store-screenshots/` | Draft App Store and Google Play screenshots |
+| `scripts/build-site.js` → `site/` | `npm run site` builds the public website: the landing page in English (`index.html`) and Spanish (`es.html`), the support page, and the privacy and terms pages from `docs/` |
+| `docs/store-screenshots/` | Draft App Store and Google Play screenshots (`es/` has the Spanish set; the Spanish store text is in `docs/store-listing-es.md`) |
 
 See `AGENTS.md` for the conventions (money in cents, local date strings, append-only migrations).

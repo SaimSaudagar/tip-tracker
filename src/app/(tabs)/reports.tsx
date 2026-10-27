@@ -20,14 +20,15 @@ import {
 import { useDbQuery } from '@/db/use-db-query';
 import { useTheme } from '@/hooks/use-theme';
 import { useToday } from '@/hooks/use-today';
+import { t } from '@/i18n';
 import { track } from '@/lib/analytics';
 import { shiftMonth } from '@/lib/calendar';
-import { formatDayLabel, formatRange, monthRange, yearRange } from '@/lib/dates';
+import { formatDayLabel, formatMonthLong, formatRange, formatShortDate, monthRange, yearRange } from '@/lib/dates';
 import { formatDuration } from '@/lib/duration';
 import { sharePdf } from '@/lib/files';
+import { errorText } from '@/lib/errors';
 import { formatMoney } from '@/lib/money';
 import { comparePaycheck, PAYCHECK_TOLERANCE_CENTS } from '@/lib/paychecks';
-import { formatShortDate } from '@/lib/reminders-plan';
 import { buildMonthlyReport, buildYearSummary, monthlyReportHtml, yearSummaryHtml } from '@/lib/reports';
 import { combineTipOuts, describeTipOuts } from '@/lib/tipouts';
 import { usePro } from '@/purchases/pro-context';
@@ -96,7 +97,7 @@ function Reports({ linkedMonth, linkedYear }: { linkedMonth: string | null; link
       await sharePdf(html, fileName);
       track({ name: 'report_exported', type });
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorText(e));
     }
   };
 
@@ -110,22 +111,22 @@ function Reports({ linkedMonth, linkedYear }: { linkedMonth: string | null; link
       <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
         <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
           <ThemedText type="subtitle" accessibilityRole="header">
-            Reports
+            {t('Reports')}
           </ThemedText>
 
           <View style={styles.section}>
-            <SectionTitle>Monthly tip report</SectionTitle>
+            <SectionTitle>{t('Monthly tip report')}</SectionTitle>
             <Stepper
-              label={report?.label ?? ''}
-              previousLabel="Previous month"
-              nextLabel="Next month"
+              label={formatMonthLong(month)}
+              previousLabel={t('Previous month')}
+              nextLabel={t('Next month')}
               onPrevious={() => setMonth(shiftMonth(month, -1))}
               onNext={() => setMonth(shiftMonth(month, 1))}
               nextDisabled={isCurrentMonth}
             />
             {report && report.jobs.length === 0 ? (
               <ThemedText type="small" themeColor="textSecondary">
-                No shifts logged in {report.label}.
+                {t('No shifts logged in {period}.', { period: formatMonthLong(month) })}
               </ThemedText>
             ) : null}
             {report?.jobs.map((job) => (
@@ -136,27 +137,35 @@ function Reports({ linkedMonth, linkedYear }: { linkedMonth: string | null; link
                     {formatMoney(job.totals.netTipsCents)}
                   </ThemedText>
                 </View>
-                <Line label="Cash tips" value={formatMoney(job.totals.cashCents)} />
-                <Line label="Card tips" value={formatMoney(job.totals.cardCents)} />
-                {job.totals.tipInCents > 0 ? <Line label="From coworkers" value={formatMoney(job.totals.tipInCents)} /> : null}
-                {job.totals.tipOutCents > 0 ? <Line label="Paid out" value={`−${formatMoney(job.totals.tipOutCents)}`} /> : null}
+                <Line label={t('Cash tips')} value={formatMoney(job.totals.cashCents)} />
+                <Line label={t('Card tips')} value={formatMoney(job.totals.cardCents)} />
+                {job.totals.tipInCents > 0 ? (
+                  <Line label={t('From coworkers')} value={formatMoney(job.totals.tipInCents)} />
+                ) : null}
+                {job.totals.tipOutCents > 0 ? (
+                  <Line label={t('Paid out')} value={`−${formatMoney(job.totals.tipOutCents)}`} />
+                ) : null}
                 {job.rows.some((r) => r.tipOuts?.length) ? (
                   <ThemedText type="small" themeColor="textSecondary">
-                    Paid out to: {describeTipOuts(combineTipOuts(job.rows.map((r) => r.tipOuts ?? [])))}
+                    {t('Paid out to: {names}', { names: describeTipOuts(combineTipOuts(job.rows.map((r) => r.tipOuts ?? []))) })}
                   </ThemedText>
                 ) : null}
                 {job.totals.serviceChargeCents > 0 ? (
-                  <Line label="Service charges (not tips)" value={formatMoney(job.totals.serviceChargeCents)} />
+                  <Line label={t('Service charges (not tips)')} value={formatMoney(job.totals.serviceChargeCents)} />
                 ) : null}
                 <ThemedText type="small" style={{ color: job.mustReport ? theme.tint : theme.textSecondary }}>
                   {job.mustReport
-                    ? `Report to this employer by ${formatShortDate(report.dueDate)}`
-                    : 'Under $20 this month. No employer report needed.'}
+                    ? t('Report to this employer by {date}', { date: formatShortDate(report.dueDate) })
+                    : t('Under $20 this month. No employer report needed.')}
                 </ThemedText>
                 {report.jobs.length > 1 ? (
                   // Each employer gets a PDF with only its own shifts.
                   <Button
-                    title={isPro ? `Share PDF for ${job.jobName}` : `Share PDF for ${job.jobName} · Pro`}
+                    title={
+                      isPro
+                        ? t('Share PDF for {job}', { job: job.jobName })
+                        : t('Share PDF for {job} · Pro', { job: job.jobName })
+                    }
                     variant={isPro ? 'primary' : 'secondary'}
                     onPress={() =>
                       isPro
@@ -174,7 +183,7 @@ function Reports({ linkedMonth, linkedYear }: { linkedMonth: string | null; link
             ))}
             {report && report.jobs.length === 1 ? (
               <Button
-                title={isPro ? 'Share PDF for your employer' : 'Share PDF for your employer · Pro'}
+                title={isPro ? t('Share PDF for your employer') : t('Share PDF for your employer · Pro')}
                 variant={isPro ? 'primary' : 'secondary'}
                 onPress={() =>
                   isPro ? share(monthlyReportHtml(report, today), `tip-report-${month.slice(0, 7)}.pdf`, 'monthly_pdf') : showPaywall()
@@ -184,49 +193,50 @@ function Reports({ linkedMonth, linkedYear }: { linkedMonth: string | null; link
           </View>
 
           <View style={styles.section}>
-            <SectionTitle>Year-end summary</SectionTitle>
+            <SectionTitle>{t('Year-end summary')}</SectionTitle>
             <Stepper
               label={year}
-              previousLabel="Previous year"
-              nextLabel="Next year"
+              previousLabel={t('Previous year')}
+              nextLabel={t('Next year')}
               onPrevious={() => setYear(String(Number(year) - 1))}
               onNext={() => setYear(String(Number(year) + 1))}
               nextDisabled={isCurrentYear}
             />
             {!isPro ? (
               <View style={[styles.card, { backgroundColor: theme.tintSoft }]}>
-                <ThemedText type="smallBold">Your year, ready for tax time</ThemedText>
+                <ThemedText type="smallBold">{t('Your year, ready for tax time')}</ThemedText>
                 <ThemedText type="small">
-                  Net tips, service charges and wages for the whole year, by job, in one PDF. Service charges are kept apart
-                  because they don’t count as tips for the “no tax on tips” deduction.
+                  {t(
+                    'Net tips, service charges and wages for the whole year, by job, in one PDF. Service charges are kept apart because they don’t count as tips for the “no tax on tips” deduction.',
+                  )}
                 </ThemedText>
-                <Button title="Unlock with Pro" onPress={showPaywall} />
+                <Button title={t('Unlock with Pro')} onPress={showPaywall} />
               </View>
             ) : summary && summary.totals.shiftCount === 0 ? (
               <ThemedText type="small" themeColor="textSecondary">
-                No shifts logged in {year}.
+                {t('No shifts logged in {period}.', { period: year })}
               </ThemedText>
             ) : summary ? (
               <>
                 <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
                   <View style={styles.cardHeader}>
-                    <ThemedText type="smallBold">Net tips</ThemedText>
+                    <ThemedText type="smallBold">{t('Net tips')}</ThemedText>
                     <ThemedText type="smallBold" style={styles.amount}>
                       {formatMoney(summary.totals.netTipsCents)}
                     </ThemedText>
                   </View>
-                  <Line label="Service charges (not tips)" value={formatMoney(summary.totals.serviceChargeCents)} />
-                  <Line label="Wages" value={formatMoney(summary.totals.wagesCents)} />
-                  <Line label="Hours" value={formatDuration(summary.totals.minutesWorked)} />
-                  <Line label="Shifts" value={String(summary.totals.shiftCount)} />
+                  <Line label={t('Service charges (not tips)')} value={formatMoney(summary.totals.serviceChargeCents)} />
+                  <Line label={t('Wages')} value={formatMoney(summary.totals.wagesCents)} />
+                  <Line label={t('Hours')} value={formatDuration(summary.totals.minutesWorked)} />
+                  <Line label={t('Shifts')} value={String(summary.totals.shiftCount)} />
                   {summary.jobs.length > 1
                     ? summary.jobs.map((j) => (
-                        <Line key={j.jobName} label={`${j.jobName} net tips`} value={formatMoney(j.netTipsCents)} />
+                        <Line key={j.jobName} label={t('{job} net tips', { job: j.jobName })} value={formatMoney(j.netTipsCents)} />
                       ))
                     : null}
                 </View>
                 <Button
-                  title="Share year-end PDF"
+                  title={t('Share year-end PDF')}
                   onPress={() => share(yearSummaryHtml(summary, today), `tip-summary-${year}.pdf`, 'year_pdf')}
                 />
               </>
@@ -234,10 +244,10 @@ function Reports({ linkedMonth, linkedYear }: { linkedMonth: string | null; link
           </View>
 
           <View style={styles.section}>
-            <SectionTitle>Paychecks</SectionTitle>
+            <SectionTitle>{t('Paychecks')}</SectionTitle>
             {data && data.paychecks.length === 0 ? (
               <ThemedText type="small" themeColor="textSecondary">
-                Add your paychecks to check that wages and card tips match the shifts you logged.
+                {t('Add your paychecks to check that wages and card tips match the shifts you logged.')}
               </ThemedText>
             ) : null}
             <ListGroup>
@@ -252,14 +262,15 @@ function Reports({ linkedMonth, linkedYear }: { linkedMonth: string | null; link
                 />
               ))}
             </ListGroup>
-            <Button title="Add paycheck" variant="secondary" onPress={() => router.push('/paycheck')} />
+            <Button title={t('Add paycheck')} variant="secondary" onPress={() => router.push('/paycheck')} />
           </View>
 
           {error ? <ThemedText style={{ color: theme.danger }}>{error}</ThemedText> : null}
 
           <ThemedText type="small" themeColor="textSecondary" style={styles.note}>
-            Tips of $20 or more in a month from one job must be reported to that employer by the 10th of the next month.
-            These are your records, not tax advice. See IRS.gov (Topic 761, Tips).
+            {t(
+              'Tips of $20 or more in a month from one job must be reported to that employer by the 10th of the next month. These are your records, not tax advice. See IRS.gov (Topic 761, Tips).',
+            )}
           </ThemedText>
         </ScrollView>
       </SafeAreaView>
@@ -320,14 +331,17 @@ function PaycheckRow({
     differenceCents === null
       ? null
       : matches
-        ? 'Matches shifts'
+        ? t('Matches shifts')
         : differenceCents < 0
-          ? `${formatMoney(-differenceCents)} short`
-          : `${formatMoney(differenceCents)} over`;
+          ? t('{amount} short', { amount: formatMoney(-differenceCents) })
+          : t('{amount} over', { amount: formatMoney(differenceCents) });
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Paycheck ${formatDayLabel(paycheck.payDate, today)}, ${formatMoney(paycheck.netCents)}${status ? `, ${status}` : ''}. Edit`}
+      accessibilityLabel={`${t('Paycheck {date}, {amount}', {
+        date: formatDayLabel(paycheck.payDate, today),
+        amount: formatMoney(paycheck.netCents),
+      })}${status ? `, ${status}` : ''}. ${t('Edit')}`}
       onPress={onPress}
       style={({ pressed }) => [styles.paycheckRow, { backgroundColor: pressed ? theme.backgroundSelected : 'transparent' }]}>
       <View style={styles.paycheckLeft}>

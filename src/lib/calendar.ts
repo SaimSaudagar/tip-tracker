@@ -1,4 +1,4 @@
-import { addDays, fromISODate, monthRange, weekRange, type ISODate, type Weekday } from '@/lib/dates';
+import { addDays, fromISODate, monthRange, weekdayInitial, weekRange, type ISODate, type Weekday } from '@/lib/dates';
 import { summarize, type PeriodSummary, type ShiftAmounts } from '@/lib/shift-math';
 
 export type CalendarCell = { date: ISODate; inMonth: boolean };
@@ -22,8 +22,7 @@ export function buildMonthGrid(iso: ISODate, weekStart: Weekday): CalendarCell[]
 
 /** Day-of-week headers in display order, e.g. ["S", "M", …] for Sunday-start weeks. */
 export function weekdayInitials(weekStart: Weekday): string[] {
-  const initials = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-  return Array.from({ length: 7 }, (_, i) => initials[(weekStart + i) % 7]);
+  return Array.from({ length: 7 }, (_, i) => weekdayInitial((weekStart + i) % 7));
 }
 
 export function summarizeByDay<T extends ShiftAmounts & { date: ISODate }>(shifts: T[]): Map<ISODate, PeriodSummary> {

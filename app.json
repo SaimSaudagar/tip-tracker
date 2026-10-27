@@ -84,8 +84,17 @@
           ]
         }
       ],
-      "./plugins/with-shortcuts.js"
+      "./plugins/with-shortcuts.js",
+      [
+        "expo-localization",
+        {
+          "supportedLocales": ["en", "es"]
+        }
+      ]
     ],
+    "locales": {
+      "es": "./locales/es.json"
+    },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true

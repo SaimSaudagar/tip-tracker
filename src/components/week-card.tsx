@@ -2,6 +2,7 @@ import type { ComponentRef, Ref } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { NumberFont } from '@/constants/theme';
+import { t } from '@/i18n';
 import type { WeekCard as Card } from '@/lib/week-card';
 
 /** Width and height of the card on screen; it's saved at 3x for a 1080 × 1350 picture (Instagram's 4:5). */
@@ -20,10 +21,10 @@ export function WeekCard({ card, ref }: { card: Card; ref?: Ref<ComponentRef<typ
       collapsable={false}
       style={styles.card}
       accessible
-      accessibilityLabel={`Picture to share: ${card.text}`}>
+      accessibilityLabel={t('Picture to share: {text}', { text: card.text })}>
       <View style={styles.header}>
         <Text style={styles.kicker} maxFontSizeMultiplier={1}>
-          MY WEEK
+          {t('MY WEEK')}
         </Text>
         <Text style={styles.range} maxFontSizeMultiplier={1}>
           {card.range}
@@ -32,7 +33,7 @@ export function WeekCard({ card, ref }: { card: Card; ref?: Ref<ComponentRef<typ
 
       <View>
         <Text style={styles.label} maxFontSizeMultiplier={1}>
-          Tips
+          {t('Tips')}
         </Text>
         <Text style={styles.big} maxFontSizeMultiplier={1} adjustsFontSizeToFit numberOfLines={1}>
           {card.tips}
@@ -40,9 +41,9 @@ export function WeekCard({ card, ref }: { card: Card; ref?: Ref<ComponentRef<typ
       </View>
 
       <View style={styles.stats}>
-        <Stat label="Earned" value={card.earned} />
-        <Stat label="Hours" value={card.hours} />
-        <Stat label="Real hourly" value={card.hourly ?? '—'} />
+        <Stat label={t('Earned')} value={card.earned} />
+        <Stat label={t('Hours')} value={card.hours} />
+        <Stat label={t('Real hourly')} value={card.hourly ?? '—'} />
       </View>
 
       <View style={styles.chart}>
@@ -65,7 +66,9 @@ export function WeekCard({ card, ref }: { card: Card; ref?: Ref<ComponentRef<typ
 
       <View style={styles.footer}>
         <Text style={styles.best} maxFontSizeMultiplier={1} numberOfLines={1}>
-          {card.bestDay ? `Best day: ${card.bestDay.day} · ${card.bestDay.amount}` : `${card.shifts} shifts`}
+          {card.bestDay
+            ? t('Best day: {day} · {amount}', { day: card.bestDay.day, amount: card.bestDay.amount })
+            : t('{count} shifts', { count: card.shifts })}
         </Text>
         <Text style={styles.brand} maxFontSizeMultiplier={1}>
           Tipbook
@@ -130,6 +133,8 @@ const styles = StyleSheet.create({
   },
   stats: {
     flexDirection: 'row',
+    // Values line up even when a label wraps (longer in Spanish).
+    alignItems: 'flex-end',
     gap: 12,
   },
   stat: {

@@ -19,35 +19,38 @@ import {
   type Position,
 } from '@/db/repo';
 import { useTheme } from '@/hooks/use-theme';
+import { msg, t } from '@/i18n';
 import { confirmDestructive } from '@/lib/confirm';
-import { bpsToInput, centsToInput, formatMoney, parseMoney, parsePercent } from '@/lib/money';
+import { bpsToInput, centsToInput, formatHourly, formatMoney, parseMoney, parsePercent } from '@/lib/money';
 import { estimateDoubleTimeRate, estimateOvertimeRate, NO_OVERTIME, type JobOvertime } from '@/lib/overtime';
 import { freeLimitViolation } from '@/lib/pro';
 import { calcTipOut, type TipOutRule } from '@/lib/shift-math';
 import { usePro } from '@/purchases/pro-context';
 
 const RULES: { value: TipOutRule; label: string }[] = [
-  { value: 'none', label: 'None' },
-  { value: 'fixed', label: 'Fixed $' },
-  { value: 'pct_tips', label: '% of tips' },
-  { value: 'pct_sales', label: '% of sales' },
+  { value: 'none', label: msg('None') },
+  { value: 'fixed', label: msg('Fixed $') },
+  { value: 'pct_tips', label: msg('% of tips') },
+  { value: 'pct_sales', label: msg('% of sales') },
 ];
 
 // California is the daily rule plus double time, stored as `doubleTime` on the job.
 type OvertimeChoice = 'none' | 'weekly' | 'daily' | 'california';
 
 const OVERTIME_CHOICES: { value: OvertimeChoice; label: string; hint: string | null }[] = [
-  { value: 'none', label: 'Off', hint: null },
-  { value: 'weekly', label: 'Over 40 hrs a week', hint: 'The federal rule, used in most states.' },
+  { value: 'none', label: msg('Off'), hint: null },
+  { value: 'weekly', label: msg('Over 40 hrs a week'), hint: msg('The federal rule, used in most states.') },
   {
     value: 'daily',
-    label: 'Over 8 hrs a day',
-    hint: 'After 8 hours in a day, and after 40 regular hours in a week, as in Alaska and Nevada.',
+    label: msg('Over 8 hrs a day'),
+    hint: msg('After 8 hours in a day, and after 40 regular hours in a week, as in Alaska and Nevada.'),
   },
   {
     value: 'california',
-    label: 'California',
-    hint: 'Time and a half after 8 hours in a day or 40 in a week, and double time after 12 hours in a day. Work all 7 days of a week and the 7th is overtime from the start, double after 8 hours.',
+    label: msg('California'),
+    hint: msg(
+      'Time and a half after 8 hours in a day or 40 in a week, and double time after 12 hours in a day. Work all 7 days of a week and the 7th is overtime from the start, double after 8 hours.',
+    ),
   },
 ];
 
@@ -61,14 +64,22 @@ const EXAMPLE = { cashTipsCents: 8000, cardTipsCents: 12000, salesCents: 100000 
 
 function overtimeRateHint(choice: OvertimeChoice, wageCents: number | null, rateCents: number | null): string {
   if (choice === 'california') {
-    if (rateCents !== null) return `Double time is worked out from it: ${formatMoney(estimateDoubleTimeRate(0, rateCents))}/hr.`;
+    if (rateCents !== null) {
+      return t('Double time is worked out from it: {rate}.', { rate: formatHourly(estimateDoubleTimeRate(0, rateCents)) });
+    }
     return wageCents
-      ? `Leave empty to use ${formatMoney(estimateOvertimeRate(wageCents))}/hr, and ${formatMoney(estimateDoubleTimeRate(wageCents, null))}/hr for double time. Your paystub’s rate is more accurate.`
-      : 'Enter your overtime rate, or add an hourly wage above so Tipbook can estimate it.';
+      ? t('Leave empty to use {rate}, and {doubleRate} for double time. Your paystub’s rate is more accurate.', {
+          rate: formatHourly(estimateOvertimeRate(wageCents)),
+          doubleRate: formatHourly(estimateDoubleTimeRate(wageCents, null)),
+        })
+      : t('Enter your overtime rate, or add an hourly wage above so Tipbook can estimate it.');
   }
   return wageCents
-    ? `Leave empty to use ${formatMoney(estimateOvertimeRate(wageCents))}/hr, the federal rate for a ${formatMoney(wageCents)} wage (1.5× pay, minus any tip credit). Your paystub’s rate is more accurate.`
-    : 'Enter your overtime rate, or add an hourly wage above so Tipbook can estimate it.';
+    ? t(
+        'Leave empty to use {rate}, the federal rate for a {wage} wage (1.5× pay, minus any tip credit). Your paystub’s rate is more accurate.',
+        { rate: formatHourly(estimateOvertimeRate(wageCents)), wage: formatMoney(wageCents) },
+      )
+    : t('Enter your overtime rate, or add an hourly wage above so Tipbook can estimate it.');
 }
 
 export default function PositionScreen() {
@@ -174,9 +185,9 @@ export default function PositionScreen() {
   const remove = async () => {
     if (positionId === undefined) return;
     const ok = await confirmDestructive(
-      `Remove ${name}?`,
-      'Shifts you already logged keep their history. You just won’t be able to pick this position for new shifts.',
-      'Remove',
+      t('Remove {name}?', { name }),
+      t('Shifts you already logged keep their history. You just won’t be able to pick this position for new shifts.'),
+      t('Remove'),
     );
     if (!ok) return;
     try {
@@ -191,23 +202,28 @@ export default function PositionScreen() {
     <ThemedView style={styles.screen}>
       <Stack.Screen
         options={{
-          title: positionId !== undefined ? 'Edit position' : 'New position',
+          title: positionId !== undefined ? t('Edit position') : t('New position'),
           headerLeft: () => (
-            <Pressable accessibilityRole="button" accessibilityLabel="Cancel" onPress={close} hitSlop={12} style={styles.headerButton}>
-              <ThemedText style={{ color: theme.tint }}>Cancel</ThemedText>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('Cancel')}
+              onPress={close}
+              hitSlop={12}
+              style={styles.headerButton}>
+              <ThemedText style={{ color: theme.tint }}>{t('Cancel')}</ThemedText>
             </Pressable>
           ),
           headerRight: () => (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Save"
+              accessibilityLabel={t('Save')}
               accessibilityState={{ disabled: !canSave }}
               onPress={save}
               disabled={!canSave}
               hitSlop={12}
               style={styles.headerButton}>
               <ThemedText type="smallBold" style={{ color: theme.tint, fontSize: 16, opacity: canSave ? 1 : 0.4 }}>
-                Save
+                {t('Save')}
               </ThemedText>
             </Pressable>
           ),
@@ -218,10 +234,15 @@ export default function PositionScreen() {
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}>
-        <TextField label="Position" value={name} onChangeText={setName} placeholder="Server, Bartender, Host…" />
+        <TextField label={t('Position')} value={name} onChangeText={setName} placeholder={t('Server, Bartender, Host…')} />
 
         <View style={styles.field}>
-          <TextField label="Job / workplace" value={jobName} onChangeText={setJobName} placeholder="Restaurant name" />
+          <TextField
+            label={t('Job / workplace')}
+            value={jobName}
+            onChangeText={setJobName}
+            placeholder={t('Restaurant name')}
+          />
           {jobNames.length > 0 ? (
             <View style={styles.chips}>
               {jobNames.map((job) => (
@@ -232,24 +253,24 @@ export default function PositionScreen() {
         </View>
 
         <MoneyField
-          label="Hourly wage"
+          label={t('Hourly wage')}
           prefix="$"
-          suffix="/hr"
+          suffix={t('/hr')}
           value={wage}
           onChangeText={setWage}
-          error={wageCents === null ? 'Enter a wage like 2.13 or 15' : null}
-          hint="Your base pay before tips. Used for total earned and real hourly."
+          error={wageCents === null ? t('Enter a wage like 2.13 or 15') : null}
+          hint={t('Your base pay before tips. Used for total earned and real hourly.')}
         />
 
         <View style={styles.field}>
           <ThemedText type="small" themeColor="textSecondary">
-            Tip-out each shift
+            {t('Tip-out each shift')}
           </ThemedText>
           <View style={styles.chips}>
             {RULES.map((r) => (
               <Chip
                 key={r.value}
-                label={r.label}
+                label={t(r.label)}
                 selected={rule === r.value}
                 onPress={() => {
                   setRule(r.value);
@@ -260,22 +281,31 @@ export default function PositionScreen() {
           </View>
           {!isPro && rule !== 'none' ? (
             <ThemedText type="small" themeColor="textSecondary">
-              Pro fills this tip-out in on every shift automatically. On the free plan you enter it yourself.
+              {t('Pro fills this tip-out in on every shift automatically. On the free plan you enter it yourself.')}
             </ThemedText>
           ) : null}
         </View>
 
         {rule !== 'none' ? (
           <MoneyField
-            label={isPercent ? 'Percentage' : 'Amount per shift'}
+            label={isPercent ? t('Percentage') : t('Amount per shift')}
             prefix={isPercent ? undefined : '$'}
             suffix={isPercent ? '%' : undefined}
             value={ruleValue}
             onChangeText={setRuleValue}
-            error={parsedRuleValue === null ? (isPercent ? 'Enter a percentage like 3 or 2.5' : 'Enter an amount like 15') : null}
+            error={
+              parsedRuleValue === null
+                ? isPercent
+                  ? t('Enter a percentage like 3 or 2.5')
+                  : t('Enter an amount like 15')
+                : null
+            }
             hint={
               example !== null
-                ? `Example: on $200 in tips and $1,000 in sales, tip-out would be ${formatMoney(example)}. You can still change it on any shift.`
+                ? t(
+                    'Example: on $200 in tips and $1,000 in sales, tip-out would be {amount}. You can still change it on any shift.',
+                    { amount: formatMoney(example) },
+                  )
                 : undefined
             }
           />
@@ -283,42 +313,44 @@ export default function PositionScreen() {
 
         <View style={styles.field}>
           <ThemedText type="small" themeColor="textSecondary">
-            Overtime at {jobName.trim() || 'this job'}
+            {t('Overtime at {job}', { job: jobName.trim() || t('this job') })}
           </ThemedText>
           <View style={styles.chips}>
             {OVERTIME_CHOICES.map((c) => (
               <Chip
                 key={c.value}
-                label={c.label}
+                label={t(c.label)}
                 selected={overtimeChoice === c.value}
                 onPress={() => setOvertimeDraft({ choice: c.value, rate: overtimeRate })}
               />
             ))}
           </View>
           <ThemedText type="small" themeColor="textSecondary">
-            {OVERTIME_CHOICES.find((c) => c.value === overtimeChoice)?.hint ??
-              'Rules differ by state. Pick the one your paystub follows; it applies to every position at this job.'}
+            {t(
+              OVERTIME_CHOICES.find((c) => c.value === overtimeChoice)?.hint ??
+                msg('Rules differ by state. Pick the one your paystub follows; it applies to every position at this job.'),
+            )}
           </ThemedText>
         </View>
 
         {overtimeChoice !== 'none' ? (
           <MoneyField
-            label="Overtime rate (from your paystub)"
+            label={t('Overtime rate (from your paystub)')}
             prefix="$"
-            suffix="/hr"
+            suffix={t('/hr')}
             value={overtimeRate}
-            placeholder={wageCents ? centsToInput(estimateOvertimeRate(wageCents)) : 'Rate'}
+            placeholder={wageCents ? centsToInput(estimateOvertimeRate(wageCents)) : t('Rate')}
             onChangeText={(rate) => setOvertimeDraft({ choice: overtimeChoice, rate })}
-            error={overtimeValid ? null : 'Enter a rate like 5.76 or 22.50'}
+            error={overtimeValid ? null : t('Enter a rate like 5.76 or 22.50')}
             hint={overtimeRateHint(overtimeChoice, wageCents, overtimeRateCents)}
           />
         ) : null}
 
         {error ? <ThemedText style={{ color: theme.danger }}>{error}</ThemedText> : null}
 
-        <Button title={saving ? 'Saving…' : 'Save position'} onPress={save} disabled={!canSave} />
+        <Button title={saving ? t('Saving…') : t('Save position')} onPress={save} disabled={!canSave} />
         {positionId !== undefined && positions.length > 1 ? (
-          <Button title="Remove position" variant="danger" onPress={remove} />
+          <Button title={t('Remove position')} variant="danger" onPress={remove} />
         ) : null}
       </ScrollView>
     </ThemedView>

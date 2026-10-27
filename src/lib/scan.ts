@@ -5,6 +5,8 @@
  */
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 
+import { t } from '@/i18n';
+
 type TextExtractor = { isSupported: boolean; extractTextFromImage: (uri: string) => Promise<string[]> };
 
 let extractor: TextExtractor | null = null;
@@ -20,7 +22,7 @@ export const scanSupported = extractor?.isSupported === true;
 
 /** Recognized text, as lines or blocks of lines. Throws if scanning isn't available. */
 export async function recognizeText(photoUri: string): Promise<string[]> {
-  if (!extractor || !scanSupported) throw new Error('Scanning isn’t available in this version of the app.');
+  if (!extractor || !scanSupported) throw new Error(t('Scanning isn’t available in this version of the app.'));
   // Re-render the photo first: camera photos are often stored sideways with a rotation flag,
   // which text recognition ignores, and a smaller image reads faster.
   const image = await ImageManipulator.manipulate(photoUri).resize({ width: 1600 }).renderAsync();
