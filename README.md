@@ -89,7 +89,7 @@ npm run lint
 | `src/lib/overtime.ts` | Overtime per job: over 40 hours a week or 8 a day, at the paystub rate or a federal estimate |
 | `src/lib/widget-snapshot.ts` / `src/widgets/` | What the home-screen widgets show, and keeping them up to date |
 | `index.ts` | App entry: Expo Router plus the Android widget task |
-| `scripts/build-legal-site.js` → `site/` | `npm run legal-site` builds the public privacy and terms pages from `docs/` |
+| `scripts/build-site.js` → `site/` | `npm run site` builds the public website: the landing page, and the privacy and terms pages from `docs/` |
 | `docs/store-screenshots/` | Draft App Store and Google Play screenshots |
 
 See `AGENTS.md` for the conventions (money in cents, local date strings, append-only migrations).

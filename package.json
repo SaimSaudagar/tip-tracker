@@ -61,7 +61,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "legal-site": "node scripts/build-legal-site.js",
+    "site": "node scripts/build-site.js",
     "test": "jest",
     "test:watch": "jest --watchAll"
   },
