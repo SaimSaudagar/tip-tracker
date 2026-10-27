@@ -34,7 +34,7 @@ import { SCHEMA_VERSION } from '@/db/migrations';
 import { readReminderSettings, saveReminderSettings } from '@/db/settings';
 import { useDbQuery } from '@/db/use-db-query';
 import { useTheme } from '@/hooks/use-theme';
-import { LANGUAGE_OPTIONS, parseLanguagePreference, t, type LanguagePreference } from '@/i18n';
+import { getLanguage, LANGUAGE_OPTIONS, parseLanguagePreference, t, type LanguagePreference } from '@/i18n';
 import { track } from '@/lib/analytics';
 import { APPEARANCE_OPTIONS, parseAppearance, type AppearancePreference } from '@/lib/appearance';
 import { parseBackup } from '@/lib/backup';
@@ -43,7 +43,7 @@ import { errorText } from '@/lib/errors';
 import { formatDayLabel, toISODate, todayISO, weekdayName, weekdayShortName, type Weekday } from '@/lib/dates';
 import { CSV, JSON_FILE, readPickedFile, shareTextFile } from '@/lib/files';
 import { haptic } from '@/lib/haptics';
-import { centsToInput, formatHourly, formatMoney, formatPercent, parseMoney } from '@/lib/money';
+import { centsToInput, formatHourly, formatMoney, formatPercent, parseMoney, spokenHourly } from '@/lib/money';
 import { notificationsSupported, requestNotificationPermission, scheduleTestReminder } from '@/lib/notify';
 import { FREE_POSITION_LIMIT } from '@/lib/pro';
 import { buildSampleShifts } from '@/lib/sample-data';
@@ -51,8 +51,10 @@ import { formatTime, type ReminderSettings } from '@/lib/reminders-plan';
 import { shiftsToCsv } from '@/lib/transfer';
 import { usePro } from '@/purchases/pro-context';
 
-function describePosition(p: Position) {
-  const wage = p.hourlyWageCents > 0 ? formatHourly(p.hourlyWageCents) : t('No hourly wage');
+/** "$2.13/hr · tip-out 3% of tips"; `spoken` says "an hour" for screen readers. */
+function describePosition(p: Position, { spoken = false } = {}) {
+  const rate = spoken ? spokenHourly : formatHourly;
+  const wage = p.hourlyWageCents > 0 ? rate(p.hourlyWageCents) : t('No hourly wage');
   const rule =
     p.tipOutRule === 'fixed'
       ? t('tip-out {amount}', { amount: formatMoney(p.tipOutValue) })
@@ -252,9 +254,10 @@ export default function SettingsScreen() {
   };
 
   const contactSupport = () => {
-    const subject = encodeURIComponent('Tipbook support');
+    const subject = encodeURIComponent(t('Tipbook support'));
+    // The last line tells support which version, phone and language (en or es) to answer for.
     const body = encodeURIComponent(
-      `\n\n—\nTipbook ${Constants.expoConfig?.version ?? ''} on ${Platform.OS} ${String(Platform.Version)}`,
+      `\n\n—\nTipbook ${Constants.expoConfig?.version ?? ''} · ${Platform.OS} ${String(Platform.Version)} · ${getLanguage()}`,
     );
     Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`).catch(() =>
       showToast({ title: t('No email app found'), detail: t('Write to {email}', { email: SUPPORT_EMAIL }) }),
@@ -302,7 +305,7 @@ export default function SettingsScreen() {
               <Pressable
                 key={p.id}
                 accessibilityRole="button"
-                accessibilityLabel={`${t('{position} at {job}', { position: p.name, job: p.jobName })}, ${describePosition(p)}`}
+                accessibilityLabel={`${t('{position} at {job}', { position: p.name, job: p.jobName })}, ${describePosition(p, { spoken: true })}`}
                 accessibilityHint={t('Edit this position')}
                 onPress={() => router.push({ pathname: '/position', params: { id: String(p.id) } })}
                 style={({ pressed }) => [

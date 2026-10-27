@@ -11,7 +11,6 @@ export const es: Record<string, string> = {
   'Dismiss': 'Cerrar',
   // components/shift-row.tsx
   '{amount} in tips': '{amount} en propinas',
-  '{amount} an hour': '{amount} por hora',
   'Edit this shift': 'Editar este turno',
   'tips only': 'solo propinas',
   // components/week-card.tsx
@@ -362,6 +361,7 @@ export const es: Record<string, string> = {
   'Log a few shifts and your patterns show up here: your best days, lunch vs dinner, and how your weeks are trending.': 'Registra algunos turnos y aquí verás tus patrones: tus mejores días, almuerzo frente a cena y cómo van tus semanas.',
   'Best day': 'Mejor día',
   'Not enough shifts yet': 'Aún no hay suficientes turnos',
+  '{amount} an hour, tips plus wages, over the last {weeks} weeks.': '{amount} por hora, propinas más salario, en las últimas {weeks} semanas.',
   '{hourly} real hourly, tips plus wages, over the last {weeks} weeks.': '{hourly} de pago real, propinas más salario, en las últimas {weeks} semanas.',
   'Log at least two shifts on two different days of the week to see which pays best.': 'Registra al menos dos turnos en dos días distintos de la semana para ver cuál paga mejor.',
   'Real hourly by day: {days}': 'Pago real por hora según el día: {days}',
@@ -445,6 +445,7 @@ export const es: Record<string, string> = {
   'Delete everything': 'Borrar todo',
   'Couldn’t delete your data, nothing was changed': 'No se pudieron borrar tus datos, no se cambió nada',
   'All data deleted': 'Se borraron todos los datos',
+  'Tipbook support': 'Soporte de Tipbook',
   'No email app found': 'No se encontró una app de correo',
   'Write to {email}': 'Escribe a {email}',
   'Settings': 'Ajustes',
@@ -542,6 +543,7 @@ export const es: Record<string, string> = {
   ' Tracked with Tipbook.': ' Registrado con Tipbook.',
   // lib/money.ts
   '{amount}/hr': '{amount}/h',
+  '{amount} an hour': '{amount} por hora',
   // lib/reminders-plan.ts
   ' · {amount}/hr real hourly': ' · {amount}/h de pago real',
   'Your week: {amount} in tips': 'Tu semana: {amount} en propinas',

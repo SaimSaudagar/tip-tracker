@@ -24,7 +24,7 @@ import { t } from '@/i18n';
 import { track } from '@/lib/analytics';
 import { shiftMonth } from '@/lib/calendar';
 import { formatDayLabel, formatMonthLong, formatRange, formatShortDate, monthRange, yearRange } from '@/lib/dates';
-import { formatDuration } from '@/lib/duration';
+import { formatDuration, spokenDuration } from '@/lib/duration';
 import { sharePdf } from '@/lib/files';
 import { errorText } from '@/lib/errors';
 import { formatMoney } from '@/lib/money';
@@ -227,7 +227,11 @@ function Reports({ linkedMonth, linkedYear }: { linkedMonth: string | null; link
                   </View>
                   <Line label={t('Service charges (not tips)')} value={formatMoney(summary.totals.serviceChargeCents)} />
                   <Line label={t('Wages')} value={formatMoney(summary.totals.wagesCents)} />
-                  <Line label={t('Hours')} value={formatDuration(summary.totals.minutesWorked)} />
+                  <Line
+                    label={t('Hours')}
+                    value={formatDuration(summary.totals.minutesWorked)}
+                    spokenValue={spokenDuration(summary.totals.minutesWorked)}
+                  />
                   <Line label={t('Shifts')} value={String(summary.totals.shiftCount)} />
                   {summary.jobs.length > 1
                     ? summary.jobs.map((j) => (
@@ -366,13 +370,15 @@ function PaycheckRow({
   );
 }
 
-function Line({ label, value }: { label: string; value: string }) {
+function Line({ label, value, spokenValue }: { label: string; value: string; spokenValue?: string }) {
   return (
     <View style={styles.line}>
       <ThemedText type="small" themeColor="textSecondary">
         {label}
       </ThemedText>
-      <ThemedText type="small">{value}</ThemedText>
+      <ThemedText type="small" accessibilityLabel={spokenValue}>
+        {value}
+      </ThemedText>
     </View>
   );
 }

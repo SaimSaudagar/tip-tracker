@@ -18,9 +18,9 @@ import { useTheme } from '@/hooks/use-theme';
 import { useToday } from '@/hooks/use-today';
 import { t } from '@/i18n';
 import { formatShortDate } from '@/lib/dates';
-import { formatDuration } from '@/lib/duration';
+import { formatDuration, spokenDuration } from '@/lib/duration';
 import { buildInsights, formatChange, insightsLoadRange, percentChange } from '@/lib/insights';
-import { formatHourly, formatMoney, formatPercent } from '@/lib/money';
+import { formatHourly, formatMoney, formatPercent, spokenHourly } from '@/lib/money';
 import type { PeriodSummary } from '@/lib/shift-math';
 import { usePro } from '@/purchases/pro-context';
 
@@ -110,7 +110,17 @@ export default function InsightsScreen() {
                 <ThemedText type="amount">
                   {insights.bestWeekday ? insights.bestWeekday.name : t('Not enough shifts yet')}
                 </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
+                <ThemedText
+                  type="small"
+                  themeColor="textSecondary"
+                  accessibilityLabel={
+                    insights.bestWeekday?.realHourlyCents != null
+                      ? t('{amount} an hour, tips plus wages, over the last {weeks} weeks.', {
+                          amount: formatMoney(insights.bestWeekday.realHourlyCents),
+                          weeks: TREND_WEEKS,
+                        })
+                      : undefined
+                  }>
                   {insights.bestWeekday
                     ? t('{hourly} real hourly, tips plus wages, over the last {weeks} weeks.', {
                         hourly: hourly(insights.bestWeekday.realHourlyCents),
@@ -129,7 +139,7 @@ export default function InsightsScreen() {
                     days: insights.byWeekday
                       .map(
                         (d) =>
-                          `${d.label} ${d.summary.realHourlyCents === null ? t('no shifts') : hourly(d.summary.realHourlyCents)}`,
+                          `${d.label} ${d.summary.realHourlyCents === null ? t('no shifts') : spokenHourly(d.summary.realHourlyCents)}`,
                       )
                       .join(', '),
                   })}
@@ -255,8 +265,16 @@ function MonthCard({
       </ThemedText>
       <View style={[styles.split, styles.stats]}>
         <Stat label={t('Tips')} value={formatMoney(thisMonth.netTipsCents)} />
-        <Stat label={t('Hours')} value={formatDuration(thisMonth.minutesWorked)} />
-        <Stat label={t('Real hourly')} value={hourly(thisMonth.realHourlyCents)} />
+        <Stat
+          label={t('Hours')}
+          value={formatDuration(thisMonth.minutesWorked)}
+          spokenValue={spokenDuration(thisMonth.minutesWorked)}
+        />
+        <Stat
+          label={t('Real hourly')}
+          value={hourly(thisMonth.realHourlyCents)}
+          spokenValue={thisMonth.realHourlyCents === null ? undefined : spokenHourly(thisMonth.realHourlyCents)}
+        />
       </View>
     </Card>
   );
@@ -268,7 +286,11 @@ function PeriodColumn({ label, summary }: { label: string; summary: PeriodSummar
       <ThemedText type="small" themeColor="textSecondary">
         {label}
       </ThemedText>
-      <ThemedText type="amount">{hourly(summary.realHourlyCents)}</ThemedText>
+      <ThemedText
+        type="amount"
+        accessibilityLabel={summary.realHourlyCents === null ? undefined : spokenHourly(summary.realHourlyCents)}>
+        {hourly(summary.realHourlyCents)}
+      </ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
         {summary.shiftCount === 0
           ? t('No shifts')
@@ -332,13 +354,15 @@ function WeeklyTrend({ points }: { points: ReturnType<typeof buildInsights>['wee
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, spokenValue }: { label: string; value: string; spokenValue?: string }) {
   return (
     <View style={styles.column}>
       <ThemedText type="small" themeColor="textSecondary">
         {label}
       </ThemedText>
-      <ThemedText type="smallBold">{value}</ThemedText>
+      <ThemedText type="smallBold" accessibilityLabel={spokenValue}>
+        {value}
+      </ThemedText>
     </View>
   );
 }

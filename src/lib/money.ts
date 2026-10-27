@@ -36,6 +36,11 @@ export function formatHourly(cents: number): string {
   return t('{amount}/hr', { amount: formatMoney(cents) });
 }
 
+/** The same for screen readers, which read "/hr" letter by letter: "$31.30 an hour". */
+export function spokenHourly(cents: number): string {
+  return t('{amount} an hour', { amount: formatMoney(cents) });
+}
+
 /** Turns stored cents back into editable text: 0 -> "", 1200 -> "12", 1250 -> "12.50". */
 export function centsToInput(cents: number): string {
   if (cents === 0) return '';

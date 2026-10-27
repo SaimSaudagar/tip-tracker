@@ -5,7 +5,7 @@ import { Spacing } from '@/constants/theme';
 import type { Shift } from '@/db/repo';
 import { formatDayLabel, type ISODate } from '@/lib/dates';
 import { formatDuration, spokenDuration } from '@/lib/duration';
-import { formatHourly, formatMoney } from '@/lib/money';
+import { formatHourly, formatMoney, spokenHourly } from '@/lib/money';
 import { computeShift } from '@/lib/shift-math';
 import { useTheme } from '@/hooks/use-theme';
 import { t } from '@/i18n';
@@ -24,7 +24,7 @@ export function ShiftRow({ shift, today, onPress }: Props) {
     shift.positionName + (shift.notes ? `, ${shift.notes}` : ''),
     t('{amount} in tips', { amount: formatMoney(totals.netTipsCents) }),
     shift.minutesWorked > 0 ? spokenDuration(shift.minutesWorked) : null,
-    totals.realHourlyCents !== null ? t('{amount} an hour', { amount: formatMoney(totals.realHourlyCents) }) : null,
+    totals.realHourlyCents !== null ? spokenHourly(totals.realHourlyCents) : null,
   ].filter(Boolean);
 
   return (

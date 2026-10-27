@@ -18,7 +18,7 @@ import { msg, t } from '@/i18n';
 import { confirmDestructive } from '@/lib/confirm';
 import { errorText } from '@/lib/errors';
 import { addDays, fromISODate, todayISO, type ISODate } from '@/lib/dates';
-import { formatDuration } from '@/lib/duration';
+import { formatDuration, spokenDuration } from '@/lib/duration';
 import { haptic } from '@/lib/haptics';
 import { centsToInput, formatMoney, parseMoney } from '@/lib/money';
 import { comparePaycheck, PAYCHECK_TOLERANCE_CENTS } from '@/lib/paychecks';
@@ -375,6 +375,7 @@ function Comparison({
               comparison.shiftCount === 1 ? t('1 shift') : t('{count} shifts', { count: comparison.shiftCount })
             }
             value={formatDuration(comparison.minutesWorked)}
+            spokenValue={spokenDuration(comparison.minutesWorked)}
           />
           <Line label={t('Wages')} value={formatMoney(comparison.wagesCents)} />
           <Line label={t('Card tips')} value={formatMoney(comparison.cardTipsCents)} />
@@ -410,13 +411,15 @@ function Comparison({
   );
 }
 
-function Line({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+function Line({ label, value, spokenValue, bold }: { label: string; value: string; spokenValue?: string; bold?: boolean }) {
   return (
     <View style={styles.line}>
       <ThemedText type={bold ? 'smallBold' : 'small'} themeColor={bold ? undefined : 'textSecondary'}>
         {label}
       </ThemedText>
-      <ThemedText type={bold ? 'smallBold' : 'small'}>{value}</ThemedText>
+      <ThemedText type={bold ? 'smallBold' : 'small'} accessibilityLabel={spokenValue}>
+        {value}
+      </ThemedText>
     </View>
   );
 }

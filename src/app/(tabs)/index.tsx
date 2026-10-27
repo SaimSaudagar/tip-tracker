@@ -39,7 +39,7 @@ import {
 import { formatMonthYear, formatRange, formatWeekday } from '@/lib/dates';
 import { formatDuration, spokenDuration } from '@/lib/duration';
 import { formatChange, percentChange } from '@/lib/insights';
-import { formatHourly, formatMoney } from '@/lib/money';
+import { formatHourly, formatMoney, spokenHourly } from '@/lib/money';
 import { summarizeRange } from '@/lib/shift-math';
 import { usePro } from '@/purchases/pro-context';
 
@@ -148,11 +148,7 @@ export default function HomeScreen() {
                 <HeroStat
                   label={t('Real hourly')}
                   value={week ? hourly(week.summary.realHourlyCents) : '—'}
-                  spokenValue={
-                    week?.summary.realHourlyCents != null
-                      ? t('{amount} an hour', { amount: formatMoney(week.summary.realHourlyCents) })
-                      : t('none yet')
-                  }
+                  spokenValue={week?.summary.realHourlyCents != null ? spokenHourly(week.summary.realHourlyCents) : t('none yet')}
                 />
               </View>
               {week && week.summary.shiftCount > 0 ? (
@@ -335,7 +331,16 @@ function PeriodCard({ title, period }: { title: string; period?: Period }) {
         {title}
       </ThemedText>
       <ThemedText type="amount">{s ? formatMoney(s.netTipsCents) : '—'}</ThemedText>
-      <ThemedText type="small" themeColor="textSecondary">
+      <ThemedText
+        type="small"
+        themeColor="textSecondary"
+        accessibilityLabel={
+          s && s.shiftCount > 0
+            ? [s.realHourlyCents === null ? null : spokenHourly(s.realHourlyCents), spokenDuration(s.minutesWorked)]
+                .filter(Boolean)
+                .join(', ')
+            : undefined
+        }>
         {!s ? ' ' : s.shiftCount === 0 ? t('No shifts yet') : `${hourly(s.realHourlyCents)} · ${formatDuration(s.minutesWorked)}`}
       </ThemedText>
     </View>

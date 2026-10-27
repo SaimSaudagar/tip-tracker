@@ -1,7 +1,7 @@
 import { applyLanguagePreference, byLanguage, getLanguage, parseLanguagePreference, t } from '@/i18n';
 import { formatDayLabel, formatMonthLong, formatMonthYear, formatRange, weekdayName, weekdayPlural } from '@/lib/dates';
 import { formatClock, spokenDuration } from '@/lib/duration';
-import { formatHourly } from '@/lib/money';
+import { formatHourly, spokenHourly } from '@/lib/money';
 import { buildPlan } from '@/lib/plans';
 import { formatTime, weeklyRecap } from '@/lib/reminders-plan';
 import { buildMonthlyReport, monthlyReportHtml } from '@/lib/reports';
@@ -73,6 +73,7 @@ describe('Spanish formats', () => {
     expect(spokenDuration(390)).toBe('6 horas 30 minutos');
     expect(spokenDuration(61)).toBe('1 hora 1 minuto');
     expect(formatHourly(3546)).toBe('$35.46/h');
+    expect(spokenHourly(3546)).toBe('$35.46 por hora');
   });
 });
 

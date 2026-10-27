@@ -10,7 +10,7 @@ import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { t } from '@/i18n';
-import { formatDuration, parseDuration } from '@/lib/duration';
+import { formatDuration, parseDuration, spokenDuration } from '@/lib/duration';
 import { centsToInput, formatMoney, parseMoney } from '@/lib/money';
 import { describeTipPool, splitTipPool, type SplitMode } from '@/lib/tip-pool';
 
@@ -152,7 +152,11 @@ export default function TipPoolScreen() {
           <View style={[styles.result, { backgroundColor: theme.tintSoft }]} accessibilityLiveRegion="polite">
             {shares.map((s, i) => (
               <View key={members[i].key} style={styles.resultLine}>
-                <ThemedText type={i === myIndex ? 'smallBold' : 'small'} style={styles.resultName} numberOfLines={1}>
+                <ThemedText
+                  type={i === myIndex ? 'smallBold' : 'small'}
+                  style={styles.resultName}
+                  numberOfLines={1}
+                  accessibilityLabel={mode === 'hours' ? `${s.name}, ${spokenDuration(s.minutes)}` : undefined}>
                   {s.name}
                   {mode === 'hours' ? ` · ${formatDuration(s.minutes)}` : ''}
                 </ThemedText>

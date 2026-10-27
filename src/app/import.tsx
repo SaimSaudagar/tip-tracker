@@ -15,7 +15,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { t } from '@/i18n';
 import { parseCsv } from '@/lib/csv';
 import { formatDayLabel, todayISO } from '@/lib/dates';
-import { formatDuration } from '@/lib/duration';
+import { formatDuration, spokenDuration } from '@/lib/duration';
 import { readPickedFile } from '@/lib/files';
 import { formatMoney } from '@/lib/money';
 import { computeShift } from '@/lib/shift-math';
@@ -249,7 +249,10 @@ export default function ImportScreen() {
                   return (
                     <View key={i} style={[styles.previewRow, { backgroundColor: theme.backgroundElement }]}>
                       <ThemedText type="small">{formatDayLabel(d.date, today)}</ThemedText>
-                      <ThemedText type="small" themeColor="textSecondary">
+                      <ThemedText
+                        type="small"
+                        themeColor="textSecondary"
+                        accessibilityLabel={d.minutesWorked > 0 ? spokenDuration(d.minutesWorked) : undefined}>
                         {d.minutesWorked > 0 ? formatDuration(d.minutesWorked) : t('no hours')}
                       </ThemedText>
                       <ThemedText type="smallBold">{formatMoney(totals.netTipsCents)}</ThemedText>

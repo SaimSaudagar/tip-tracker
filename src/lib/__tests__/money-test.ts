@@ -1,13 +1,22 @@
 import {
   bpsToInput,
   centsToInput,
+  formatHourly,
   formatMoney,
   formatPercent,
   parseCount,
   parseMoney,
   parsePercent,
   percentOf,
+  spokenHourly,
 } from '@/lib/money';
+
+describe('hourly rates', () => {
+  it('are short on screen and spelled out for screen readers', () => {
+    expect(formatHourly(3713)).toBe('$37.13/hr');
+    expect(spokenHourly(3713)).toBe('$37.13 an hour');
+  });
+});
 
 describe('parseCount', () => {
   it.each([

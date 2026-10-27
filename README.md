@@ -81,7 +81,7 @@ npm run test:e2e    # clicks through the app in a browser (first time: npx playw
 | `src/lib/tipouts.ts` | Names of coworkers tipped out, for the IRS daily tip record |
 | `src/lib/insights.ts` / `paychecks.ts` / `celebration.ts` | Insights, paycheck comparison and the after-save highlight (pure, tested) |
 | `src/components/` | Shared UI: button, chip, bar chart, progress ring, toast, list group, date stepper, money field |
-| `docs/` | Privacy policy, terms of use, store listing drafts, release notes, support and review replies, the TikTok/Instagram content plan with 30 written posts and demo clips, phone testing and the launch checklist |
+| `docs/` | Privacy policy, terms of use, store listing drafts, release notes, support and review replies (English and Spanish), the TikTok/Instagram content plan with 30 written posts and demo clips, phone testing and the launch checklist |
 | `src/app/log-shift.tsx` | Quick log and edit screen (`?id=…` edits, `?date=…` starts on a day, `?tipIn=…` prefills a tip-pool share); optional start/end times, lunch/dinner tag and covers |
 | `src/app/paycheck.tsx` | Add or edit a paycheck and compare it with the shifts in its pay period |
 | `src/app/position.tsx` | Position editor: wage and tip-out rule |
@@ -96,7 +96,7 @@ npm run test:e2e    # clicks through the app in a browser (first time: npx playw
 | `src/lib/overtime.ts` | Overtime per job: over 40 hours a week or 8 a day, at the paystub rate or a federal estimate |
 | `src/lib/widget-snapshot.ts` / `src/widgets/` | What the home-screen widgets show, and keeping them up to date |
 | `index.ts` | App entry: Expo Router plus the Android widget task |
-| `scripts/build-site.js` → `site/` | `npm run site` builds the public website: the landing page in English (`index.html`) and Spanish (`es.html`), the support page, and the privacy and terms pages from `docs/` |
+| `scripts/build-site.js` → `site/` | `npm run site` builds the public website: the landing page and the support page in English (`index.html`, `support.html`) and Spanish (`es.html`, `support-es.html`), and the privacy and terms pages from `docs/` |
 | `docs/store-screenshots/` | Draft App Store and Google Play screenshots (`es/` has the Spanish set; the Spanish store text is in `docs/store-listing-es.md`) |
 
 See `AGENTS.md` for the conventions (money in cents, local date strings, append-only migrations).

@@ -43,7 +43,7 @@ import {
   periodForStart,
 } from '@/lib/duration';
 import { haptic } from '@/lib/haptics';
-import { centsToInput, formatHourly, formatMoney, formatPercent, parseCount, parseMoney } from '@/lib/money';
+import { centsToInput, formatHourly, formatMoney, formatPercent, parseCount, parseMoney, spokenHourly } from '@/lib/money';
 import { maybeAskForReview } from '@/lib/review-prompt';
 import { calcTipOut, computeShift, summarize } from '@/lib/shift-math';
 import { parseTipOutDrafts, type TipOutDraft } from '@/lib/tipouts';
@@ -698,12 +698,14 @@ export default function LogShiftScreen() {
           <SummaryLine label={t('Net tips')} value={totals ? formatMoney(totals.netTipsCents) : '—'} strong />
           <SummaryLine
             label={hourlyWageCents > 0 ? t('Wages ({rate})', { rate: formatHourly(hourlyWageCents) }) : t('Wages')}
+            spokenLabel={hourlyWageCents > 0 ? t('Wages ({rate})', { rate: spokenHourly(hourlyWageCents) }) : undefined}
             value={totals ? formatMoney(totals.wagesCents) : '—'}
           />
           <SummaryLine label={t('Total earned')} value={totals ? formatMoney(totals.totalCents) : '—'} />
           <SummaryLine
             label={t('Real hourly')}
             value={totals?.realHourlyCents != null ? formatHourly(totals.realHourlyCents) : '—'}
+            spokenValue={totals?.realHourlyCents != null ? spokenHourly(totals.realHourlyCents) : undefined}
           />
         </View>
 
@@ -759,11 +761,29 @@ function TimeField({
   );
 }
 
-function SummaryLine({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+function SummaryLine({
+  label,
+  value,
+  strong,
+  spokenLabel,
+  spokenValue,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+  /** What screen readers say instead, when the text has "/hr" or "6h 30m" in it. */
+  spokenLabel?: string;
+  spokenValue?: string;
+}) {
   return (
     <View style={styles.summaryLine}>
-      <ThemedText type={strong ? 'smallBold' : 'small'}>{label}</ThemedText>
-      <ThemedText type="smallBold" style={strong ? styles.summaryStrong : undefined}>
+      <ThemedText type={strong ? 'smallBold' : 'small'} accessibilityLabel={spokenLabel}>
+        {label}
+      </ThemedText>
+      <ThemedText
+        type="smallBold"
+        style={strong ? styles.summaryStrong : undefined}
+        accessibilityLabel={spokenValue}>
         {value}
       </ThemedText>
     </View>

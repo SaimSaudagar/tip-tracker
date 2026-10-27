@@ -99,6 +99,52 @@ test.describe('on a phone set to Spanish', () => {
   });
 });
 
+// Words that only show up when English is left in a Spanish screen. Typed data (the workplace
+// name), the "English" language option and development-only switches are skipped.
+const ENGLISH = /\b(the|your|you|and|with|for|of|shifts?|tips|hours|hourly|week|month|earned|wages?|save|cancel|close|edit|delete|today|yesterday|settings|back|next|previous|log|add|remove|none|reports?|paycheck|position)\b/gi;
+const SKIP = /Olive & Vine|English|Developer|Tipbook/;
+
+/** English words in everything the screen shows or tells a screen reader. */
+async function englishOnScreen(page: Page): Promise<string[]> {
+  const texts = await page.evaluate(() => {
+    const body = document.body;
+    const labels = [...body.querySelectorAll('[aria-label]')].map((el) => el.getAttribute('aria-label') ?? '');
+    const placeholders = [...body.querySelectorAll('[placeholder]')].map((el) => el.getAttribute('placeholder') ?? '');
+    return [...body.innerText.split('\n'), ...labels, ...placeholders];
+  });
+  return texts
+    .filter((text) => !SKIP.test(text))
+    .flatMap((text) => [...text.matchAll(ENGLISH)].map((m) => `${m[0]} (in "${text.trim()}")`));
+}
+
+test('every screen is in Spanish, including what screen readers hear', async ({ page }) => {
+  expect('Save shift, close'.match(ENGLISH)).toEqual(['Save', 'shift', 'close']); // the check itself works
+  const errors = await openApp(page);
+  await onboard(page);
+  await logShift(page, { cash: '85', card: '142.50', hours: '6.5' });
+  await page.goto('/settings');
+  await page.getByRole('switch', { name: 'Developer: simulate Pro' }).click();
+  await page.getByRole('button', { name: 'Language: Español' }).click();
+  await expect(visible(page, 'Idioma')).toBeVisible();
+
+  const found: string[] = [];
+  for (const path of ['/', '/calendar', '/insights', '/reports', '/settings', '/log-shift', '/paycheck', '/position', '/tip-pool', '/import', '/scan', '/share-week', '/paywall']) {
+    await page.goto(path);
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(800);
+    found.push(...(await englishOnScreen(page)).map((hit) => `${path}: ${hit}`));
+  }
+  // Log shift with its details open, and editing the shift.
+  await page.goto('/');
+  await page.getByRole('button', { name: /^Hoy, / }).click();
+  await page.getByRole('button', { name: 'Reparto, cargos por servicio y más' }).click();
+  await page.getByRole('button', { name: '+ Agregar persona' }).click();
+  found.push(...(await englishOnScreen(page)).map((hit) => `edit shift: ${hit}`));
+
+  expect(found).toEqual([]);
+  expect(errors, 'page errors or console errors').toEqual([]);
+});
+
 async function openSpanishApp(page: Page): Promise<string[]> {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));

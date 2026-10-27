@@ -4,6 +4,8 @@ Spanish versions of the fields in `store-listing.md`, written for Spanish-speaki
 
 The app itself switches to Spanish when the phone is set to Spanish, or from Settings → Language. Employer and year-end PDFs, CSV columns and the privacy policy and terms stay in English (the app says so on those screens).
 
+**Support URL** for the Spanish (Mexico) localization in App Store Connect, which takes one per language: `https://<your-site>/support-es.html` (built by `npm run site`), and `https://<your-site>/es.html` as its Marketing URL. Google Play has one website link for every language, so keep the English page there; it links to the Spanish one.
+
 **Where to add it:**
 - **App Store Connect:** add the localization **Spanish (Mexico)**. Apple shows it on the US App Store to people whose phone is in Spanish.
 - **Google Play Console:** add the translation **Spanish (United States) – es-US**.

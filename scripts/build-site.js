@@ -1,6 +1,6 @@
 /**
  * Builds the public website in site/: the Tipbook landing page in English (index.html) and
- * Spanish (es.html), the support page
+ * Spanish (es.html), the support page in English (support.html) and Spanish (support-es.html)
  * (support.html, the store listings' Support URL), and the privacy policy and terms pages from
  * docs/privacy-policy.md and docs/terms-of-use.md. Run `npm run site` after editing either doc or the page text here, then upload the
  * site/ folder (see docs/launch-checklist.md).
@@ -65,8 +65,16 @@ const head = (title, description) => `<meta charset="utf-8">
 <meta name="theme-color" content="#06120e" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="images/favicon.png">`;
 
-const legalPage = (title, body, description = `${title}.`) => `<!doctype html>
-<html lang="en">
+/** The links atop the support and legal pages. The privacy policy and terms are English only. */
+const NAV = {
+  en: (other) =>
+    `<a href="index.html">${escape(appName)}</a> · <a href="support.html">Support</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="${other}" hreflang="es" lang="es">Español</a>`,
+  es: (other) =>
+    `<a href="es.html">${escape(appName)}</a> · <a href="support-es.html">Soporte</a> · <a href="privacy.html">Privacidad (en inglés)</a> · <a href="terms.html">Términos (en inglés)</a> · <a href="${other}" hreflang="en" lang="en">English</a>`,
+};
+
+const legalPage = (title, body, description = `${title}.`, { lang = 'en', other = 'es.html' } = {}) => `<!doctype html>
+<html lang="${lang}">
 <head>
 ${head(title, description)}
 <style>
@@ -87,7 +95,7 @@ ${head(title, description)}
 </style>
 </head>
 <body><main>
-<nav><a href="index.html">${escape(appName)}</a> · <a href="support.html">Support</a> · <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a></nav>
+<nav>${NAV[lang](other)}</nav>
 ${body}
 </main></body>
 </html>
@@ -241,6 +249,7 @@ const COPY = {
     faq: FAQ,
     navLabel: 'Site',
     support: 'Support',
+    supportPage: 'support.html',
     privacy: 'Privacy Policy',
     terms: 'Terms of Use',
     footer: `${appName} keeps records only; it isn’t tax advice.`,
@@ -382,7 +391,8 @@ const COPY = {
       },
     ],
     navLabel: 'Sitio',
-    support: 'Soporte (en inglés)',
+    support: 'Soporte',
+    supportPage: 'support-es.html',
     privacy: 'Política de privacidad (en inglés)',
     terms: 'Términos de uso (en inglés)',
     footer: `${appName} solo guarda registros; no es asesoría de impuestos.`,
@@ -468,6 +478,14 @@ const SUPPORT = [
     ],
   },
   {
+    id: 'language',
+    title: 'Language',
+    steps: [
+      'Tipbook is in English and Spanish. It follows your phone’s language; to pick one, go to Settings → Language.',
+      'Employer and year-end PDFs, CSV files, and the privacy policy and terms are in English.',
+    ],
+  },
+  {
     id: 'privacy',
     title: 'Privacy',
     steps: [
@@ -477,19 +495,144 @@ const SUPPORT = [
   },
 ];
 
-const supportPage = () =>
-  legalPage(
-    `${appName} Support`,
-    `<h1>${escape(appName)} Support</h1>
-<p class="muted">Answers to common questions. Most things are in Settings.</p>
-<ul>${SUPPORT.map((s) => `<li><a href="#${s.id}">${escape(s.title)}</a></li>`).join('')}</ul>
-${SUPPORT.map((s) => `<h2 id="${s.id}">${escape(s.title)}</h2>\n<ol>${s.steps.map((step) => `<li>${escape(step)}</li>`).join('')}</ol>`).join('\n')}
+// The same answers in Spanish, with the same section ids so links can point at either page.
+// Button names match the app's Spanish (src/i18n/es.ts).
+const SUPPORT_ES = [
+  {
+    id: 'log',
+    title: 'Registrar, cambiar o borrar un turno',
+    steps: [
+      'Toca Registrar turno en Inicio, escribe tus propinas en efectivo, con tarjeta y tus horas, y toca Guardar.',
+      'Para registrar un día anterior, abre Calendario, toca el día y luego “Registrar un turno del …”.',
+      'Para cambiar o borrar un turno, tócalo en Inicio o en el Calendario. Borrar turno está al final.',
+      'El reparto de propinas, las propinas de compañeros, los cargos por servicio, las ventas, los comensales y las horas de entrada y salida están en “Reparto, cargos por servicio y más”.',
+    ],
+  },
+  {
+    id: 'new-phone',
+    title: 'Pasarte a un teléfono nuevo o reinstalar',
+    steps: [
+      'Tus propinas se guardan solo en tu teléfono. Se incluyen en la copia de seguridad de iCloud o Google de tu teléfono, así que al restaurar esa copia vuelven.',
+      'Para pasarlas tú: Ajustes → Tus datos → Hacer copia ahora, y guarda el archivo en iCloud Drive, Google Drive o en tu correo.',
+      'En el teléfono nuevo, instala Tipbook, termina la configuración corta y luego Ajustes → Tus datos → Restaurar una copia y elige el archivo.',
+      'Restaurar reemplaza lo que haya en el teléfono nuevo, así que hazlo antes de registrar turnos nuevos ahí.',
+    ],
+  },
+  {
+    id: 'import',
+    title: 'Trae tus propinas de otra app o de una hoja de cálculo',
+    steps: [
+      'En tu app anterior, exporta tu historial como archivo CSV. Casi siempre está en Ajustes o Informes, como Exportar o Copia de seguridad; algunas apps te mandan el archivo por correo.',
+      'Desde Excel, Numbers o Google Sheets, guarda o descarga la hoja como CSV.',
+      'En Tipbook: Ajustes → Tus datos → Importar de otra app (CSV), y elige el archivo.',
+      'Revisa qué columna llena cada campo (toca un campo para cambiarlo), mira la vista previa y toca Importar. Importar el mismo archivo dos veces no duplica los turnos.',
+    ],
+  },
+  {
+    id: 'reports',
+    title: 'Informe mensual de propinas y resumen de fin de año',
+    steps: [
+      'Abre Informes. El informe mensual muestra las propinas de cada trabajo en el mes y hasta cuándo tienes para reportarlas a tu empleador.',
+      'En EE. UU., las propinas de $20 o más en un mes en un mismo trabajo se reportan a ese empleador a más tardar el día 10 del mes siguiente.',
+      'Toca Compartir PDF para tu empleador para enviarlo o imprimirlo (Pro). El resumen de fin de año tiene tus propinas, cargos por servicio y salario para los impuestos. Los PDF están en inglés, que es lo que esperan los empleadores.',
+      'Tipbook guarda registros y hace informes; no es asesoría de impuestos.',
+    ],
+  },
+  {
+    id: 'overtime',
+    title: 'Horas extra',
+    steps: [
+      'Ajustes → Trabajos y puestos → toca un puesto → Horas extra, y elige la regla de tu talón de pago: más de 40 h a la semana (la mayoría de los estados), más de 8 h al día (como en Alaska y Nevada) o California (agrega tiempo doble después de 12 horas y la regla del séptimo día).',
+      'Escribe la tarifa de horas extra de tu talón de pago para que los números sean exactos; si no, Tipbook la calcula. Las horas extra se aplican a todos los puestos de ese trabajo.',
+    ],
+  },
+  {
+    id: 'widgets',
+    title: 'Widgets, Siri y atajos',
+    steps: [
+      'iPhone y iPad: mantén presionada la pantalla de inicio, toca Editar → Agregar widget y elige Tipbook. También cabe en la pantalla bloqueada.',
+      'Android: mantén presionada la pantalla principal, toca Widgets y arrastra “Tipbook: this week”. Mantén presionado el ícono de Tipbook para Registrar turno y Escanear ticket.',
+      'Por ahora Siri solo entiende la frase en inglés: “Hey Siri, log my tips in Tipbook”.',
+    ],
+  },
+  {
+    id: 'reminders',
+    title: 'No me llegan los recordatorios',
+    steps: [
+      'Ajustes → Recordatorios → activa Recordatorio después del turno y elige la hora y los días que trabajas. Los días que ya registraste no reciben recordatorio.',
+      'Resumen semanal te manda los totales de tu semana la mañana después de que termina. Las cantidades se ven en la notificación, así que déjalo apagado si otras personas ven tu teléfono.',
+      'Si no llega nada, permite las notificaciones de Tipbook en los ajustes de notificaciones de tu teléfono.',
+    ],
+  },
+  {
+    id: 'subscription',
+    title: 'Pro, suscripciones y reembolsos',
+    steps: [
+      'Pro se compra en el App Store o en Google Play, con tu cuenta de la tienda. En un teléfono nuevo, toca Ajustes → Restaurar compras.',
+      'Para cancelar, abre tus suscripciones: en iPhone, Ajustes → tu nombre → Suscripciones; en Android, Google Play → perfil → Pagos y suscripciones → Suscripciones. Cancela al menos un día antes de la renovación.',
+      'Los reembolsos los gestionan Apple (reportaproblem.apple.com) o Google Play, no Tipbook.',
+    ],
+  },
+  {
+    id: 'language',
+    title: 'Idioma',
+    steps: [
+      'Tipbook está en español y en inglés. Sigue el idioma de tu teléfono; para elegir uno, ve a Ajustes → Idioma.',
+      'Los PDF para tu empleador y de fin de año, los archivos CSV, la política de privacidad y los términos están en inglés.',
+    ],
+  },
+  {
+    id: 'privacy',
+    title: 'Privacidad',
+    steps: [
+      'No hay cuenta ni servidor de Tipbook: tus propinas, horas y notas se quedan en tu teléfono. No hay anuncios.',
+      'Ajustes → Tus datos → Borrar todos los datos borra todo lo que hay en la app. Borrar la app también, salvo las copias de seguridad de tu teléfono.',
+    ],
+  },
+];
+
+const SUPPORT_PAGES = {
+  en: {
+    file: 'support.html',
+    other: 'support-es.html',
+    title: `${appName} Support`,
+    intro: 'Answers to common questions. Most things are in Settings.',
+    sections: SUPPORT,
+    stuckTitle: 'Still stuck?',
+    stuck: (link) =>
+      `Email ${link} with what you tried and what happened. Please don’t send your backup file unless we ask: it has all your shifts in it.`,
+    description: `Help with ${appName}: logging shifts, moving to a new phone, importing, reports, overtime, widgets, reminders, subscriptions and language.`,
+  },
+  es: {
+    file: 'support-es.html',
+    other: 'support.html',
+    title: `Soporte de ${appName}`,
+    intro: 'Respuestas a las preguntas más comunes. Casi todo está en Ajustes.',
+    sections: SUPPORT_ES,
+    stuckTitle: '¿Sigues con dudas?',
+    stuck: (link) =>
+      `Escribe a ${link} contando qué intentaste y qué pasó; puedes escribir en español. Por favor no mandes tu archivo de copia de seguridad a menos que te lo pidamos: tiene todos tus turnos.`,
+    description: `Ayuda con ${appName}: registrar turnos, pasarte a un teléfono nuevo, importar, informes, horas extra, widgets, recordatorios, suscripciones e idioma.`,
+  },
+};
+
+const supportPage = (lang) => {
+  const page = SUPPORT_PAGES[lang];
+  const email = escape(supportEmail || '[support email]');
+  return legalPage(
+    page.title,
+    `<h1>${escape(page.title)}</h1>
+<p class="muted">${escape(page.intro)}</p>
+<ul>${page.sections.map((s) => `<li><a href="#${s.id}">${escape(s.title)}</a></li>`).join('')}</ul>
+${page.sections.map((s) => `<h2 id="${s.id}">${escape(s.title)}</h2>\n<ol>${s.steps.map((step) => `<li>${escape(step)}</li>`).join('')}</ol>`).join('\n')}
 <div class="contact">
-<h2 style="margin-top:0">Still stuck?</h2>
-<p>Email <a href="mailto:${escape(supportEmail || '[support email]')}">${escape(supportEmail || '[support email]')}</a> with what you tried and what happened. Please don’t send your backup file unless we ask: it has all your shifts in it.</p>
+<h2 style="margin-top:0">${escape(page.stuckTitle)}</h2>
+<p>${page.stuck(`<a href="mailto:${email}">${email}</a>`)}</p>
 </div>`,
-    `Help with ${appName}: logging shifts, moving to a new phone, importing, reports, overtime, widgets, reminders and subscriptions.`,
+    page.description,
+    { lang, other: page.other },
   );
+};
 
 function storeButtons(copy) {
   const links = [
@@ -687,7 +830,7 @@ ${head(copy.title, copy.description)}
 
 <footer>
   <div class="wrap">
-    <nav aria-label="${escape(copy.navLabel)}"><a href="support.html">${escape(copy.support)}</a><a href="privacy.html">${escape(copy.privacy)}</a><a href="terms.html">${escape(copy.terms)}</a><a href="${copy.other.href}" hreflang="${copy.other.lang}" lang="${copy.other.lang}">${escape(copy.other.label)}</a></nav>
+    <nav aria-label="${escape(copy.navLabel)}"><a href="${copy.supportPage}">${escape(copy.support)}</a><a href="privacy.html">${escape(copy.privacy)}</a><a href="terms.html">${escape(copy.terms)}</a><a href="${copy.other.href}" hreflang="${copy.other.lang}" lang="${copy.other.lang}">${escape(copy.other.label)}</a></nav>
     <p>${escape(copy.footer)}</p>
   </div>
 </footer>
@@ -711,8 +854,9 @@ for (const doc of docs) {
 }
 fs.writeFileSync(path.join(out, 'index.html'), landing('en'));
 fs.writeFileSync(path.join(out, 'es.html'), landing('es'));
-fs.writeFileSync(path.join(out, 'support.html'), supportPage());
-if (!supportEmail) console.warn('support.html has no contact email: set SUPPORT_EMAIL in src/constants/app.ts.');
+fs.writeFileSync(path.join(out, 'support.html'), supportPage('en'));
+fs.writeFileSync(path.join(out, 'support-es.html'), supportPage('es'));
+if (!supportEmail) console.warn('The support pages have no contact email: set SUPPORT_EMAIL in src/constants/app.ts.');
 
 const missing = [
   'images/icon.png',
@@ -724,4 +868,6 @@ const missing = [
 ].filter((file) => !fs.existsSync(path.join(out, file)));
 if (missing.length) console.warn(`site/ is missing: ${missing.join(', ')}`);
 if (!STORE_LINKS.appStore && !STORE_LINKS.googlePlay) console.log('No store links yet, so the page says "Coming soon".');
-console.log(`Wrote ${path.relative(root, out)}/index.html, es.html, support.html, privacy.html and terms.html`);
+console.log(
+  `Wrote ${path.relative(root, out)}/index.html, es.html, support.html, support-es.html, privacy.html and terms.html`,
+);

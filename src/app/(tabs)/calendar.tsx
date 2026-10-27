@@ -19,8 +19,8 @@ import { useWideLayout } from '@/hooks/use-wide-layout';
 import { t } from '@/i18n';
 import { buildMonthGrid, formatCellAmount, shiftMonth, summarizeByDay, weekdayInitials } from '@/lib/calendar';
 import { addDays, formatDayLabel, formatMonthYear, monthRange } from '@/lib/dates';
-import { formatDuration } from '@/lib/duration';
-import { formatHourly, formatMoney } from '@/lib/money';
+import { formatDuration, spokenDuration } from '@/lib/duration';
+import { formatHourly, formatMoney, spokenHourly } from '@/lib/money';
 import { summarizeRange } from '@/lib/shift-math';
 
 const CELL_MAX_FONT_SCALE = 1.3;
@@ -87,10 +87,15 @@ export default function CalendarScreen() {
 
             <View style={[styles.summary, { backgroundColor: theme.backgroundElement }]}>
               <SummaryStat label={t('Tips')} value={monthSummary ? formatMoney(monthSummary.netTipsCents) : '—'} />
-              <SummaryStat label={t('Hours')} value={monthSummary ? formatDuration(monthSummary.minutesWorked) : '—'} />
+              <SummaryStat
+                label={t('Hours')}
+                value={monthSummary ? formatDuration(monthSummary.minutesWorked) : '—'}
+                spokenValue={monthSummary ? spokenDuration(monthSummary.minutesWorked) : undefined}
+              />
               <SummaryStat
                 label={t('Real hourly')}
                 value={monthSummary?.realHourlyCents != null ? formatHourly(monthSummary.realHourlyCents) : '—'}
+                spokenValue={monthSummary?.realHourlyCents != null ? spokenHourly(monthSummary.realHourlyCents) : undefined}
               />
               <SummaryStat label={t('Shifts')} value={monthSummary ? String(monthSummary.shiftCount) : '—'} />
             </View>
@@ -194,13 +199,15 @@ export default function CalendarScreen() {
   );
 }
 
-function SummaryStat({ label, value }: { label: string; value: string }) {
+function SummaryStat({ label, value, spokenValue }: { label: string; value: string; spokenValue?: string }) {
   return (
     <View style={styles.stat}>
       <ThemedText type="small" themeColor="textSecondary" style={styles.statLabel}>
         {label}
       </ThemedText>
-      <ThemedText type="smallBold">{value}</ThemedText>
+      <ThemedText type="smallBold" accessibilityLabel={spokenValue}>
+        {value}
+      </ThemedText>
     </View>
   );
 }

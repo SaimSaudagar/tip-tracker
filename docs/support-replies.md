@@ -2,6 +2,8 @@
 
 Ready-to-send answers for the questions Tipbook will get most. Replace anything in [brackets], keep replies short, and link the matching section of the support page (`https://<your-site>/support.html#…`).
 
+Support emails sent from the app end with a line like `Tipbook 1.0.0 · ios 18.1 · es`: the version, the phone, and the app's language. For `es`, or any email in Spanish, use `support-replies-es.md` and the Spanish support page (`support-es.html`).
+
 Fast, kind replies to reviews move ratings: Apple and Google both show your response under the review, and people often update their stars after one.
 
 ## Email replies
