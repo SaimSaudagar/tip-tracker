@@ -112,7 +112,7 @@ const FEATURES = [
   },
   {
     title: 'Tip reports for your employer',
-    text: 'A monthly employee’s tip report, ready before the 10th, and a year-end summary for tax time with service charges kept separate.',
+    text: 'A monthly employee’s tip report, ready before the 10th, and a year-end summary for tax time with service charges kept separate and an estimate of the 2025–2028 tip deduction.',
     pro: true,
   },
   {
@@ -282,7 +282,7 @@ const COPY = {
       },
       {
         title: 'Informes de propinas para tu empleador',
-        text: 'Un informe mensual de propinas, listo antes del día 10, y un resumen de fin de año para los impuestos con los cargos por servicio aparte.',
+        text: 'Un informe mensual de propinas, listo antes del día 10, y un resumen de fin de año para los impuestos con los cargos por servicio aparte y un estimado de la deducción por propinas de 2025 a 2028.',
         pro: true,
       },
       {
@@ -439,6 +439,7 @@ const SUPPORT = [
       'Open Reports. The monthly report shows each job’s tips for the month and when they’re due to your employer.',
       'In the US, tips of $20 or more in a month from one job are reported to that employer by the 10th of the next month.',
       'Tap Share PDF for your employer to send or print it (Pro). The year-end summary has your tips, service charges and wages for tax time.',
+      'For 2025 to 2028, the year-end summary also shows the tips that may qualify for the “no tax on tips” deduction and an estimate of it, with the rules that decide whether you can claim it.',
       'Tipbook keeps records and makes reports; it isn’t tax advice.',
     ],
   },
@@ -535,6 +536,7 @@ const SUPPORT_ES = [
       'Abre Informes. El informe mensual muestra las propinas de cada trabajo en el mes y hasta cuándo tienes para reportarlas a tu empleador.',
       'En EE. UU., las propinas de $20 o más en un mes en un mismo trabajo se reportan a ese empleador a más tardar el día 10 del mes siguiente.',
       'Toca Compartir PDF para tu empleador para enviarlo o imprimirlo (Pro). El resumen de fin de año tiene tus propinas, cargos por servicio y salario para los impuestos. Los PDF están en inglés, que es lo que esperan los empleadores.',
+      'De 2025 a 2028, el resumen de fin de año también muestra las propinas que podrían calificar para la deducción por propinas (“no tax on tips”) y un estimado, con las reglas que deciden si puedes reclamarla.',
       'Tipbook guarda registros y hace informes; no es asesoría de impuestos.',
     ],
   },

@@ -111,6 +111,25 @@ describe('year summary', () => {
     expect(html).toContain('No shifts'); // months without shifts
   });
 
+  it('estimates the qualified-tips deduction for 2025 through 2028 only', () => {
+    const html = yearSummaryHtml(summary, '2026-10-26');
+    expect(html).toContain('<tr><td>Tips that may qualify for the deduction for qualified tips</td><td>$331.39</td></tr>');
+    expect(html).toContain('<tr><td>Estimated deduction (limit $25,000)</td><td>$331.39</td></tr>');
+    expect(html).toContain('Schedule 1-A');
+    expect(html).toContain('$150,000 ($300,000 married filing jointly)');
+
+    const before = yearSummaryHtml(buildYearSummary([shift({ date: '2024-06-01', cashTipsCents: 5000 })], '2024-12-31'), '2025-01-15');
+    expect(before).not.toContain('Tips that may qualify');
+    expect(before).toContain('no tax on tips');
+  });
+
+  it('stops the estimate at the $25,000 limit', () => {
+    const big = buildYearSummary([shift({ date: '2026-03-01', cashTipsCents: 3_000_000 })], '2026-10-26');
+    const html = yearSummaryHtml(big, '2026-10-26');
+    expect(html).toContain('<td>Tips that may qualify for the deduction for qualified tips</td><td>$30,000.00</td>');
+    expect(html).toContain('<td>Estimated deduction (limit $25,000)</td><td>$25,000.00</td>');
+  });
+
   it('keeps cash and card tips apart for each month', () => {
     expect(summary.months[9].label).toBe('October');
     expect(summary.months[9].cashCents + summary.months[9].cardCents).toBeGreaterThan(0);

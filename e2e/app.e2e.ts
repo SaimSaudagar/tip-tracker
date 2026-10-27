@@ -83,6 +83,16 @@ test('Pro: the monthly report adds up and opens as a printable report', async ({
   expect(report).toContain('Olive &amp; Vine');
   expect(report).toContain('$227.50');
   expect(report).toContain('November 10, 2026');
+
+  // The year-end summary estimates the 2025–2028 tips deduction, on screen and in its PDF.
+  await expect(visible(page, 'No tax on tips (2026)')).toBeVisible();
+  await expectValue(page, 'Tips that may qualify', '$227.50');
+  await expectValue(page, 'Estimated deduction', '$227.50');
+  const yearPopup = page.waitForEvent('popup');
+  await page.getByRole('button', { name: 'Share year-end PDF' }).click();
+  const year = await (await yearPopup).content();
+  expect(year).toContain('Tips that may qualify for the deduction for qualified tips');
+  expect(year).toContain('Schedule 1-A');
 });
 
 test('free plan: a second job opens the paywall', async ({ page }) => {

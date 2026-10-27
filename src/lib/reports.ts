@@ -8,6 +8,7 @@ import { formatDuration } from '@/lib/duration';
 import { formatMoney } from '@/lib/money';
 import { employerReportDueDate } from '@/lib/reminders-plan';
 import { computeShift, type ShiftAmounts } from '@/lib/shift-math';
+import { estimateTipDeduction } from '@/lib/tip-deduction';
 import { describeTipOuts, type TipOutEntry } from '@/lib/tipouts';
 
 export type ReportShift = ShiftAmounts & {
@@ -244,6 +245,20 @@ export function yearSummaryHtml(summary: YearSummary, preparedOn: ISODate): stri
         : `<tr><td class="left">${m.label}</td>${cells(m)}</tr>`,
     )
     .join('');
+  const deduction = estimateTipDeduction(Number(summary.year), summary.totals.netTipsCents);
+  const deductionRows = deduction
+    ? `<tr><td>Tips that may qualify for the deduction for qualified tips</td><td>${formatMoney(deduction.qualifiedTipsCents)}</td></tr>
+       <tr><td>Estimated deduction (limit $25,000)</td><td>${formatMoney(deduction.deductionCents)}</td></tr>`
+    : '';
+  const note = deduction
+    ? `Net tips are kept apart from service charges, which don’t count as tips for the federal deduction for
+     qualified tips (“no tax on tips”, 2025–2028), claimed on Schedule 1-A. The estimate assumes every tip was
+     reported and earned in an occupation on the IRS list of tipped occupations. The deduction is limited to $25,000
+     a year and is reduced by $100 for each $1,000 of modified AGI over $150,000 ($300,000 married filing jointly).
+     Tips you reported to your employer are usually included on your W-2; tips you didn’t report go on IRS Form 4137.`
+    : `Net tips are kept apart from service charges, which don’t count as tips for the federal
+     “no tax on tips” deduction (2025–2028). Tips you reported to your employer are usually included on your W-2;
+     tips you didn’t report go on IRS Form 4137.`;
   const body = `<div class="brand">Tipbook</div>
      <h1>Tip summary – ${escapeHtml(summary.year)}</h1>
      <p class="muted">Prepared ${escapeHtml(formatLongDate(preparedOn))}. ${summary.totals.shiftCount} shifts, ${formatDuration(summary.totals.minutesWorked)} worked.</p>
@@ -251,10 +266,9 @@ export function yearSummaryHtml(summary: YearSummary, preparedOn: ISODate): stri
        <tr><td>Net tips (tips you kept)</td><td><b>${formatMoney(summary.totals.netTipsCents)}</b></td></tr>
        <tr><td>Service charges (not tips)</td><td>${formatMoney(summary.totals.serviceChargeCents)}</td></tr>
        <tr><td>Wages</td><td>${formatMoney(summary.totals.wagesCents)}</td></tr>
+       ${deductionRows}
      </table>
-     <p class="muted">Net tips are kept apart from service charges, which don’t count as tips for the federal
-     “no tax on tips” deduction (2025–2028). Tips you reported to your employer are usually included on your W-2;
-     tips you didn’t report go on IRS Form 4137.</p>
+     <p class="muted">${note}</p>
      <h2>By job</h2>
      <table>${head('Job')}
        <tbody>${summary.jobs.map((j) => `<tr><td class="left">${escapeHtml(j.jobName)}</td>${cells(j)}</tr>`).join('')}</tbody>

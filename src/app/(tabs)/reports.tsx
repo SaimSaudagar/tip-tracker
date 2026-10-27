@@ -30,6 +30,7 @@ import { errorText } from '@/lib/errors';
 import { formatMoney } from '@/lib/money';
 import { comparePaycheck, PAYCHECK_TOLERANCE_CENTS } from '@/lib/paychecks';
 import { buildMonthlyReport, buildYearSummary, monthlyReportHtml, yearSummaryHtml } from '@/lib/reports';
+import { estimateTipDeduction, type TipDeductionEstimate } from '@/lib/tip-deduction';
 import { combineTipOuts, describeTipOuts } from '@/lib/tipouts';
 import { usePro } from '@/purchases/pro-context';
 
@@ -103,6 +104,7 @@ function Reports({ linkedMonth, linkedYear }: { linkedMonth: string | null; link
 
   const report = data?.report;
   const summary = data?.summary;
+  const deduction = summary ? estimateTipDeduction(Number(year), summary.totals.netTipsCents) : null;
   const isCurrentMonth = month === shiftMonth(today, 0);
   const isCurrentYear = year === today.slice(0, 4);
 
@@ -239,6 +241,7 @@ function Reports({ linkedMonth, linkedYear }: { linkedMonth: string | null; link
                       ))
                     : null}
                 </View>
+                {deduction ? <TipDeductionCard year={year} estimate={deduction} /> : null}
                 <Button
                   title={t('Share year-end PDF')}
                   onPress={() => share(yearSummaryHtml(summary, today), `tip-summary-${year}.pdf`, 'year_pdf')}
@@ -367,6 +370,33 @@ function PaycheckRow({
         ) : null}
       </View>
     </Pressable>
+  );
+}
+
+/** The "no tax on tips" estimate for 2025–2028, with the rules it depends on (src/lib/tip-deduction.ts). */
+function TipDeductionCard({ year, estimate }: { year: string; estimate: TipDeductionEstimate }) {
+  const theme = useTheme();
+  return (
+    <View style={[styles.card, { backgroundColor: theme.tintSoft }]}>
+      <ThemedText type="smallBold" accessibilityRole="header">
+        {t('No tax on tips ({year})', { year })}
+      </ThemedText>
+      <Line label={t('Tips that may qualify')} value={formatMoney(estimate.qualifiedTipsCents)} />
+      <Line label={t('Estimated deduction')} value={formatMoney(estimate.deductionCents)} />
+      {estimate.overLimit ? (
+        <ThemedText type="small">{t('You logged more than the $25,000 limit, so the estimate stops there.')}</ThemedText>
+      ) : null}
+      <ThemedText type="small" themeColor="textSecondary">
+        {t(
+          'Your tips after tip-outs, without service charges. You can deduct up to $25,000 of them from your income for federal income tax; Social Security, Medicare and state taxes may still apply. The limit shrinks for incomes over $150,000 ($300,000 married filing jointly).',
+        )}
+      </ThemedText>
+      <ThemedText type="small" themeColor="textSecondary">
+        {t(
+          'Only tips reported to your employer (or on Form 4137) count, in a job on the IRS list of tipped occupations. You need a Social Security number that’s valid for work, and married couples must file jointly. An estimate, not tax advice.',
+        )}
+      </ThemedText>
+    </View>
   );
 }
 

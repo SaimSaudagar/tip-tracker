@@ -58,7 +58,7 @@ Apple already indexes the words in the name and subtitle, so the keywords don’
 >
 > TIPBOOK PRO
 > • Informe mensual de propinas para tu empleador, con un recordatorio antes del día 10
-> • Resumen de propinas de fin de año para los impuestos, con los cargos por servicio aparte
+> • Resumen de propinas de fin de año para los impuestos, con los cargos por servicio aparte y un estimado de la deducción por propinas de 2025 a 2028
 > • Reparto de propinas automático (% de las propinas, % de las ventas o una cantidad fija)
 > • Trabajos y puestos ilimitados
 > • Tu año completo de un vistazo

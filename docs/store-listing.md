@@ -59,7 +59,7 @@ Don’t repeat words from the name or subtitle in the keyword field; Apple alrea
 >
 > Tipbook PRO
 > • Monthly tip report for your employer, with a reminder before the 10th
-> • Year-end tip summary for tax time, with service charges separated
+> • Year-end tip summary for tax time, with service charges separated and an estimate of the 2025–2028 tip deduction
 > • Automatic tip-outs (% of tips, % of sales or a fixed amount)
 > • Unlimited jobs and positions
 > • Your whole year at a glance

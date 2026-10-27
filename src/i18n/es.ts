@@ -421,6 +421,12 @@ export const es: Record<string, string> = {
   '{amount} over': 'Sobran {amount}',
   'Paycheck {date}, {amount}': 'Cheque de pago, {date}, {amount}',
   'Edit': 'Editar',
+  'No tax on tips ({year})': 'Deducción por propinas ({year})',
+  'Tips that may qualify': 'Propinas que podrían calificar',
+  'Estimated deduction': 'Deducción estimada',
+  'You logged more than the $25,000 limit, so the estimate stops there.': 'Registraste más del límite de $25,000, así que el estimado llega hasta ahí.',
+  'Your tips after tip-outs, without service charges. You can deduct up to $25,000 of them from your income for federal income tax; Social Security, Medicare and state taxes may still apply. The limit shrinks for incomes over $150,000 ($300,000 married filing jointly).': 'Tus propinas después del reparto, sin cargos por servicio. Puedes deducir hasta $25,000 de ellas de tus ingresos para el impuesto federal sobre la renta; el Seguro Social, Medicare y los impuestos estatales pueden seguir aplicando. El límite baja si tus ingresos pasan de $150,000 ($300,000 si declaran en conjunto).',
+  'Only tips reported to your employer (or on Form 4137) count, in a job on the IRS list of tipped occupations. You need a Social Security number that’s valid for work, and married couples must file jointly. An estimate, not tax advice.': 'Solo cuentan las propinas reportadas a tu empleador (o en el Formulario 4137), en un trabajo de la lista del IRS de ocupaciones con propinas. Necesitas un número de Seguro Social válido para trabajar, y las parejas casadas deben declarar en conjunto. Es un estimado, no asesoría de impuestos.',
   // app/(tabs)/settings.tsx
   'No hourly wage': 'Sin salario por hora',
   'tip-out {amount}': 'reparto {amount}',
