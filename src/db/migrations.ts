@@ -102,6 +102,12 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE jobs ADD COLUMN overtime_double_time INTEGER NOT NULL DEFAULT 0
     CHECK (overtime_double_time IN (0, 1));
   `,
+  // 6: indexes for looking up a shift's tip-outs and a position's shifts, which also
+  // keep deletes quick (SQLite doesn't index foreign keys by itself).
+  `
+  CREATE INDEX tipouts_shift_idx ON tipouts(shift_id);
+  CREATE INDEX shifts_position_idx ON shifts(position_id);
+  `,
 ];
 
 export const DATABASE_NAME = 'tips.db';
