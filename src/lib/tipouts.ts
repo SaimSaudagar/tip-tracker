@@ -1,6 +1,6 @@
 /**
- * Who a shift's tips were paid out to. The IRS daily tip record asks for the
- * names of coworkers you tipped out alongside the amounts.
+ * Who a shift's tips were paid out to. The daily tip record IRS Publication 531
+ * suggests keeping lists the coworkers you tipped out alongside the amounts.
  */
 import { formatMoney, parseMoney } from '@/lib/money';
 

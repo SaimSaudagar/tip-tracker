@@ -88,7 +88,7 @@ They were rendered from the web build, so fonts differ slightly from iOS, and on
 
 > Tipbook is a tip and earnings log for service workers. What sets it apart from other tip trackers:
 > (1) no ads in any tier, and no account; all data is stored on the device;
-> (2) an employer tip report built on the IRS daily tip record (Publication 1244), with a reminder before the 10th of the month;
+> (2) a monthly employer tip report with what IRS Publication 531 asks employees to report, with a reminder before the 10th of the month;
 > (3) a year-end summary that keeps service charges apart from voluntary tips;
 > (4) per-position wages and automatic tip-out rules;
 > (5) CSV import from other tip apps, with column matching and duplicate detection.

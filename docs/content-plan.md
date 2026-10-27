@@ -19,7 +19,7 @@ These keep the accounts alive and keep you within FTC and platform rules.
 
 ## Account setup (day 0)
 
-- **Handle:** `@[brand]app` or `@[brand]tips` on both TikTok and Instagram.
+- **Handle:** `@tipbookapp` or `@tipbook.tips` (check they’re free) on both TikTok and Instagram.
 - **Profile picture:** the app icon.
 - **Bio:** “Tip tracker for servers & bartenders. No ads, ever. 👇”
 - **Link in bio:**
@@ -58,6 +58,8 @@ Hook formulas that performed in the research:
 - **Save-worthy list:** “What to keep for tax time if you work for tips (save this).”
 
 ## 30 hooks to start with
+
+Every hook is written out slide by slide in `docs/content-posts.md`, with captions, and the screen-recorded demo clips are in `docs/content-clips/`.
 
 **Data** = needs real numbers from a tester (with permission) or must be labelled “example”.
 

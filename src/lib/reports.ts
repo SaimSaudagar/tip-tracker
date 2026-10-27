@@ -1,6 +1,7 @@
 /**
- * Monthly employer tip reports and the year-end summary, modeled on the IRS
- * daily tip record (Publication 1244). These are records, not tax advice.
+ * Monthly employer tip reports and the year-end summary, following the tip-reporting
+ * rules in IRS Publication 531 (the old daily record form, Publication 1244 with Form
+ * 4070, was retired in 2024). These are records, not tax advice.
  */
 import { fromISODate, monthRange, yearRange, isInRange, type ISODate } from '@/lib/dates';
 import { formatDuration } from '@/lib/duration';
