@@ -29,8 +29,11 @@ function rows<T>(db: Database, sql: string, params: Params): T[] {
   }
 }
 
-/** A fresh database with every migration applied, like a new install. */
-export async function openMemoryDb(): Promise<SQLiteDatabase> {
+/**
+ * A fresh database with every migration applied, like a new install. With `migrate: false`
+ * it starts empty, for building a database as an older version of the app left it.
+ */
+export async function openMemoryDb({ migrate = true } = {}): Promise<SQLiteDatabase> {
   const SQL = await initSqlJs();
   const raw = new SQL.Database();
 
@@ -62,6 +65,6 @@ export async function openMemoryDb(): Promise<SQLiteDatabase> {
     },
   } as unknown as SQLiteDatabase;
 
-  await migrateDbIfNeeded(db);
+  if (migrate) await migrateDbIfNeeded(db);
   return db;
 }
