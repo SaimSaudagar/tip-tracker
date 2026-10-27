@@ -9,10 +9,19 @@ import { MoneyField } from '@/components/money-field';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { getPosition, listJobNames, listPositions, removePosition, savePosition, type Position } from '@/db/repo';
+import {
+  getPosition,
+  listJobNames,
+  listJobOvertimeByName,
+  listPositions,
+  removePosition,
+  savePosition,
+  type Position,
+} from '@/db/repo';
 import { useTheme } from '@/hooks/use-theme';
 import { confirmDestructive } from '@/lib/confirm';
 import { bpsToInput, centsToInput, formatMoney, parseMoney, parsePercent } from '@/lib/money';
+import { estimateOvertimeRate, NO_OVERTIME, type JobOvertime, type OvertimeRule } from '@/lib/overtime';
 import { freeLimitViolation } from '@/lib/pro';
 import { calcTipOut, type TipOutRule } from '@/lib/shift-math';
 import { usePro } from '@/purchases/pro-context';
@@ -22,6 +31,16 @@ const RULES: { value: TipOutRule; label: string }[] = [
   { value: 'fixed', label: 'Fixed $' },
   { value: 'pct_tips', label: '% of tips' },
   { value: 'pct_sales', label: '% of sales' },
+];
+
+const OVERTIME_RULES: { value: OvertimeRule; label: string; hint: string | null }[] = [
+  { value: 'none', label: 'Off', hint: null },
+  { value: 'weekly', label: 'Over 40 hrs a week', hint: 'The federal rule, used in most states.' },
+  {
+    value: 'daily',
+    label: 'Over 8 hrs a day',
+    hint: 'California-style: after 8 hours in a day, and after 40 regular hours in a week. Double time isn’t counted.',
+  },
 ];
 
 // The example used to preview a tip-out rule.
@@ -42,6 +61,8 @@ export default function PositionScreen() {
   const [ruleValue, setRuleValue] = useState('');
   const [jobNames, setJobNames] = useState<string[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
+  const [overtimeByJob, setOvertimeByJob] = useState<Map<string, JobOvertime>>(new Map());
+  const [overtimeDraft, setOvertimeDraft] = useState<{ rule: OvertimeRule; rate: string } | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -49,14 +70,16 @@ export default function PositionScreen() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [existing, jobs, active] = await Promise.all([
+      const [existing, jobs, active, overtime] = await Promise.all([
         positionId !== undefined ? getPosition(db, positionId) : null,
         listJobNames(db),
         listPositions(db),
+        listJobOvertimeByName(db),
       ]);
       if (cancelled) return;
       setJobNames(jobs);
       setPositions(active);
+      setOvertimeByJob(overtime);
       if (existing) {
         setName(existing.name);
         setJobName(existing.jobName);
@@ -73,10 +96,18 @@ export default function PositionScreen() {
     };
   }, [db, positionId]);
 
+  // Overtime belongs to the job, so show the settings of whichever job is named until the user edits them.
+  const savedOvertime = overtimeByJob.get(jobName.trim().toLowerCase()) ?? NO_OVERTIME;
+  const overtimeRule = overtimeDraft?.rule ?? savedOvertime.rule;
+  const overtimeRate = overtimeDraft?.rate ?? (savedOvertime.rateCents === null ? '' : centsToInput(savedOvertime.rateCents));
+
   const wageCents = parseMoney(wage);
+  const overtimeRateCents = overtimeRate.trim() === '' ? null : parseMoney(overtimeRate);
+  const overtimeValid = overtimeRate.trim() === '' || (overtimeRateCents !== null && overtimeRateCents > 0);
   const isPercent = rule === 'pct_tips' || rule === 'pct_sales';
   const parsedRuleValue = rule === 'none' ? 0 : isPercent ? parsePercent(ruleValue) : parseMoney(ruleValue);
-  const valid = name.trim() !== '' && jobName.trim() !== '' && wageCents !== null && parsedRuleValue !== null;
+  const valid =
+    name.trim() !== '' && jobName.trim() !== '' && wageCents !== null && parsedRuleValue !== null && overtimeValid;
   const canSave = loaded && valid && !saving;
   const example =
     rule !== 'none' && parsedRuleValue !== null ? calcTipOut(rule, parsedRuleValue, EXAMPLE) : null;
@@ -99,6 +130,7 @@ export default function PositionScreen() {
         hourlyWageCents: wageCents!,
         tipOutRule: rule,
         tipOutValue: parsedRuleValue!,
+        overtime: { rule: overtimeRule, rateCents: overtimeRule === 'none' ? null : overtimeRateCents },
       });
       close();
     } catch (e) {
@@ -214,6 +246,43 @@ export default function PositionScreen() {
               example !== null
                 ? `Example: on $200 in tips and $1,000 in sales, tip-out would be ${formatMoney(example)}. You can still change it on any shift.`
                 : undefined
+            }
+          />
+        ) : null}
+
+        <View style={styles.field}>
+          <ThemedText type="small" themeColor="textSecondary">
+            Overtime at {jobName.trim() || 'this job'}
+          </ThemedText>
+          <View style={styles.chips}>
+            {OVERTIME_RULES.map((r) => (
+              <Chip
+                key={r.value}
+                label={r.label}
+                selected={overtimeRule === r.value}
+                onPress={() => setOvertimeDraft({ rule: r.value, rate: overtimeRate })}
+              />
+            ))}
+          </View>
+          <ThemedText type="small" themeColor="textSecondary">
+            {OVERTIME_RULES.find((r) => r.value === overtimeRule)?.hint ??
+              'Rules differ by state. Pick the one your paystub follows; it applies to every position at this job.'}
+          </ThemedText>
+        </View>
+
+        {overtimeRule !== 'none' ? (
+          <MoneyField
+            label="Overtime rate (from your paystub)"
+            prefix="$"
+            suffix="/hr"
+            value={overtimeRate}
+            placeholder={wageCents ? centsToInput(estimateOvertimeRate(wageCents)) : 'Rate'}
+            onChangeText={(rate) => setOvertimeDraft({ rule: overtimeRule, rate })}
+            error={overtimeValid ? null : 'Enter a rate like 5.76 or 22.50'}
+            hint={
+              wageCents
+                ? `Leave empty to use ${formatMoney(estimateOvertimeRate(wageCents))}/hr, the federal rate for a ${formatMoney(wageCents)} wage (1.5× pay, minus any tip credit). Your paystub’s rate is more accurate.`
+                : 'Enter your overtime rate, or add an hourly wage above so Tipbook can estimate it.'
             }
           />
         ) : null}

@@ -1,21 +1,26 @@
 {
   "expo": {
-    "name": "Tip Tracker",
+    "name": "Tipbook",
     "slug": "tip-tracker",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "tiptracker",
+    "scheme": "tipbook",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "bundleIdentifier": "com.saimsaudagar.tiptracker",
+      "bundleIdentifier": "com.saimsaudagar.tipbook",
       "supportsTablet": false,
       "config": {
         "usesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "com.apple.security.application-groups": [
+          "group.com.saimsaudagar.tipbook"
+        ]
       }
     },
     "android": {
-      "package": "com.saimsaudagar.tiptracker",
+      "package": "com.saimsaudagar.tipbook",
       "adaptiveIcon": {
         "backgroundColor": "#0B7A4B",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -34,11 +39,11 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#0B7A4B",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 120,
+          "imageWidth": 180,
           "dark": {
-            "backgroundColor": "#000000",
+            "backgroundColor": "#0A2A1D",
             "image": "./assets/images/splash-icon.png"
           }
         }
@@ -51,7 +56,35 @@
           "icon": "./assets/images/notification-icon.png",
           "color": "#0B7A4B"
         }
-      ]
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Tipbook reads the totals from a photo of your checkout slip. The photo stays on your phone.",
+          "cameraPermission": "Tipbook uses the camera to read the totals on your checkout slip. The photo stays on your phone.",
+          "microphonePermission": false
+        }
+      ],
+      "@bacons/apple-targets",
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "WeekWidget",
+              "label": "Tipbook: this week",
+              "description": "Your tips and real hourly this week. Tap to log a shift.",
+              "minWidth": "180dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 3,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
+      ],
+      "./plugins/with-shortcuts.js"
     ],
     "experiments": {
       "typedRoutes": true,

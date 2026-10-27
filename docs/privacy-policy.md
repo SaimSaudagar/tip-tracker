@@ -1,12 +1,12 @@
-# Tip Tracker Privacy Policy
+# Tipbook Privacy Policy
 
-*Last updated: October 26, 2026*
+*Last updated: October 27, 2026*
 
 > Host this page at a public URL (for example GitHub Pages or a simple website) and enter that URL in App Store Connect and Google Play Console. Keep it identical to the in-app copy in `src/constants/legal.ts`. Replace every `[bracketed]` placeholder before release.
 
 ## The short version
 
-Your tips, shifts and settings are stored only on your device. Tip Tracker has no accounts and no ads, and we don’t collect, sell or share your personal data.
+Your tips, shifts and settings are stored only on your device. Tipbook has no accounts and no ads, and we don’t collect, sell or share your personal data.
 
 ## What stays on your device
 
@@ -15,6 +15,10 @@ Everything you enter (shifts, tips, hours, wages, jobs, positions, notes and set
 ## Files you export or import
 
 When you export a CSV or PDF, the file goes wherever you choose to send it from the share sheet. When you import a CSV, it is read on your device. We never receive these files.
+
+## Camera, photos and widgets
+
+If you scan a checkout slip, the photo is read by your phone’s built-in text recognition and is not saved or uploaded. Camera and photo access are only requested when you choose to scan. Home-screen widgets show this week’s totals, which the app stores where the widget can read them on your device. Siri and Shortcuts only open the app.
 
 ## Purchases
 
@@ -26,7 +30,7 @@ Reminders are scheduled on your device. No notification data is sent to us.
 
 ## Children
 
-Tip Tracker is meant for working adults and is not directed to children under 13.
+Tipbook is meant for working adults and is not directed to children under 13.
 
 ## Changes and contact
 

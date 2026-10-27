@@ -150,7 +150,7 @@ const STYLE = `
 const page = (title: string, body: string, preparedOn: ISODate) => `<!doctype html>
 <html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>${STYLE}</style></head>
 <body>${body}
-<p class="note">Prepared with Tip Tracker on ${escapeHtml(preparedOn)}. Service charges and auto-gratuities are listed
+<p class="note">Prepared with Tipbook on ${escapeHtml(preparedOn)}. Service charges and auto-gratuities are listed
 separately because they are not voluntary tips. These are your records, not tax advice. See IRS.gov (Topic 761, Tips)
 for reporting rules.</p>
 </body></html>`;

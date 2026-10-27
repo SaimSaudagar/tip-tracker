@@ -13,6 +13,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { applyAppearance, parseAppearance } from '@/lib/appearance';
 import { useNotificationRouting } from '@/lib/notify';
 import { syncReminders } from '@/lib/sync-reminders';
+import { loadWidgetSnapshot } from '@/widgets/load';
+import { updateHomeWidgets } from '@/widgets/update';
 import { ProProvider, usePro } from '@/purchases/pro-context';
 
 export { ErrorBoundary } from 'expo-router';
@@ -33,6 +35,7 @@ export default function RootLayout() {
         <ProProvider>
           <AppearanceSync />
           <ReminderSync />
+          <WidgetSync />
           <NotificationRouting />
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -42,6 +45,7 @@ export default function RootLayout() {
             <Stack.Screen name="import" options={{ presentation: 'modal', title: 'Import shifts' }} />
             <Stack.Screen name="paycheck" options={{ presentation: 'modal', title: 'Paycheck' }} />
             <Stack.Screen name="tip-pool" options={{ presentation: 'modal', title: 'Tip pool' }} />
+            <Stack.Screen name="scan" options={{ presentation: 'modal', title: 'Scan checkout slip' }} />
             <Stack.Screen name="paywall" options={{ presentation: 'modal', headerShown: false }} />
             <Stack.Screen name="legal" options={{ presentation: 'modal', title: '' }} />
           </Stack>
@@ -102,6 +106,37 @@ function ReminderSync() {
       appSubscription.remove();
     };
   }, [db, isPro, ready]);
+
+  return null;
+}
+
+/** Keeps the home-screen widgets showing this week's numbers whenever shifts or settings change. */
+function WidgetSync() {
+  const db = useSQLiteContext();
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const sync = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        loadWidgetSnapshot(db)
+          .then(updateHomeWidgets)
+          .catch((e) => console.warn('Could not update widgets', e));
+      }, 600);
+    };
+    sync();
+    const dbSubscription = addDatabaseChangeListener((event) => {
+      if (event.tableName === 'shifts' || event.tableName === 'settings' || event.tableName === 'jobs') sync();
+    });
+    const appSubscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') sync();
+    });
+    return () => {
+      clearTimeout(timer);
+      dbSubscription.remove();
+      appSubscription.remove();
+    };
+  }, [db]);
 
   return null;
 }

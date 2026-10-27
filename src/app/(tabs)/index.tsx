@@ -100,26 +100,26 @@ export default function HomeScreen() {
             <ThemedText style={{ color: theme.danger }}>Couldn’t load your shifts: {error.message}</ThemedText>
           ) : null}
 
-          <View style={[styles.hero, { backgroundColor: theme.tint }]}>
+          <View style={[styles.hero, { backgroundColor: theme.hero }]}>
             <View style={styles.heroTop}>
               <View style={styles.heroMain}>
-                <ThemedText type="small" style={{ color: theme.onTint }}>
+                <ThemedText type="small" style={{ color: theme.onHero }}>
                   Tips this week
                 </ThemedText>
-                <ThemedText type="display" style={{ color: theme.onTint }} accessibilityRole="header" adjustsFontSizeToFit numberOfLines={1}>
+                <ThemedText type="display" style={{ color: theme.onHero }} accessibilityRole="header" adjustsFontSizeToFit numberOfLines={1}>
                   {week ? formatMoney(week.summary.netTipsCents) : ' '}
                 </ThemedText>
               </View>
               {progress !== null && data?.goalCents ? (
                 <ProgressRing
                   progress={progress}
-                  color={theme.onTint}
-                  trackColor="rgba(255,255,255,0.25)"
+                  color={theme.heroAccent}
+                  trackColor={theme.heroTrack}
                   accessibilityLabel={`Weekly goal: ${Math.round(progress * 100)}% of ${formatMoney(data.goalCents, { wholeDollars: true })}`}>
-                  <ThemedText type="smallBold" style={{ color: theme.onTint }}>
+                  <ThemedText type="smallBold" style={{ color: theme.onHero }}>
                     {Math.round(progress * 100)}%
                   </ThemedText>
-                  <ThemedText type="small" style={[styles.ringCaption, { color: theme.onTint }]}>
+                  <ThemedText type="small" style={[styles.ringCaption, { color: theme.onHero }]}>
                     of {formatMoney(data.goalCents, { wholeDollars: true })}
                   </ThemedText>
                 </ProgressRing>
@@ -255,7 +255,8 @@ export default function HomeScreen() {
         </ScrollView>
 
         <View style={[styles.footer, { backgroundColor: theme.background }]}>
-          <Button title="Log shift" onPress={() => router.push('/log-shift')} />
+          <Button title="Log shift" onPress={() => router.push('/log-shift')} style={styles.footerMain} />
+          <Button title="Scan slip" variant="secondary" onPress={() => router.push('/scan')} />
         </View>
       </SafeAreaView>
     </ThemedView>
@@ -266,10 +267,10 @@ function HeroStat({ label, value }: { label: string; value: string }) {
   const theme = useTheme();
   return (
     <View style={styles.heroStat}>
-      <ThemedText type="small" style={{ color: theme.onTint, opacity: 0.8 }}>
+      <ThemedText type="small" style={{ color: theme.onHero, opacity: 0.8 }}>
         {label}
       </ThemedText>
-      <ThemedText type="smallBold" style={{ color: theme.onTint }}>
+      <ThemedText type="smallBold" style={{ color: theme.onHero }}>
         {value}
       </ThemedText>
     </View>
@@ -410,7 +411,12 @@ const styles = StyleSheet.create({
   importLink: {
     marginTop: Spacing.two,
   },
+  footerMain: {
+    flex: 1,
+  },
   footer: {
+    flexDirection: 'row',
+    gap: Spacing.two,
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.two,
     paddingBottom: Spacing.three,

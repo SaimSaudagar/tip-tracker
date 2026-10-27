@@ -16,7 +16,8 @@ export type AnalyticsEvent =
   | { name: 'shift_logged'; nth: number }
   | { name: 'report_exported'; type: 'monthly_pdf' | 'year_pdf' | 'csv' | 'backup' }
   | { name: 'import_completed'; rows: number }
-  | { name: 'reminder_opened'; kind: string };
+  | { name: 'reminder_opened'; kind: string }
+  | { name: 'slip_scanned'; fieldsFound: number };
 
 export function track(event: AnalyticsEvent) {
   if (__DEV__) console.log('[analytics]', JSON.stringify(event));

@@ -3,7 +3,17 @@ import { BACKUP_COLUMNS, buildBackup, parseBackup, type BackupTables } from '@/l
 import { combineTipOuts, describeTipOuts, parseTipOutDrafts } from '@/lib/tipouts';
 
 const tables = (): BackupTables => ({
-  jobs: [{ id: 1, name: 'Olive & Vine', color: null, archived_at: null, created_at: '2026-10-01 12:00:00' }],
+  jobs: [
+    {
+      id: 1,
+      name: 'Olive & Vine',
+      color: null,
+      archived_at: null,
+      created_at: '2026-10-01 12:00:00',
+      overtime_rule: 'weekly',
+      overtime_rate_cents: null,
+    },
+  ],
   positions: [
     {
       id: 1,
@@ -118,6 +128,21 @@ describe('backups', () => {
     expect(parsed.ok && parsed.backup.tables.paychecks).toEqual([]);
   });
 
+  it('gives jobs from backups made before overtime existed no overtime', () => {
+    const old = buildBackup(tables(), 3, now) as unknown as { tables: Record<string, Record<string, unknown>[]> };
+    delete old.tables.jobs[0].overtime_rule;
+    delete old.tables.jobs[0].overtime_rate_cents;
+    const parsed = parseBackup(JSON.stringify(old), 4);
+    expect(parsed.ok && parsed.backup.tables.jobs[0]).toMatchObject({ overtime_rule: 'none' });
+  });
+
+  it('rejects an unknown overtime rule', () => {
+    const t = tables();
+    t.jobs[0].overtime_rule = 'hourly';
+    const parsed = parseBackup(JSON.stringify(buildBackup(t, 4, now)), 4);
+    expect(!parsed.ok && parsed.error).toContain('overtime_rule');
+  });
+
   it('rejects a paycheck for a job that isn’t in the backup', () => {
     const t = tables();
     t.paychecks[0].job_id = 42;
@@ -134,7 +159,7 @@ describe('backups', () => {
 
   it.each([
     ['not JSON', '{oops', 'valid JSON'],
-    ['another app’s file', JSON.stringify({ format: 'something-else' }), 'isn’t a Tip Tracker backup'],
+    ['another app’s file', JSON.stringify({ format: 'something-else' }), 'isn’t a Tipbook backup'],
     ['a newer backup', JSON.stringify({ ...buildBackup(tables(), 3, now) }), 'newer version'],
   ])('rejects %s', (_label, text, message) => {
     const parsed = parseBackup(text, 2);

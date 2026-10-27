@@ -68,7 +68,7 @@ const WEEK_STARTS: { value: Weekday; label: string }[] = [
 const REMINDER_TIMES = ['21:00', '22:00', '23:00', '00:00', '01:00', '02:00'];
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-const PERMISSION_OFF = 'Notifications are off for Tip Tracker. Turn them on in your phone’s Settings app, then try again.';
+const PERMISSION_OFF = 'Notifications are off for Tipbook. Turn them on in your phone’s Settings app, then try again.';
 
 export default function SettingsScreen() {
   const theme = useTheme();
@@ -150,7 +150,7 @@ export default function SettingsScreen() {
     try {
       const backup = await createBackup(db);
       const today = todayISO();
-      await shareTextFile(`tip-tracker-backup-${today}.json`, JSON.stringify(backup), JSON_FILE);
+      await shareTextFile(`tipbook-backup-${today}.json`, JSON.stringify(backup), JSON_FILE);
       await setSetting(db, 'last_backup_at', today);
       track({ name: 'report_exported', type: 'backup' });
       const count = backup.tables.shifts.length;
@@ -217,9 +217,9 @@ export default function SettingsScreen() {
   };
 
   const contactSupport = () => {
-    const subject = encodeURIComponent('Tip Tracker support');
+    const subject = encodeURIComponent('Tipbook support');
     const body = encodeURIComponent(
-      `\n\n—\nTip Tracker ${Constants.expoConfig?.version ?? ''} on ${Platform.OS} ${String(Platform.Version)}`,
+      `\n\n—\nTipbook ${Constants.expoConfig?.version ?? ''} on ${Platform.OS} ${String(Platform.Version)}`,
     );
     Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`).catch(() =>
       showToast({ title: 'No email app found', detail: `Write to ${SUPPORT_EMAIL}` }),
@@ -235,7 +235,7 @@ export default function SettingsScreen() {
           </ThemedText>
 
           <View style={[styles.proCard, { backgroundColor: isPro ? theme.backgroundElement : theme.tintSoft }]}>
-            <ThemedText type="smallBold">{isPro ? 'Tip Tracker Pro is active' : 'Tip Tracker Pro'}</ThemedText>
+            <ThemedText type="smallBold">{isPro ? 'Tipbook Pro is active' : 'Tipbook Pro'}</ThemedText>
             <ThemedText type="small" themeColor={isPro ? 'textSecondary' : undefined}>
               {isPro
                 ? 'Thanks for supporting an app with no ads. Manage your subscription in your App Store or Google Play account.'
@@ -449,7 +449,7 @@ export default function SettingsScreen() {
           ) : null}
 
           <ThemedText type="small" themeColor="textSecondary" style={styles.version}>
-            Tip Tracker {Constants.expoConfig?.version ?? ''} · Records only, not tax advice.
+            Tipbook {Constants.expoConfig?.version ?? ''} · Records only, not tax advice.
           </ThemedText>
         </ScrollView>
       </SafeAreaView>

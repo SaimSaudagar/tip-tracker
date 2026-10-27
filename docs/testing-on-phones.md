@@ -87,6 +87,10 @@ Tick each one off, and note anything that looks wrong.
 - [ ] **Share the split** opens the share sheet with the text.
 - [ ] **Log my $180.00 in a shift** opens Log shift with “Tips from coworkers” filled in.
 
+**Overtime**
+- [ ] Settings → tap your position → **Overtime: Over 40 hrs a week**, leave the rate empty, save.
+- [ ] Log shifts adding up to more than 40 hours in one week: Home's "Total earned" includes the extra overtime pay (the hint in the position screen shows the rate used).
+
 **Reminders**
 - [ ] Settings → **Developer: test reminder in 1 minute**, then leave the app or lock the phone.
 - [ ] About a minute later a notification arrives. Tapping it opens **Log shift**.
@@ -112,3 +116,13 @@ For each problem, note the phone (iPhone or Android), what you tapped, what you 
 - The store rating prompt usually doesn’t appear in Expo Go; that’s expected.
 - Real purchases aren’t connected yet. “Simulate Pro” stands in until RevenueCat is set up.
 - Expo Go is only for testing. Real TestFlight and Play builds come after the store accounts exist.
+
+## In a Tipbook test build (not Expo Go)
+
+These need the installable build from `docs/launch-checklist.md` (step 5).
+
+- [ ] Home → **Scan slip** → take a photo of a real checkout slip. Check what it found, then **Use these numbers**: Log shift opens with them filled in. Send a photo of any slip it misreads (cover names first), so the reader can be tuned.
+- [ ] Add the **Tipbook widget** to the home screen (iPhone: also the lock screen). It shows this week's tips; log a shift and it updates. Tapping it opens Log shift.
+- [ ] **Android:** long-press the Tipbook icon: **Log shift** and **Scan slip** open those screens.
+- [ ] **iPhone:** say "Hey Siri, log my tips in Tipbook": the app opens on Log shift. It also appears in the Shortcuts app.
+- [ ] The splash screen is Tipbook green with the coin, in both light and dark mode.

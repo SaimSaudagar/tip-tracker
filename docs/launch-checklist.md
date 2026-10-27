@@ -4,15 +4,15 @@ What's left before the App Store and Google Play. Every step here needs your acc
 
 ## 1. Decide
 
-- [ ] **App name.** "Tip Tracker" is a placeholder (the plan suggests *[Brand]: Tip Tracker & Log*). Change `name` in `app.json` and search the code for "Tip Tracker".
-- [ ] **Bundle ID.** `app.json` uses `com.saimsaudagar.tiptracker` for both `ios.bundleIdentifier` and `android.package`. Change it now if you want something else: it can't change after the first upload.
+- [x] **App name: Tipbook.** Store title "Tipbook: Tip Tracker & Log". Before submitting, search the name on tmsearch.uspto.gov and in both stores once more.
+- [ ] **Bundle ID.** `app.json` uses `com.saimsaudagar.tipbook` for both `ios.bundleIdentifier` and `android.package`. It can't change after the first upload, so change it now if you want something else.
 - [ ] **Support email.** Set `SUPPORT_EMAIL` in `src/constants/app.ts`; Settings shows a "Contact support" row once it's filled in.
 - [ ] **Legal placeholders.** Replace `[contact email]`, `[developer name]` and `[jurisdiction]` in `src/constants/legal.ts` **and** in `docs/privacy-policy.md` / `docs/terms-of-use.md`. A test fails if the in-app and hosted copies drift apart.
 - [ ] **Host the legal pages.** Run `npm run legal-site`, which rebuilds the `site/` folder (it warns about any placeholders left). The quickest free host is Netlify Drop: open app.netlify.com/drop and drag the `site` folder onto it. You get links like `https://<name>.netlify.app/privacy.html` and `/terms.html` for App Store Connect and the Play Console. GitHub Pages also works, but only from a public repository on a free GitHub plan.
 
 ## 2. Accounts
 
-- [ ] Apple Developer Program ($99/year) and Google Play Console ($25 once).
+- [ ] Apple Developer Program ($99/year) and Google Play Console ($25 once). Then add your Apple Team ID to `app.json` (`ios.appleTeamId`); iOS builds with the widget need it.
 - [ ] RevenueCat (free up to $2.5K a month in tracked revenue).
 - [ ] Recruit 12 servers and bartenders for Google's closed test. It must run 14 days before you can apply for production access, so start early.
 
@@ -39,16 +39,29 @@ The code in `src/purchases/revenuecat.ts` expects:
 
 The paywall then shows the store's own prices (in the buyer's currency), and a trial's end date comes from the store, so the "2 days before your trial ends" reminder fires on the right day.
 
-## 5. Development build (real purchases)
+## 5. Test builds (widget, scanning, Siri, real purchases)
 
-Expo Go can't make real purchases; RevenueCat runs there with mock purchases. To test the real thing:
+Expo Go can't run the widget, slip scanning, Siri or launcher shortcuts, and RevenueCat only makes mock purchases there. To try them, install a test build of Tipbook itself.
+
+**Android (free, no store account needed):**
 
 ```powershell
-npx expo install expo-dev-client
-npx eas-cli@latest build --profile development --platform android
+cd E:\tip-tracker
+git pull
+npm install
+npx eas-cli@latest build --profile preview --platform android
 ```
 
-After installing `expo-dev-client`, `npx expo start` opens development builds by default; press `s` in the terminal to switch back to Expo Go. For iPhone, register it first with `npx eas-cli@latest device:create`, then build with `--platform ios`. Buy with a sandbox (Apple) or license-tester (Google) account.
+The build runs in the cloud (about 15 minutes). Open the link it prints on your Android phone and install the APK. Then try: long-press the Tipbook icon (Log shift, Scan slip), add the "Tipbook: this week" widget, and Scan slip on Home.
+
+**iPhone (needs the Apple Developer Program):**
+
+1. Put your Apple Team ID (developer.apple.com → Membership) in `app.json` as `"ios": { "appleTeamId": "..." }`. The widget needs it to be signed.
+2. Register your iPhone: `npx eas-cli@latest device:create`
+3. Build: `npx eas-cli@latest build --profile preview --platform ios`
+4. Then try: "Hey Siri, log my tips in Tipbook", the Tipbook widget (home screen and lock screen), and Scan slip.
+
+Preview builds behave like the store version, so the Developer switches in Settings are hidden. For live reloading while you code, use a development build instead: `npx expo install expo-dev-client`, then `--profile development`. After installing `expo-dev-client`, `npx expo start` opens development builds by default; press `s` to switch back to Expo Go. Buy with a sandbox (Apple) or license-tester (Google) account to test purchases.
 
 ## 6. Before you submit
 
@@ -68,5 +81,6 @@ In the iOS "Notes for reviewer", explain what makes the app different: no ads, n
 
 ## Not built yet, and why
 
-- **Home-screen widget, Siri / Shortcuts, scanning a checkout slip.** These need native code, so they can't run in Expo Go. They're v1.1/v1.2 items for after launch, once you're on development builds.
-- **Overtime.** For tipped workers, overtime is figured on the full minimum wage minus the tip credit, and states add their own rules (California has daily overtime). Getting it wrong would make the paycheck check misleading, so it needs a decision on which rules to support first.
+- **iPad layout.** The app runs on iPads in iPhone mode (`supportsTablet` is off), so no iPad screenshots or iPad review are needed for launch.
+- **Double time.** The "over 8 hrs a day" overtime rule doesn't count California's double time after 12 hours.
+- **Slip scanning has only been tested on made-up slips.** Real photos from different POS systems (Toast, Square, Clover, Aloha…) are needed to tune it.

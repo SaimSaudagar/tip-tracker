@@ -18,6 +18,11 @@ export const Colors = {
     onTint: '#ffffff',
     tintSoft: '#E3F4EB',
     danger: '#C62828',
+    /** The big summary card on Home: brand green by day. */
+    hero: '#0B7A4B',
+    onHero: '#ffffff',
+    heroAccent: '#ffffff',
+    heroTrack: 'rgba(255,255,255,0.25)',
   },
   dark: {
     text: '#ffffff',
@@ -29,6 +34,11 @@ export const Colors = {
     onTint: '#04271A',
     tintSoft: '#0F2E22',
     danger: '#FF6B6B',
+    /** A deep green at night instead of a bright mint block; mint stays for the goal ring. */
+    hero: '#123D2C',
+    onHero: '#F2FBF6',
+    heroAccent: '#34D399',
+    heroTrack: 'rgba(255,255,255,0.14)',
   },
 } as const;
 

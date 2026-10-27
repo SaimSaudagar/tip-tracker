@@ -91,6 +91,12 @@ export const MIGRATIONS: string[] = [
   );
   CREATE INDEX paychecks_date_idx ON paychecks(pay_date);
   `,
+  // 4: overtime per job. The rate is from the paystub; NULL means estimate it.
+  `
+  ALTER TABLE jobs ADD COLUMN overtime_rule TEXT NOT NULL DEFAULT 'none'
+    CHECK (overtime_rule IN ('none', 'weekly', 'daily'));
+  ALTER TABLE jobs ADD COLUMN overtime_rate_cents INTEGER CHECK (overtime_rate_cents >= 0);
+  `,
 ];
 
 export const DATABASE_NAME = 'tips.db';

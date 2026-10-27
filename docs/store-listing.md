@@ -1,18 +1,10 @@
 # Store listing drafts
 
-Character counts were checked against each store’s limits. Replace `[Brand]` once you’ve picked a name.
+Character counts were checked against each store’s limits. The app is called **Tipbook**.
 
-## Choosing a name
+## Name
 
-Search the App Store, Google Play, the USPTO trademark database (tmsearch.uspto.gov) and domain availability before deciding. Ideas to check, not cleared:
-
-- Tipbook
-- ShiftTips
-- TipLedger
-- Tipwise
-- Pocket Tips
-
-Put the main keyword in the store title after the brand, e.g. “Tipbook: Tip Tracker & Log”.
+**Tipbook**, with the store title "Tipbook: Tip Tracker & Log" (the keyword after the brand helps search). A quick App Store search found no tip tracker using the name; it is not a trademark clearance, so check tmsearch.uspto.gov before submitting. Names ruled out: TipJar (taken by a tip tracker), Tipwise (used by a tip calculator).
 
 ---
 
@@ -20,7 +12,7 @@ Put the main keyword in the store title after the brand, e.g. “Tipbook: Tip Tr
 
 | Field | Limit | Draft |
 |---|---|---|
-| Name | 30 | `[Brand]: Tip Tracker & Log` |
+| Name | 30 | `Tipbook: Tip Tracker & Log` |
 | Subtitle | 30 | `No Ads. Cash & Card Tips` (24) |
 | Keywords | 100 | `server,bartender,waiter,waitress,gratuity,income,shift,hourly,wage,tipout,report,irs,tax,restaurant` (99) |
 | Primary category | | Finance |
@@ -38,7 +30,7 @@ Don’t repeat words from the name or subtitle in the keyword field; Apple alrea
 
 > Know what you really make.
 >
-> [Brand] is the tip tracker for servers, bartenders and everyone who earns tips. Log a shift in about five seconds and see your real hourly: wages plus tips, divided by the hours you actually worked.
+> Tipbook is the tip tracker for servers, bartenders and everyone who earns tips. Log a shift in about five seconds and see your real hourly: wages plus tips, divided by the hours you actually worked.
 >
 > NO ADS. EVER.
 > No pop-ups while you’re entering tips. No account to lose. Your tips stay on your phone and are included in your phone’s regular backups.
@@ -54,10 +46,18 @@ Don’t repeat words from the name or subtitle in the keyword field; Apple alrea
 > • A calendar with what you made each day
 > • Every job and position, each with its own wage
 >
+> SCAN YOUR CHECKOUT SLIP
+> Snap the slip at the end of your shift and Tipbook reads the totals for you, right on your phone.
+>
+> ALWAYS ONE TAP AWAY
+> • A home-screen and lock-screen widget with this week's tips
+> • "Hey Siri, log my tips in Tipbook"
+> • Overtime pay worked out for you, at your paystub's rate
+>
 > SWITCH IN A MINUTE
 > Import your history from another tip app or a spreadsheet (CSV). Export everything anytime.
 >
-> [Brand] PRO
+> Tipbook PRO
 > • Monthly tip report for your employer, with a reminder before the 10th
 > • Year-end tip summary for tax time, with service charges separated
 > • Automatic tip-outs (% of tips, % of sales or a fixed amount)
@@ -86,7 +86,7 @@ They were rendered from the web build, so fonts differ slightly from iOS. Before
 
 **Notes for the reviewer (guideline 4.3 context):**
 
-> [Brand] is a tip and earnings log for service workers. What sets it apart from other tip trackers:
+> Tipbook is a tip and earnings log for service workers. What sets it apart from other tip trackers:
 > (1) no ads in any tier, and no account; all data is stored on the device;
 > (2) an employer tip report built on the IRS daily tip record (Publication 1244), with a reminder before the 10th of the month;
 > (3) a year-end summary that keeps service charges apart from voluntary tips;
@@ -100,7 +100,7 @@ They were rendered from the web build, so fonts differ slightly from iOS. Before
 
 | Field | Limit | Draft |
 |---|---|---|
-| App name | 30 | `[Brand]: Tip Tracker & Log` |
+| App name | 30 | `Tipbook: Tip Tracker & Log` |
 | Short description | 80 | `Log tips in 5 seconds. Real hourly, tip-outs, employer reports. No ads, ever.` (77) |
 | Category | | Finance |
 | Content rating | | Everyone (complete the IARC questionnaire) |

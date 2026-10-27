@@ -1,4 +1,4 @@
-# Tip Tracker
+# Tipbook
 
 A tip tracker for servers and bartenders: log a shift in five seconds, see your real hourly, no ads, no account. Tip data stays on the phone.
 
@@ -20,6 +20,17 @@ npm run web
 The web version is for development only. It stores data in the browser, and reminders and the share sheet only work on phones.
 
 In development builds, turn on **Settings → Developer: simulate Pro** to try Pro features before RevenueCat is connected, and use **Settings → Developer: add 12 weeks of sample shifts** to fill every screen with realistic data (Delete all data removes it).
+
+## Features that need a Tipbook build
+
+The home-screen widget (iOS and Android), checkout-slip scanning, Siri ("Log my tips in Tipbook") and Android launcher shortcuts use native code that Expo Go doesn't have. In Expo Go they quietly step aside: scanning offers manual entry and the widget isn't updated. Build an installable test version with `npx eas-cli@latest build --profile preview --platform android` (see `docs/launch-checklist.md`, step 5).
+
+| Feature | Where |
+|---|---|
+| iOS widget | `targets/widget/` (SwiftUI, added to Xcode by `@bacons/apple-targets`; data through the App Group) |
+| Android widget | `src/widgets/android/` (`react-native-android-widget`; background task registered in `index.ts`) |
+| Siri and Android shortcuts | `plugins/with-shortcuts.js` and `plugins/siri/` |
+| Slip scanning | `src/app/scan.tsx`, `src/lib/scan.ts` (on-device text recognition), `src/lib/checkout-slip.ts` (reading the totals) |
 
 ## Purchases (RevenueCat)
 
@@ -75,6 +86,9 @@ npm run lint
 | `src/db/use-db-query.ts` | Hook that reloads a query when data changes |
 | `src/db/__tests__/` / `src/db/testing/memory-db.ts` | Tests of the real SQL against an in-memory SQLite (sql.js) |
 | `src/lib/sample-data.ts` | Development-only sample shifts |
+| `src/lib/overtime.ts` | Overtime per job: over 40 hours a week or 8 a day, at the paystub rate or a federal estimate |
+| `src/lib/widget-snapshot.ts` / `src/widgets/` | What the home-screen widgets show, and keeping them up to date |
+| `index.ts` | App entry: Expo Router plus the Android widget task |
 | `scripts/build-legal-site.js` → `site/` | `npm run legal-site` builds the public privacy and terms pages from `docs/` |
 | `docs/store-screenshots/` | Draft App Store and Google Play screenshots |
 

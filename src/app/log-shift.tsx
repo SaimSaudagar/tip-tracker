@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { Button } from '@/components/button';
@@ -100,6 +100,10 @@ const formFromShift = (s: Shift): Form => ({
 
 const MONEY_ERROR = 'Enter an amount like 42 or 42.50';
 
+/** Amounts another screen can fill in (the tip pool calculator and the slip scanner). */
+const PREFILL_KEYS = ['cash', 'card', 'tipIn', 'tipOut', 'serviceCharge', 'sales', 'covers'] as const;
+type Prefill = Partial<Pick<Form, (typeof PREFILL_KEYS)[number]>>;
+
 function describeRule(p: Position) {
   if (p.tipOutRule === 'fixed') return `${formatMoney(p.tipOutValue)} per shift`;
   if (p.tipOutRule === 'pct_tips') return `${formatPercent(p.tipOutValue)} of tips`;
@@ -108,7 +112,8 @@ function describeRule(p: Position) {
 }
 
 export default function LogShiftScreen() {
-  const { id, date, tipIn: linkedTipIn } = useLocalSearchParams<{ id?: string; date?: string; tipIn?: string }>();
+  const params = useLocalSearchParams<{ id?: string; date?: string } & Prefill>();
+  const { id, date } = params;
   const shiftId = id ? Number(id) : undefined;
   const db = useSQLiteContext();
   const router = useRouter();
@@ -117,8 +122,17 @@ export default function LogShiftScreen() {
   const today = todayISO();
   // The calendar opens this screen for a specific past day; anything else starts on today.
   const startDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date) && date <= today ? date : today;
-  // The tip pool calculator opens this screen with your share as tips from coworkers.
-  const startTipIn = linkedTipIn && parseMoney(linkedTipIn) ? linkedTipIn : '';
+  // Only well-formed amounts are taken from the link. Keyed by value so the form isn't reset on re-render.
+  const prefillKey = PREFILL_KEYS.map((key) => params[key] ?? '').join('|');
+  const prefill = useMemo(() => {
+    const values: Prefill = {};
+    prefillKey.split('|').forEach((raw, i) => {
+      const key = PREFILL_KEYS[i];
+      const valid = key === 'covers' ? parseCount(raw) : parseMoney(raw);
+      if (raw && valid) values[key] = raw;
+    });
+    return values;
+  }, [prefillKey]);
 
   const [positions, setPositions] = useState<Position[]>([]);
   const [original, setOriginal] = useState<Shift | null>(null);
@@ -176,17 +190,19 @@ export default function LogShiftScreen() {
           ...blankForm(startDate),
           positionId: lastPosition?.id ?? all[0]?.id ?? null,
           hours: latest && lastPosition ? minutesToInput(latest.minutesWorked) : '',
-          tipIn: startTipIn,
+          ...prefill,
         });
         setPeriod(latest?.period ?? null);
-        if (startTipIn) setShowMore(true);
+        // A scanned tip-out wins over the position's automatic one.
+        if (prefill.tipOut) setTipOutEdited(true);
+        if (prefill.tipIn || prefill.tipOut || prefill.serviceCharge || prefill.sales || prefill.covers) setShowMore(true);
       }
       setLoaded(true);
     })();
     return () => {
       cancelled = true;
     };
-  }, [db, shiftId, startDate, startTipIn]);
+  }, [db, shiftId, startDate, prefill]);
 
   const set = (key: keyof Form) => (value: string) => setForm((f) => ({ ...f, [key]: value }));
   const position = positions.find((p) => p.id === form.positionId) ?? null;
@@ -382,6 +398,18 @@ export default function LogShiftScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}>
         <DateStepper value={form.date} onChange={set('date')} today={today} max={today} label="Shift date" />
+
+        {shiftId === undefined ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.replace({ pathname: '/scan', params: { date: form.date } })}
+            hitSlop={8}
+            style={styles.scanLink}>
+            <ThemedText type="smallBold" style={{ color: theme.tint }}>
+              Scan your checkout slip instead ›
+            </ThemedText>
+          </Pressable>
+        ) : null}
 
         {positions.length > 1 ? (
           <View style={styles.chips}>
@@ -758,6 +786,9 @@ const styles = StyleSheet.create({
   },
   rowSpacer: {
     flex: 1,
+  },
+  scanLink: {
+    alignSelf: 'flex-start',
   },
   moreToggle: {
     paddingVertical: Spacing.one,

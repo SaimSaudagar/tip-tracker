@@ -44,7 +44,7 @@ Use TikTok photo mode and Instagram carousels.
 |---|---|
 | 1 | **Hook:** big text over a photo. One idea, readable in 2 seconds. |
 | 2–5 | **The payoff:** numbers, steps or the joke, one point per slide |
-| 6 | **Soft close:** a takeaway, a question to the viewer, or “I track mine in [Brand]” |
+| 6 | **Soft close:** a takeaway, a question to the viewer, or “I track mine in Tipbook” |
 
 Practical details:
 - Put the app on slide 6 at most, and only on about half the posts. Value posts get the caption line “Link in bio if you want a tip tracker with no ads.”
@@ -102,7 +102,7 @@ Hook formulas that performed in the research:
 3. Tip-out: −$15 (bussers, bar)
 4. Wage: +$13.85 (6.5 hrs × $2.13)
 5. Real hourly: $30.59/hr
-6. Know your real number. I track mine in [Brand], link in bio.
+6. Know your real number. I track mine in Tipbook, link in bio.
 
 Caption: “What’s your real hourly? 👇 #serverlife #bartender #tips”
 
@@ -171,7 +171,7 @@ When one format hits 50K+ at least twice, pay real servers and bartenders to mak
 
 **Outreach message (DM):**
 
-> Hi [name], I loved your post about [specific post]. I’m building [Brand], a tip tracker for servers with no ads and no account. Would you be up for making one post in your own style about how you track tips? I can pay $[amount] for one video, plus a bonus if it passes [X] views. It would be labeled as a paid partnership. Happy to send the app first so you can see if you’d actually use it.
+> Hi [name], I loved your post about [specific post]. I’m building Tipbook, a tip tracker for servers with no ads and no account. Would you be up for making one post in your own style about how you track tips? I can pay $[amount] for one video, plus a bonus if it passes [X] views. It would be labeled as a paid partnership. Happy to send the app first so you can see if you’d actually use it.
 
 ## Phase 3: Apple Search Ads (after launch)
 

@@ -15,6 +15,8 @@ export type ShiftAmounts = {
   tipOutCents: number;
   /** Auto-gratuity and service charges. Kept apart from tips because they aren't voluntary tips. */
   serviceChargeCents: number;
+  /** Extra pay for overtime hours on top of the regular wage (see src/lib/overtime.ts). */
+  overtimePremiumCents?: number;
 };
 
 export type ShiftTotals = {
@@ -49,7 +51,7 @@ export function calcTipOut(
 }
 
 export function computeShift(s: ShiftAmounts): ShiftTotals {
-  const wagesCents = Math.round((s.minutesWorked * s.hourlyWageCents) / 60);
+  const wagesCents = Math.round((s.minutesWorked * s.hourlyWageCents) / 60) + (s.overtimePremiumCents ?? 0);
   const netTipsCents = s.cashTipsCents + s.cardTipsCents + s.tipInCents - s.tipOutCents;
   const totalCents = wagesCents + netTipsCents + s.serviceChargeCents;
   const realHourlyCents = s.minutesWorked > 0 ? Math.round((totalCents * 60) / s.minutesWorked) : null;

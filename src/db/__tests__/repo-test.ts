@@ -203,6 +203,27 @@ describe('backup and restore', () => {
   });
 });
 
+describe('overtime', () => {
+  it('adds the premium using the whole week, even when the range starts mid-week', async () => {
+    const position = await starterPosition();
+    await savePosition(db, { ...position, overtime: { rule: 'weekly', rateCents: null } });
+    // Sun Oct 25 – Fri Oct 30: six 8-hour shifts at $15, so Friday is all overtime.
+    for (const date of ['2026-10-25', '2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29', '2026-10-30']) {
+      await saveShift(db, shift(position.id, { date, minutesWorked: 480, hourlyWageCents: 1500 }));
+    }
+    const [friday] = await listShiftsBetween(db, '2026-10-30', '2026-10-31');
+    expect(friday.overtimePremiumCents).toBe(6000); // 8 hours × ($22.50 − $15)
+    const monday = (await listShiftsBetween(db, '2026-10-26', '2026-10-26'))[0];
+    expect(monday.overtimePremiumCents).toBeUndefined();
+  });
+
+  it('leaves wages alone for jobs without a rule', async () => {
+    const position = await starterPosition();
+    await saveShift(db, shift(position.id, { minutesWorked: 600 }));
+    expect((await listShiftsBetween(db, '2026-10-01', '2026-10-31'))[0].overtimePremiumCents).toBeUndefined();
+  });
+});
+
 describe('sample data', () => {
   it('adds every sample shift with its tip-out names', async () => {
     const samples = buildSampleShifts('2026-10-26');

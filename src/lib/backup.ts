@@ -15,7 +15,7 @@ export type Row = Record<string, Value>;
 
 /** Columns per table, in insert order. Must cover every column in src/db/migrations.ts. */
 export const BACKUP_COLUMNS = {
-  jobs: ['id', 'name', 'color', 'archived_at', 'created_at'],
+  jobs: ['id', 'name', 'color', 'archived_at', 'created_at', 'overtime_rule', 'overtime_rate_cents'],
   positions: ['id', 'job_id', 'name', 'hourly_wage_cents', 'tipout_rule', 'tipout_value', 'archived_at', 'created_at'],
   shifts: [
     'id',
@@ -91,7 +91,10 @@ const INTEGER_COLUMNS = new Set([
 ]);
 const REQUIRED_TEXT = new Set(['name', 'date', 'tipout_rule', 'recipient_name', 'key', 'value', 'pay_date']);
 // Columns added after the first backup format may be missing (undefined) in older files; they restore as NULL.
-const NULLABLE_INTEGERS = new Set(['sales_cents', 'covers', 'gross_cents']);
+const NULLABLE_INTEGERS = new Set(['sales_cents', 'covers', 'gross_cents', 'overtime_rate_cents']);
+// Columns added later that can't be NULL get their database default when an older backup lacks them.
+const COLUMN_DEFAULTS: Partial<Record<TableName, Row>> = { jobs: { overtime_rule: 'none' } };
+const OVERTIME_RULES = new Set(['none', 'weekly', 'daily']);
 
 export type ParseResult = { ok: true; backup: Backup } | { ok: false; error: string };
 
@@ -100,10 +103,10 @@ export function parseBackup(text: string, currentSchemaVersion: number): ParseRe
   try {
     raw = JSON.parse(text);
   } catch {
-    return { ok: false, error: 'This file isn’t a Tip Tracker backup (it isn’t valid JSON).' };
+    return { ok: false, error: 'This file isn’t a Tipbook backup (it isn’t valid JSON).' };
   }
   if (typeof raw !== 'object' || raw === null || (raw as Backup).format !== BACKUP_FORMAT) {
-    return { ok: false, error: 'This file isn’t a Tip Tracker backup.' };
+    return { ok: false, error: 'This file isn’t a Tipbook backup.' };
   }
   const b = raw as Backup;
   if (typeof b.version !== 'number' || b.version > BACKUP_VERSION || b.schemaVersion > currentSchemaVersion) {
@@ -115,6 +118,14 @@ export function parseBackup(text: string, currentSchemaVersion: number): ParseRe
   const tables = { ...b.tables } as BackupTables;
   for (const table of TABLES_ADDED_LATER) {
     if (tables[table] === undefined) tables[table] = [];
+  }
+  for (const [table, defaults] of Object.entries(COLUMN_DEFAULTS) as [TableName, Row][]) {
+    if (!Array.isArray(tables[table])) continue;
+    tables[table] = tables[table].map((row) =>
+      typeof row === 'object' && row !== null
+        ? { ...row, ...Object.fromEntries(Object.entries(defaults).filter(([column]) => row[column] == null)) }
+        : row,
+    );
   }
 
   for (const table of Object.keys(BACKUP_COLUMNS) as TableName[]) {
@@ -128,6 +139,7 @@ export function parseBackup(text: string, currentSchemaVersion: number): ParseRe
           (INTEGER_COLUMNS.has(column) && !Number.isInteger(value)) ||
           (NULLABLE_INTEGERS.has(column) && value != null && !Number.isInteger(value)) ||
           (REQUIRED_TEXT.has(column) && (typeof value !== 'string' || value === '')) ||
+          (column === 'overtime_rule' && !OVERTIME_RULES.has(String(value))) ||
           (value !== undefined && value !== null && typeof value !== 'string' && typeof value !== 'number');
         if (bad) return { ok: false, error: `A ${table} entry has a damaged “${column}” value.` };
       }

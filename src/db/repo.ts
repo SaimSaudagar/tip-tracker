@@ -1,6 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import type { ISODate, Weekday } from '@/lib/dates';
+import { weekRange, type ISODate, type Weekday } from '@/lib/dates';
+import { computeOvertime, NO_OVERTIME, type JobOvertime, type OvertimeRule } from '@/lib/overtime';
 import type { SampleShift } from '@/lib/sample-data';
 import type { ShiftAmounts, TipOutRule } from '@/lib/shift-math';
 import type { TipOutEntry } from '@/lib/tipouts';
@@ -22,6 +23,7 @@ export type ShiftPeriod = 'am' | 'pm';
 export type Shift = ShiftAmounts & {
   id: number;
   positionId: number;
+  jobId: number;
   positionName: string;
   jobName: string;
   date: ISODate;
@@ -38,7 +40,7 @@ export type Shift = ShiftAmounts & {
 
 type ShiftTimes = 'startTime' | 'endTime' | 'breakMinutes' | 'period' | 'covers';
 
-export type ShiftInput = Omit<Shift, 'id' | 'positionName' | 'jobName' | ShiftTimes> &
+export type ShiftInput = Omit<Shift, 'id' | 'positionName' | 'jobId' | 'jobName' | 'overtimePremiumCents' | ShiftTimes> &
   Partial<Pick<Shift, ShiftTimes>> & { id?: number };
 
 type PositionRow = {
@@ -54,6 +56,7 @@ type PositionRow = {
 type ShiftRow = {
   id: number;
   position_id: number;
+  job_id: number;
   position_name: string;
   job_name: string;
   date: string;
@@ -86,6 +89,7 @@ const toPosition = (r: PositionRow): Position => ({
 const toShift = (r: ShiftRow): Shift => ({
   id: r.id,
   positionId: r.position_id,
+  jobId: r.job_id,
   positionName: r.position_name,
   jobName: r.job_name,
   date: r.date,
@@ -106,7 +110,7 @@ const toShift = (r: ShiftRow): Shift => ({
 });
 
 const SHIFT_SELECT = `
-  SELECT s.id, s.position_id, p.name AS position_name, j.name AS job_name, s.date,
+  SELECT s.id, s.position_id, j.id AS job_id, p.name AS position_name, j.name AS job_name, s.date,
          s.start_time, s.end_time, s.break_minutes, s.period, s.minutes_worked, s.hourly_wage_cents, s.cash_tips_cents, s.card_tips_cents,
          s.tip_in_cents, s.tip_out_cents, s.service_charge_cents, s.sales_cents, s.covers, s.notes
   FROM shifts s
@@ -125,6 +129,59 @@ export async function listPositions(db: SQLiteDatabase): Promise<Position[]> {
   return rows.map(toPosition);
 }
 
+// ---- Overtime ----
+
+/** Overtime settings of jobs that have a rule, keyed by job id. */
+export async function listOvertimeRules(db: SQLiteDatabase): Promise<Map<number, JobOvertime>> {
+  const rows = await db.getAllAsync<{ id: number; overtime_rule: OvertimeRule; overtime_rate_cents: number | null }>(
+    "SELECT id, overtime_rule, overtime_rate_cents FROM jobs WHERE overtime_rule != 'none'",
+  );
+  return new Map(rows.map((r) => [r.id, { rule: r.overtime_rule, rateCents: r.overtime_rate_cents }]));
+}
+
+/** Every active job's overtime settings, keyed by lowercased job name (the position editor matches by name). */
+export async function listJobOvertimeByName(db: SQLiteDatabase): Promise<Map<string, JobOvertime>> {
+  const rows = await db.getAllAsync<{ name: string; overtime_rule: OvertimeRule; overtime_rate_cents: number | null }>(
+    'SELECT name, overtime_rule, overtime_rate_cents FROM jobs WHERE archived_at IS NULL',
+  );
+  return new Map(rows.map((r) => [r.name.trim().toLowerCase(), { rule: r.overtime_rule, rateCents: r.overtime_rate_cents }]));
+}
+
+export async function getJobOvertime(db: SQLiteDatabase, jobId: number): Promise<JobOvertime> {
+  const row = await db.getFirstAsync<{ overtime_rule: OvertimeRule; overtime_rate_cents: number | null }>(
+    'SELECT overtime_rule, overtime_rate_cents FROM jobs WHERE id = ?',
+    jobId,
+  );
+  return row ? { rule: row.overtime_rule, rateCents: row.overtime_rate_cents } : NO_OVERTIME;
+}
+
+/**
+ * Adds each shift's overtime premium. Overtime depends on the rest of the week, so this
+ * also reads the job's other shifts in every week the given shifts touch.
+ */
+async function withOvertime(db: SQLiteDatabase, shifts: Shift[]): Promise<Shift[]> {
+  const rules = await listOvertimeRules(db);
+  const affected = shifts.filter((s) => rules.has(s.jobId));
+  if (affected.length === 0) return shifts;
+
+  const weekStart = await getWeekStart(db);
+  const dates = affected.map((s) => s.date).sort();
+  const start = weekRange(dates[0], weekStart).start;
+  const end = weekRange(dates[dates.length - 1], weekStart).end;
+  const jobIds = [...new Set(affected.map((s) => s.jobId))];
+  const weekShifts = await db.getAllAsync<ShiftRow>(
+    `${SHIFT_SELECT} WHERE s.date BETWEEN ? AND ? AND j.id IN (${jobIds.map(() => '?').join(', ')})`,
+    start,
+    end,
+    ...jobIds,
+  );
+  const overtime = computeOvertime(weekShifts.map(toShift), rules, weekStart);
+  return shifts.map((s) => {
+    const premium = overtime.get(s.id)?.premiumCents ?? 0;
+    return premium > 0 ? { ...s, overtimePremiumCents: premium } : s;
+  });
+}
+
 export async function getShift(db: SQLiteDatabase, id: number): Promise<Shift | null> {
   const row = await db.getFirstAsync<ShiftRow>(`${SHIFT_SELECT} WHERE s.id = ?`, id);
   return row ? toShift(row) : null;
@@ -141,12 +198,12 @@ export async function listShiftsBetween(db: SQLiteDatabase, start: ISODate, end:
     start,
     end,
   );
-  return rows.map(toShift);
+  return withOvertime(db, rows.map(toShift));
 }
 
 export async function listRecentShifts(db: SQLiteDatabase, limit: number): Promise<Shift[]> {
   const rows = await db.getAllAsync<ShiftRow>(`${SHIFT_SELECT} ORDER BY s.date DESC, s.id DESC LIMIT ?`, limit);
-  return rows.map(toShift);
+  return withOvertime(db, rows.map(toShift));
 }
 
 /** Inserts a new shift, or updates it when `id` is set. Returns the shift's id. */
@@ -260,7 +317,7 @@ export async function deleteShift(db: SQLiteDatabase, id: number): Promise<void>
 
 export async function listAllShifts(db: SQLiteDatabase): Promise<Shift[]> {
   const rows = await db.getAllAsync<ShiftRow>(`${SHIFT_SELECT} ORDER BY s.date, s.id`);
-  return rows.map(toShift);
+  return withOvertime(db, rows.map(toShift));
 }
 
 export async function getWeekStart(db: SQLiteDatabase): Promise<Weekday> {
@@ -335,6 +392,8 @@ export type PositionInput = {
   hourlyWageCents: number;
   tipOutRule: TipOutRule;
   tipOutValue: number;
+  /** The job's overtime settings, when the editor changed them. */
+  overtime?: JobOvertime;
 };
 
 export async function listJobNames(db: SQLiteDatabase): Promise<string[]> {
@@ -379,6 +438,14 @@ export async function savePosition(db: SQLiteDatabase, input: PositionInput): Pr
   let id = input.id;
   await db.withTransactionAsync(async () => {
     const jobId = await findOrCreateJob(db, input.jobName.trim());
+    if (input.overtime) {
+      await db.runAsync(
+        'UPDATE jobs SET overtime_rule = ?, overtime_rate_cents = ? WHERE id = ?',
+        input.overtime.rule,
+        input.overtime.rateCents,
+        jobId,
+      );
+    }
     const values = [jobId, input.name.trim(), input.hourlyWageCents, input.tipOutRule, input.tipOutValue];
     if (id !== undefined) {
       await db.runAsync(
@@ -631,5 +698,5 @@ export async function listJobShiftsBetween(
     start,
     end,
   );
-  return rows.map(toShift);
+  return withOvertime(db, rows.map(toShift));
 }
