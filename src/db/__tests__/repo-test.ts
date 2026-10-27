@@ -193,6 +193,30 @@ describe('backup and restore', () => {
     expect(settings).toMatchObject({ weekly_goal_cents: '90000', onboarded: '1', pro_override: '0' });
   });
 
+  it('keep the app out of onboarding at every step of a restore', async () => {
+    const position = await starterPosition();
+    await saveShift(db, shift(position.id));
+    await setSetting(db, 'onboarded', '1');
+    const backup = await createBackup(db);
+
+    // Screens may read while a restore runs, so check what they'd see after every statement.
+    const other = await openMemoryDb();
+    await setSetting(other, 'onboarded', '1');
+    const seen: (string | undefined)[] = [];
+    const watch = <A extends unknown[], R>(fn: (...args: A) => Promise<R>) =>
+      async (...args: A) => {
+        const result = await fn(...args);
+        seen.push((await getSettings(other)).onboarded);
+        return result;
+      };
+    other.runAsync = watch(other.runAsync.bind(other)) as typeof other.runAsync;
+    other.execAsync = watch(other.execAsync.bind(other)) as typeof other.execAsync;
+
+    await restoreBackup(other, backup);
+    expect(seen.length).toBeGreaterThan(5);
+    expect(new Set(seen)).toEqual(new Set(['1']));
+  });
+
   it('roll back completely when a restore fails part-way', async () => {
     const position = await starterPosition();
     await saveShift(db, shift(position.id));

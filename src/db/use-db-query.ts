@@ -2,6 +2,9 @@ import { useFocusEffect } from 'expo-router';
 import { addDatabaseChangeListener, useSQLiteContext, type SQLiteDatabase } from 'expo-sqlite';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+/** Database changes this close together cause one reload, so an import of thousands of rows isn't thousands of reloads. */
+const CHANGE_BATCH_MS = 50;
+
 /**
  * Runs a read query and re-runs it whenever the database changes or the screen
  * regains focus. Pass a memoized `query` (useCallback) so it only reloads when its inputs change.
@@ -28,8 +31,15 @@ export function useDbQuery<T>(query: (db: SQLiteDatabase) => Promise<T>) {
   }, [db, query]);
 
   useEffect(() => {
-    const subscription = addDatabaseChangeListener(() => reload());
-    return () => subscription.remove();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const subscription = addDatabaseChangeListener(() => {
+      clearTimeout(timer);
+      timer = setTimeout(reload, CHANGE_BATCH_MS);
+    });
+    return () => {
+      clearTimeout(timer);
+      subscription.remove();
+    };
   }, [reload]);
 
   useFocusEffect(reload);

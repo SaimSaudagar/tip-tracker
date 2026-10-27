@@ -46,10 +46,13 @@ In Expo Go, RevenueCat runs in Preview API Mode with mock purchases. Real purcha
 ## Check it
 
 ```bash
-npm test
+npm test            # calculations, database, backups, upgrades, 5 years of data
 npm run typecheck
 npm run lint
+npm run test:e2e    # clicks through the app in a browser (first time: npx playwright install chromium)
 ```
+
+`test:e2e` starts the web version by itself (or reuses one already running on port 8081) and goes through onboarding, logging and editing shifts, the calendar, reports and PDFs, import, backup and restore, settings, the tip pool and overtime, on a fixed date so the numbers never change.
 
 ## Where things are
 
