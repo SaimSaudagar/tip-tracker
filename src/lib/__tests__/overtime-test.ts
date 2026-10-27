@@ -1,4 +1,10 @@
-import { computeOvertime, estimateOvertimeRate, type JobOvertime, type OvertimeShift } from '@/lib/overtime';
+import {
+  computeOvertime,
+  estimateDoubleTimeRate,
+  estimateOvertimeRate,
+  type JobOvertime,
+  type OvertimeShift,
+} from '@/lib/overtime';
 import { computeShift } from '@/lib/shift-math';
 
 let nextId = 1;
@@ -11,7 +17,9 @@ const shift = (date: string, hours: number, overrides: Partial<OvertimeShift> = 
   hourlyWageCents: 1500,
   ...overrides,
 });
-const rules = (rule: JobOvertime['rule'], rateCents: number | null = null) => new Map([[1, { rule, rateCents }]]);
+const rules = (rule: JobOvertime['rule'], rateCents: number | null = null, doubleTime = false) =>
+  new Map([[1, { rule, rateCents, doubleTime }]]);
+const california = (rateCents: number | null = null) => rules('daily', rateCents, true);
 
 // Week of Sun Oct 18 – Sat Oct 24, 2026 (weeks start Sunday).
 const week = ['2026-10-18', '2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23'];
@@ -34,12 +42,12 @@ describe('weekly overtime', () => {
     const overtime = computeOvertime(shifts, rules('weekly'), 0);
     expect([...overtime.keys()]).toEqual([shifts[5].id]);
     // 8 hours at $22.50 − $15.00
-    expect(overtime.get(shifts[5].id)).toEqual({ minutes: 480, premiumCents: 6000 });
+    expect(overtime.get(shifts[5].id)).toEqual({ minutes: 480, doubleTimeMinutes: 0, premiumCents: 6000 });
   });
 
   it('splits the shift that crosses 40 hours', () => {
     const shifts = [shift(week[0], 38), shift(week[1], 5)];
-    expect(computeOvertime(shifts, rules('weekly'), 0).get(shifts[1].id)).toEqual({ minutes: 180, premiumCents: 2250 });
+    expect(computeOvertime(shifts, rules('weekly'), 0).get(shifts[1].id)).toEqual({ minutes: 180, doubleTimeMinutes: 0, premiumCents: 2250 });
   });
 
   it('orders shifts on the same day by start time', () => {
@@ -68,6 +76,7 @@ describe('weekly overtime', () => {
     const shifts = [shift(week[0], 40), shift(week[1], 2, { hourlyWageCents: 213 })];
     expect(computeOvertime(shifts, rules('weekly', 650), 0).get(shifts[1].id)).toEqual({
       minutes: 120,
+      doubleTimeMinutes: 0,
       premiumCents: 874, // 2 hours × ($6.50 − $2.13)
     });
   });
@@ -76,7 +85,7 @@ describe('weekly overtime', () => {
     const tipped = [shift(week[0], 40, { hourlyWageCents: 213 }), shift(week[1], 1, { hourlyWageCents: 213 })];
     expect(computeOvertime(tipped, rules('weekly'), 0).get(tipped[1].id)?.premiumCents).toBe(363); // $5.76 − $2.13
     const unpaid = [shift(week[0], 40, { hourlyWageCents: 0 }), shift(week[1], 1, { hourlyWageCents: 0 })];
-    expect(computeOvertime(unpaid, rules('weekly'), 0).get(unpaid[1].id)).toEqual({ minutes: 60, premiumCents: 0 });
+    expect(computeOvertime(unpaid, rules('weekly'), 0).get(unpaid[1].id)).toEqual({ minutes: 60, doubleTimeMinutes: 0, premiumCents: 0 });
   });
 });
 
@@ -102,6 +111,74 @@ describe('daily overtime', () => {
     const overtime = computeOvertime([...days, sixth], rules('daily'), 0);
     expect(days.map((s) => overtime.get(s.id)?.minutes)).toEqual([120, 120, 120, 120, 120]);
     expect(overtime.get(sixth.id)?.minutes).toBe(240); // past 40 regular hours
+  });
+});
+
+describe('estimateDoubleTimeRate', () => {
+  it('is 4/3 of a paystub overtime rate, or twice the wage', () => {
+    expect(estimateDoubleTimeRate(1650, 2475)).toBe(3300);
+    expect(estimateDoubleTimeRate(1500, null)).toBe(3000);
+  });
+
+  it('takes the tip credit off 2× minimum wage for tipped wages', () => {
+    expect(estimateDoubleTimeRate(213, null)).toBe(938); // $14.50 − $5.12
+  });
+});
+
+describe('California double time', () => {
+  const saturday = '2026-10-24';
+
+  it('pays double time after 12 hours in a day', () => {
+    const long = shift(week[0], 14);
+    // 4 hours × ($22.50 − $15) + 2 hours × ($30 − $15)
+    expect(computeOvertime([long], california(), 0).get(long.id)).toEqual({
+      minutes: 360,
+      doubleTimeMinutes: 120,
+      premiumCents: 6000,
+    });
+    // Without the California rules the same day is all time and a half.
+    expect(computeOvertime([long], rules('daily'), 0).get(long.id)).toEqual({
+      minutes: 360,
+      doubleTimeMinutes: 0,
+      premiumCents: 4500,
+    });
+  });
+
+  it('bases double time on the paystub rate', () => {
+    const long = shift(week[0], 13, { hourlyWageCents: 1650 });
+    // 4 hours × ($24.75 − $16.50) + 1 hour × ($33 − $16.50)
+    expect(computeOvertime([long], california(2475), 0).get(long.id)?.premiumCents).toBe(4950);
+  });
+
+  it('splits double time across shifts on the same day', () => {
+    const lunch = shift(week[0], 6, { startTime: '09:00' });
+    const dinner = shift(week[0], 7, { startTime: '16:00' });
+    const overtime = computeOvertime([dinner, lunch], california(), 0);
+    expect(overtime.get(lunch.id)).toBeUndefined();
+    expect(overtime.get(dinner.id)).toMatchObject({ minutes: 300, doubleTimeMinutes: 60 }); // 4h OT, then 1h double
+  });
+
+  it('makes the seventh straight day of a workweek overtime, and double after 8 hours', () => {
+    const sixDays = week.map((d) => shift(d, 5));
+    const seventh = shift(saturday, 10);
+    const overtime = computeOvertime([...sixDays, seventh], california(), 0);
+    expect(sixDays.some((s) => overtime.has(s.id))).toBe(false);
+    expect(overtime.get(seventh.id)).toMatchObject({ minutes: 600, doubleTimeMinutes: 120 });
+  });
+
+  it('skips the seventh-day rule when a day of the week was off', () => {
+    const fiveDays = week.slice(1).map((d) => shift(d, 5));
+    const saturdayShift = shift(saturday, 10);
+    const overtime = computeOvertime([...fiveDays, saturdayShift], california(), 0);
+    expect(overtime.get(saturdayShift.id)).toMatchObject({ minutes: 120, doubleTimeMinutes: 0 });
+  });
+
+  it('keeps double-time hours out of the weekly 40', () => {
+    // Three 14-hour days: 12 hours of overtime and 6 of double time, 24 regular hours.
+    const days = week.slice(0, 3).map((d) => shift(d, 14));
+    const fourth = shift(week[3], 10);
+    const overtime = computeOvertime([...days, fourth], california(), 0);
+    expect(overtime.get(fourth.id)).toMatchObject({ minutes: 120, doubleTimeMinutes: 0 }); // daily overtime only
   });
 });
 

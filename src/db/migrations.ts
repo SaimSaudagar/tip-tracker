@@ -97,6 +97,11 @@ export const MIGRATIONS: string[] = [
     CHECK (overtime_rule IN ('none', 'weekly', 'daily'));
   ALTER TABLE jobs ADD COLUMN overtime_rate_cents INTEGER CHECK (overtime_rate_cents >= 0);
   `,
+  // 5: California's double time and seventh-day rule, on top of the 'daily' overtime rule.
+  `
+  ALTER TABLE jobs ADD COLUMN overtime_double_time INTEGER NOT NULL DEFAULT 0
+    CHECK (overtime_double_time IN (0, 1));
+  `,
 ];
 
 export const DATABASE_NAME = 'tips.db';

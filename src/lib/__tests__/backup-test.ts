@@ -12,6 +12,7 @@ const tables = (): BackupTables => ({
       created_at: '2026-10-01 12:00:00',
       overtime_rule: 'weekly',
       overtime_rate_cents: null,
+      overtime_double_time: 0,
     },
   ],
   positions: [
@@ -132,8 +133,16 @@ describe('backups', () => {
     const old = buildBackup(tables(), 3, now) as unknown as { tables: Record<string, Record<string, unknown>[]> };
     delete old.tables.jobs[0].overtime_rule;
     delete old.tables.jobs[0].overtime_rate_cents;
+    delete old.tables.jobs[0].overtime_double_time;
     const parsed = parseBackup(JSON.stringify(old), 4);
-    expect(parsed.ok && parsed.backup.tables.jobs[0]).toMatchObject({ overtime_rule: 'none' });
+    expect(parsed.ok && parsed.backup.tables.jobs[0]).toMatchObject({ overtime_rule: 'none', overtime_double_time: 0 });
+  });
+
+  it('rejects a double-time flag other than 0 or 1', () => {
+    const t = tables();
+    t.jobs[0].overtime_double_time = 2;
+    const parsed = parseBackup(JSON.stringify(buildBackup(t, 5, now)), 5);
+    expect(!parsed.ok && parsed.error).toContain('overtime_double_time');
   });
 
   it('rejects an unknown overtime rule', () => {

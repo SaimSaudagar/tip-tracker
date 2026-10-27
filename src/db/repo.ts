@@ -131,28 +131,34 @@ export async function listPositions(db: SQLiteDatabase): Promise<Position[]> {
 
 // ---- Overtime ----
 
+type OvertimeRow = { overtime_rule: OvertimeRule; overtime_rate_cents: number | null; overtime_double_time: number };
+const OVERTIME_COLUMNS = 'overtime_rule, overtime_rate_cents, overtime_double_time';
+
+const toJobOvertime = (r: OvertimeRow): JobOvertime => ({
+  rule: r.overtime_rule,
+  rateCents: r.overtime_rate_cents,
+  doubleTime: r.overtime_double_time === 1,
+});
+
 /** Overtime settings of jobs that have a rule, keyed by job id. */
 export async function listOvertimeRules(db: SQLiteDatabase): Promise<Map<number, JobOvertime>> {
-  const rows = await db.getAllAsync<{ id: number; overtime_rule: OvertimeRule; overtime_rate_cents: number | null }>(
-    "SELECT id, overtime_rule, overtime_rate_cents FROM jobs WHERE overtime_rule != 'none'",
+  const rows = await db.getAllAsync<OvertimeRow & { id: number }>(
+    `SELECT id, ${OVERTIME_COLUMNS} FROM jobs WHERE overtime_rule != 'none'`,
   );
-  return new Map(rows.map((r) => [r.id, { rule: r.overtime_rule, rateCents: r.overtime_rate_cents }]));
+  return new Map(rows.map((r) => [r.id, toJobOvertime(r)]));
 }
 
 /** Every active job's overtime settings, keyed by lowercased job name (the position editor matches by name). */
 export async function listJobOvertimeByName(db: SQLiteDatabase): Promise<Map<string, JobOvertime>> {
-  const rows = await db.getAllAsync<{ name: string; overtime_rule: OvertimeRule; overtime_rate_cents: number | null }>(
-    'SELECT name, overtime_rule, overtime_rate_cents FROM jobs WHERE archived_at IS NULL',
+  const rows = await db.getAllAsync<OvertimeRow & { name: string }>(
+    `SELECT name, ${OVERTIME_COLUMNS} FROM jobs WHERE archived_at IS NULL`,
   );
-  return new Map(rows.map((r) => [r.name.trim().toLowerCase(), { rule: r.overtime_rule, rateCents: r.overtime_rate_cents }]));
+  return new Map(rows.map((r) => [r.name.trim().toLowerCase(), toJobOvertime(r)]));
 }
 
 export async function getJobOvertime(db: SQLiteDatabase, jobId: number): Promise<JobOvertime> {
-  const row = await db.getFirstAsync<{ overtime_rule: OvertimeRule; overtime_rate_cents: number | null }>(
-    'SELECT overtime_rule, overtime_rate_cents FROM jobs WHERE id = ?',
-    jobId,
-  );
-  return row ? { rule: row.overtime_rule, rateCents: row.overtime_rate_cents } : NO_OVERTIME;
+  const row = await db.getFirstAsync<OvertimeRow>(`SELECT ${OVERTIME_COLUMNS} FROM jobs WHERE id = ?`, jobId);
+  return row ? toJobOvertime(row) : NO_OVERTIME;
 }
 
 /**
@@ -440,9 +446,10 @@ export async function savePosition(db: SQLiteDatabase, input: PositionInput): Pr
     const jobId = await findOrCreateJob(db, input.jobName.trim());
     if (input.overtime) {
       await db.runAsync(
-        'UPDATE jobs SET overtime_rule = ?, overtime_rate_cents = ? WHERE id = ?',
+        'UPDATE jobs SET overtime_rule = ?, overtime_rate_cents = ?, overtime_double_time = ? WHERE id = ?',
         input.overtime.rule,
         input.overtime.rateCents,
+        input.overtime.rule === 'daily' && input.overtime.doubleTime ? 1 : 0,
         jobId,
       );
     }

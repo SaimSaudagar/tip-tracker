@@ -7,6 +7,7 @@ import {
   countShiftsBetween,
   deleteAllData,
   deleteShift,
+  getJobOvertime,
   getSettings,
   getShift,
   getShiftTipOuts,
@@ -206,7 +207,7 @@ describe('backup and restore', () => {
 describe('overtime', () => {
   it('adds the premium using the whole week, even when the range starts mid-week', async () => {
     const position = await starterPosition();
-    await savePosition(db, { ...position, overtime: { rule: 'weekly', rateCents: null } });
+    await savePosition(db, { ...position, overtime: { rule: 'weekly', rateCents: null, doubleTime: false } });
     // Sun Oct 25 – Fri Oct 30: six 8-hour shifts at $15, so Friday is all overtime.
     for (const date of ['2026-10-25', '2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29', '2026-10-30']) {
       await saveShift(db, shift(position.id, { date, minutesWorked: 480, hourlyWageCents: 1500 }));
@@ -215,6 +216,19 @@ describe('overtime', () => {
     expect(friday.overtimePremiumCents).toBe(6000); // 8 hours × ($22.50 − $15)
     const monday = (await listShiftsBetween(db, '2026-10-26', '2026-10-26'))[0];
     expect(monday.overtimePremiumCents).toBeUndefined();
+  });
+
+  it('stores California rules and pays double time after 12 hours', async () => {
+    const position = await starterPosition();
+    await savePosition(db, { ...position, overtime: { rule: 'daily', rateCents: null, doubleTime: true } });
+    expect(await getJobOvertime(db, position.jobId)).toEqual({ rule: 'daily', rateCents: null, doubleTime: true });
+    await saveShift(db, shift(position.id, { date: '2026-10-27', minutesWorked: 840, hourlyWageCents: 1650 }));
+    const [long] = await listShiftsBetween(db, '2026-10-27', '2026-10-27');
+    expect(long.overtimePremiumCents).toBe(6600); // 4 hours × $8.25 + 2 hours × $16.50
+
+    // A weekly rule never keeps the flag.
+    await savePosition(db, { ...position, overtime: { rule: 'weekly', rateCents: null, doubleTime: true } });
+    expect((await getJobOvertime(db, position.jobId)).doubleTime).toBe(false);
   });
 
   it('leaves wages alone for jobs without a rule', async () => {

@@ -15,7 +15,7 @@ export type Row = Record<string, Value>;
 
 /** Columns per table, in insert order. Must cover every column in src/db/migrations.ts. */
 export const BACKUP_COLUMNS = {
-  jobs: ['id', 'name', 'color', 'archived_at', 'created_at', 'overtime_rule', 'overtime_rate_cents'],
+  jobs: ['id', 'name', 'color', 'archived_at', 'created_at', 'overtime_rule', 'overtime_rate_cents', 'overtime_double_time'],
   positions: ['id', 'job_id', 'name', 'hourly_wage_cents', 'tipout_rule', 'tipout_value', 'archived_at', 'created_at'],
   shifts: [
     'id',
@@ -93,7 +93,7 @@ const REQUIRED_TEXT = new Set(['name', 'date', 'tipout_rule', 'recipient_name', 
 // Columns added after the first backup format may be missing (undefined) in older files; they restore as NULL.
 const NULLABLE_INTEGERS = new Set(['sales_cents', 'covers', 'gross_cents', 'overtime_rate_cents']);
 // Columns added later that can't be NULL get their database default when an older backup lacks them.
-const COLUMN_DEFAULTS: Partial<Record<TableName, Row>> = { jobs: { overtime_rule: 'none' } };
+const COLUMN_DEFAULTS: Partial<Record<TableName, Row>> = { jobs: { overtime_rule: 'none', overtime_double_time: 0 } };
 const OVERTIME_RULES = new Set(['none', 'weekly', 'daily']);
 
 export type ParseResult = { ok: true; backup: Backup } | { ok: false; error: string };
@@ -140,6 +140,7 @@ export function parseBackup(text: string, currentSchemaVersion: number): ParseRe
           (NULLABLE_INTEGERS.has(column) && value != null && !Number.isInteger(value)) ||
           (REQUIRED_TEXT.has(column) && (typeof value !== 'string' || value === '')) ||
           (column === 'overtime_rule' && !OVERTIME_RULES.has(String(value))) ||
+          (column === 'overtime_double_time' && value !== 0 && value !== 1) ||
           (value !== undefined && value !== null && typeof value !== 'string' && typeof value !== 'number');
         if (bad) return { ok: false, error: `A ${table} entry has a damaged “${column}” value.` };
       }

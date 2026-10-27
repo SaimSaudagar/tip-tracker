@@ -79,7 +79,6 @@ npx eas-cli@latest submit --platform all
 
 In the iOS "Notes for reviewer", explain what makes the app different: no ads, no account, IRS-style monthly and year-end reports, import from other tip apps.
 
-## Not built yet, and why
+## Known gaps
 
-- **Double time.** The "over 8 hrs a day" overtime rule doesn't count California's double time after 12 hours.
 - **Slip scanning has only been tested on made-up slips.** Real photos from different POS systems (Toast, Square, Clover, Aloha…) are needed to tune it.
