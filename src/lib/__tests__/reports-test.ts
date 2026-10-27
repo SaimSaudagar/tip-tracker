@@ -66,8 +66,22 @@ describe('monthly employer report', () => {
   it('renders printable HTML with escaped names', () => {
     const html = monthlyReportHtml(buildMonthlyReport([shift({ jobName: 'Bob <b>&</b> Co', cashTipsCents: 2500 })], '2026-10-01'), '2026-10-26');
     expect(html).toContain('Bob &lt;b&gt;&amp;&lt;/b&gt; Co');
-    expect(html).toContain('report to this employer by 2026-11-10');
+    expect(html).toContain('by November 10, 2026');
+    expect(html).toContain('October 1–31, 2026');
     expect(html).not.toContain('<b>&</b>');
+  });
+
+  it('gives each employer its own page, and can leave the other jobs out', () => {
+    const report = buildMonthlyReport(
+      [shift({ jobName: 'Olive & Vine', cashTipsCents: 5000 }), shift({ jobName: 'Hotel Bar', cashTipsCents: 7000 })],
+      '2026-10-01',
+    );
+    const both = monthlyReportHtml(report, '2026-11-02');
+    expect(both.match(/<section>/g)).toHaveLength(2);
+    expect(both).toContain('Signature');
+    const one = monthlyReportHtml(report, '2026-11-02', { jobName: 'Hotel Bar' });
+    expect(one).toContain('Hotel Bar');
+    expect(one).not.toContain('Olive &amp; Vine');
   });
 });
 
@@ -93,6 +107,14 @@ describe('year summary', () => {
     expect(html).toContain('Tip summary – 2026');
     expect(html).toContain('$331.39'); // all net tips
     expect(html).toContain('no tax on tips');
+    expect(html).toContain('Form 4137');
+    expect(html).toContain('No shifts'); // months without shifts
+  });
+
+  it('keeps cash and card tips apart for each month', () => {
+    expect(summary.months[9].label).toBe('October');
+    expect(summary.months[9].cashCents + summary.months[9].cardCents).toBeGreaterThan(0);
+    expect(summary.months[9].shiftCount).toBe(3); // two at Olive & Vine, one at Lakeside Club
   });
 });
 

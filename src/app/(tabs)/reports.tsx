@@ -32,6 +32,10 @@ import { usePro } from '@/purchases/pro-context';
 
 const PAYCHECK_LIMIT = 12;
 
+/** "Olive & Vine" -> "olive-vine", for file names. */
+const fileSlug = (name: string) =>
+  name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'job';
+
 export default function ReportsScreen() {
   const { month, year } = useLocalSearchParams<{ month?: string; year?: string }>();
   const linked = month && /^\d{4}-\d{2}-\d{2}$/.test(month) ? month : null;
@@ -149,9 +153,26 @@ function Reports({ linkedMonth, linkedYear }: { linkedMonth: string | null; link
                     ? `Report to this employer by ${formatShortDate(report.dueDate)}`
                     : 'Under $20 this month. No employer report needed.'}
                 </ThemedText>
+                {report.jobs.length > 1 ? (
+                  // Each employer gets a PDF with only its own shifts.
+                  <Button
+                    title={isPro ? `Share PDF for ${job.jobName}` : `Share PDF for ${job.jobName} · Pro`}
+                    variant={isPro ? 'primary' : 'secondary'}
+                    onPress={() =>
+                      isPro
+                        ? share(
+                            monthlyReportHtml(report, today, { jobName: job.jobName }),
+                            `tip-report-${month.slice(0, 7)}-${fileSlug(job.jobName)}.pdf`,
+                            'monthly_pdf',
+                          )
+                        : showPaywall()
+                    }
+                    style={styles.jobShare}
+                  />
+                ) : null}
               </View>
             ))}
-            {report && report.jobs.length > 0 ? (
+            {report && report.jobs.length === 1 ? (
               <Button
                 title={isPro ? 'Share PDF for your employer' : 'Share PDF for your employer · Pro'}
                 variant={isPro ? 'primary' : 'secondary'}
@@ -386,6 +407,9 @@ const styles = StyleSheet.create({
   },
   amount: {
     fontSize: 20,
+  },
+  jobShare: {
+    marginTop: Spacing.two,
   },
   line: {
     flexDirection: 'row',

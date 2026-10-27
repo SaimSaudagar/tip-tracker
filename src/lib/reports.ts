@@ -108,17 +108,17 @@ export type YearSummary = {
   year: string;
   jobs: (TipTotals & { jobName: string })[];
   totals: TipTotals;
-  months: { label: string; netTipsCents: number }[];
+  months: (TipTotals & { label: string })[];
 };
 
 export function buildYearSummary(shifts: ReportShift[], yearIso: ISODate): YearSummary {
   const range = yearRange(yearIso);
   const inYear = shifts.filter((s) => isInRange(s.date, range));
   const totals = emptyTotals();
-  const months = MONTHS.map((m) => ({ label: m.slice(0, 3), netTipsCents: 0 }));
+  const months = MONTHS.map((m) => ({ label: m, ...emptyTotals() }));
   for (const s of inYear) {
     addShift(totals, s);
-    months[fromISODate(s.date).getMonth()].netTipsCents += computeShift(s).netTipsCents;
+    addShift(months[fromISODate(s.date).getMonth()], s);
   }
   const jobs = [...groupByJob(inYear)].map(([jobName, list]) => {
     const t = emptyTotals();
@@ -133,83 +133,133 @@ export function buildYearSummary(shifts: ReportShift[], yearIso: ISODate): YearS
 const escapeHtml = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/** "November 10, 2026" */
+export function formatLongDate(iso: ISODate): string {
+  const d = fromISODate(iso);
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
+/** "Thu, Oct 1" */
+const rowDate = (iso: ISODate) => {
+  const d = fromISODate(iso);
+  return `${WEEKDAYS[d.getDay()]}, ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getDate()}`;
+};
+
 const STYLE = `
-  body { font-family: -apple-system, Helvetica, Arial, sans-serif; color: #111; margin: 32px; font-size: 12px; }
-  h1 { font-size: 20px; margin: 0 0 4px; }
-  h2 { font-size: 15px; margin: 24px 0 6px; }
-  p { margin: 4px 0; }
+  @page { margin: 0.6in; }
+  body { font-family: -apple-system, Helvetica, Arial, sans-serif; color: #111; margin: 0; font-size: 11px; }
+  section + section { break-before: page; page-break-before: always; }
+  .brand { color: #0B7A4B; font-weight: 700; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; }
+  h1 { font-size: 20px; margin: 2px 0 2px; }
+  h2 { font-size: 14px; margin: 22px 0 4px; }
+  p { margin: 3px 0; }
   .muted { color: #555; }
-  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-  th, td { text-align: right; padding: 5px 6px; border-bottom: 1px solid #ddd; }
-  th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
-  tfoot td { font-weight: bold; border-top: 2px solid #111; }
-  th.names, td.names { text-align: left; font-size: 10px; }
-  .note { margin-top: 24px; font-size: 10px; color: #555; }
+  .facts { margin: 10px 0 4px; border-collapse: collapse; width: auto; }
+  .facts td { text-align: left; border: none; padding: 1px 16px 1px 0; }
+  .facts td:first-child { color: #555; }
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  th, td { text-align: right; padding: 4px 5px; border-bottom: 1px solid #ddd; white-space: nowrap; }
+  th { font-size: 10px; color: #444; font-weight: 600; border-bottom: 1px solid #999; }
+  .left { text-align: left; }
+  .wrap { white-space: normal; font-size: 9.5px; }
+  tfoot td { font-weight: 700; border-top: 2px solid #111; border-bottom: none; }
+  .empty td { color: #999; }
+  .sign { margin-top: 28px; border-collapse: collapse; width: 100%; }
+  .sign td { border: none; border-top: 1px solid #111; padding: 3px 0 0; text-align: left; font-size: 10px; color: #444; width: 33%; }
+  .sign td + td { padding-left: 24px; }
+  .note { margin-top: 18px; font-size: 9.5px; color: #555; }
 `;
 
-const page = (title: string, body: string, preparedOn: ISODate) => `<!doctype html>
-<html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>${STYLE}</style></head>
-<body>${body}
-<p class="note">Prepared with Tipbook on ${escapeHtml(preparedOn)}. Service charges and auto-gratuities are listed
-separately because they are not voluntary tips. These are your records, not tax advice. See IRS.gov (Topic 761, Tips)
-for reporting rules.</p>
-</body></html>`;
+const NOTE = `<p class="note">Prepared with Tipbook. Service charges and auto-gratuities are listed separately because
+they are not voluntary tips. These are your records, not tax advice. See IRS.gov (Topic 761, Tips) for reporting rules.</p>`;
 
-export function monthlyReportHtml(report: MonthlyReport, preparedOn: ISODate): string {
-  const sections = report.jobs.map((job) => {
+const htmlDocument = (title: string, sections: string[]) => `<!doctype html>
+<html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>${STYLE}</style></head>
+<body>${sections.map((s) => `<section>${s}${NOTE}</section>`).join('')}</body></html>`;
+
+/**
+ * The monthly tip report, one page per job, so each employer gets only its own page. Pass
+ * `jobName` to include just that job (the Reports screen shares one employer at a time).
+ */
+export function monthlyReportHtml(report: MonthlyReport, preparedOn: ISODate, { jobName }: { jobName?: string } = {}): string {
+  const jobs = jobName === undefined ? report.jobs : report.jobs.filter((j) => j.jobName === jobName);
+  const start = fromISODate(report.month);
+  const period = `${MONTHS[start.getMonth()]} 1–${Number(monthRange(report.month).end.slice(8))}, ${start.getFullYear()}`;
+  const sections = jobs.map((job) => {
     const rows = job.rows
       .map(
-        (r) => `<tr><td>${escapeHtml(r.date)}</td><td>${escapeHtml(r.positionName)}</td>
+        (r) => `<tr><td class="left">${rowDate(r.date)}</td><td class="left">${escapeHtml(r.positionName)}</td>
         <td>${formatMoney(r.cashTipsCents)}</td><td>${formatMoney(r.cardTipsCents)}</td>
         <td>${formatMoney(r.tipInCents)}</td><td>${formatMoney(r.tipOutCents)}</td>
-        <td class="names">${escapeHtml(describeTipOuts(r.tipOuts ?? []))}</td><td>${formatMoney(r.netTipsCents)}</td></tr>`,
+        <td class="left wrap">${escapeHtml(describeTipOuts(r.tipOuts ?? []))}</td><td>${formatMoney(r.netTipsCents)}</td></tr>`,
       )
       .join('');
     const t = job.totals;
-    return `<h2>${escapeHtml(job.jobName)}</h2>
-      <p class="muted">${
-        job.mustReport
-          ? `Net tips of ${formatMoney(t.netTipsCents)}: report to this employer by ${escapeHtml(report.dueDate)}.`
-          : `Under $20 this month: no report to this employer is required, but tips are still income.`
-      }</p>
+    return `<div class="brand">Tipbook</div>
+      <h1>Employee’s tip report – ${escapeHtml(report.label)}</h1>
+      <p class="muted">Daily record of tips received and paid out, for the employer named below.</p>
+      <table class="facts">
+        <tr><td>Employer</td><td><b>${escapeHtml(job.jobName)}</b></td></tr>
+        <tr><td>Period</td><td>${escapeHtml(period)}</td></tr>
+        <tr><td>Net tips</td><td><b>${formatMoney(t.netTipsCents)}</b></td></tr>
+        <tr><td>Prepared</td><td>${formatLongDate(preparedOn)}</td></tr>
+        <tr><td>${job.mustReport ? 'Due to employer' : 'Report'}</td><td>${
+          job.mustReport
+            ? `by ${formatLongDate(report.dueDate)}`
+            : 'Not required: under $20 in tips this month from this employer (tips are still income)'
+        }</td></tr>
+      </table>
       <table>
-        <thead><tr><th>Date</th><th>Position</th><th>Cash tips</th><th>Card tips</th><th>From coworkers</th><th>Paid out</th><th class="names">Paid out to</th><th>Net tips</th></tr></thead>
+        <thead><tr><th class="left">Date</th><th class="left">Position</th><th>Cash tips</th><th>Card tips</th><th>From coworkers</th><th>Paid out</th><th class="left">Paid out to</th><th>Net tips</th></tr></thead>
         <tbody>${rows}</tbody>
-        <tfoot><tr><td>Total</td><td>${t.shiftCount} shift${t.shiftCount === 1 ? '' : 's'}</td>
+        <tfoot><tr><td class="left">Total</td><td class="left">${t.shiftCount} shift${t.shiftCount === 1 ? '' : 's'}</td>
           <td>${formatMoney(t.cashCents)}</td><td>${formatMoney(t.cardCents)}</td><td>${formatMoney(t.tipInCents)}</td>
           <td>${formatMoney(t.tipOutCents)}</td><td></td><td>${formatMoney(t.netTipsCents)}</td></tr></tfoot>
       </table>
-      ${t.serviceChargeCents > 0 ? `<p class="muted">Service charges (not tips): ${formatMoney(t.serviceChargeCents)}</p>` : ''}`;
+      ${t.serviceChargeCents > 0 ? `<p class="muted">Service charges and auto-gratuities (not tips): ${formatMoney(t.serviceChargeCents)}</p>` : ''}
+      <table class="sign"><tr><td>Employee name</td><td>Signature</td><td>Date</td></tr></table>`;
   });
-  return page(
+  return htmlDocument(
     `Tip report – ${report.label}`,
-    `<h1>Tip report – ${escapeHtml(report.label)}</h1>
-     <p class="muted">Employee’s daily record of tips. Due to employer by ${escapeHtml(report.dueDate)} (the 10th, or the next business day).</p>
-     ${sections.join('') || '<p>No shifts logged this month.</p>'}`,
-    preparedOn,
+    sections.length > 0
+      ? sections
+      : [`<div class="brand">Tipbook</div><h1>Employee’s tip report – ${escapeHtml(report.label)}</h1><p>No shifts logged this month.</p>`],
   );
 }
 
 export function yearSummaryHtml(summary: YearSummary, preparedOn: ISODate): string {
-  const line = (label: string, t: TipTotals) => `<tr><td>${escapeHtml(label)}</td><td>${t.shiftCount}</td>
-    <td>${formatDuration(t.minutesWorked)}</td><td>${formatMoney(t.cashCents + t.cardCents + t.tipInCents)}</td>
-    <td>${formatMoney(t.tipOutCents)}</td><td>${formatMoney(t.netTipsCents)}</td><td>${formatMoney(t.serviceChargeCents)}</td>
-    <td>${formatMoney(t.wagesCents)}</td></tr>`;
+  const cells = (t: TipTotals) => `<td>${formatDuration(t.minutesWorked)}</td>
+    <td>${formatMoney(t.cashCents)}</td><td>${formatMoney(t.cardCents)}</td><td>${formatMoney(t.tipInCents)}</td>
+    <td>${formatMoney(t.tipOutCents)}</td><td><b>${formatMoney(t.netTipsCents)}</b></td>
+    <td>${formatMoney(t.serviceChargeCents)}</td><td>${formatMoney(t.wagesCents)}</td>`;
+  const head = (first: string) =>
+    `<thead><tr><th class="left">${first}</th><th>Hours</th><th>Cash tips</th><th>Card tips</th><th>From coworkers</th><th>Paid out</th><th>Net tips</th><th>Service charges</th><th>Wages</th></tr></thead>`;
   const months = summary.months
-    .map((m) => `<tr><td>${m.label}</td><td></td><td></td><td></td><td></td><td>${formatMoney(m.netTipsCents)}</td><td></td><td></td></tr>`)
+    .map((m) =>
+      m.shiftCount === 0
+        ? `<tr class="empty"><td class="left">${m.label}</td><td colspan="8" class="left">No shifts</td></tr>`
+        : `<tr><td class="left">${m.label}</td>${cells(m)}</tr>`,
+    )
     .join('');
-  return page(
-    `Tip summary – ${summary.year}`,
-    `<h1>Tip summary – ${escapeHtml(summary.year)}</h1>
-     <p class="muted">Voluntary tips you kept (net tips) are shown apart from service charges, which don’t count as tips
-     for the federal “no tax on tips” deduction (2025–2028).</p>
-     <table>
-       <thead><tr><th>Job</th><th>Shifts</th><th>Hours</th><th>Tips received</th><th>Paid out</th><th>Net tips</th><th>Service charges</th><th>Wages</th></tr></thead>
-       <tbody>${summary.jobs.map((j) => line(j.jobName, j)).join('')}</tbody>
-       <tfoot>${line('All jobs', summary.totals)}</tfoot>
+  const body = `<div class="brand">Tipbook</div>
+     <h1>Tip summary – ${escapeHtml(summary.year)}</h1>
+     <p class="muted">Prepared ${escapeHtml(formatLongDate(preparedOn))}. ${summary.totals.shiftCount} shifts, ${formatDuration(summary.totals.minutesWorked)} worked.</p>
+     <table class="facts">
+       <tr><td>Net tips (tips you kept)</td><td><b>${formatMoney(summary.totals.netTipsCents)}</b></td></tr>
+       <tr><td>Service charges (not tips)</td><td>${formatMoney(summary.totals.serviceChargeCents)}</td></tr>
+       <tr><td>Wages</td><td>${formatMoney(summary.totals.wagesCents)}</td></tr>
      </table>
-     <h2>Net tips by month</h2>
-     <table><thead><tr><th>Month</th><th></th><th></th><th></th><th></th><th>Net tips</th><th></th><th></th></tr></thead><tbody>${months}</tbody></table>`,
-    preparedOn,
-  );
+     <p class="muted">Net tips are kept apart from service charges, which don’t count as tips for the federal
+     “no tax on tips” deduction (2025–2028). Tips you reported to your employer are usually included on your W-2;
+     tips you didn’t report go on IRS Form 4137.</p>
+     <h2>By job</h2>
+     <table>${head('Job')}
+       <tbody>${summary.jobs.map((j) => `<tr><td class="left">${escapeHtml(j.jobName)}</td>${cells(j)}</tr>`).join('')}</tbody>
+       <tfoot><tr><td class="left">All jobs</td>${cells(summary.totals)}</tr></tfoot>
+     </table>
+     <h2>By month</h2>
+     <table>${head('Month')}<tbody>${months}</tbody></table>`;
+  return htmlDocument(`Tip summary – ${summary.year}`, [body]);
 }
