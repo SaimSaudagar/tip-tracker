@@ -1,4 +1,8 @@
-/** Minimal RFC 4180 CSV: quoted fields, doubled quotes, commas and newlines inside quotes. */
+/**
+ * Minimal RFC 4180 CSV: quoted fields, doubled quotes, separators and newlines inside quotes.
+ * The separator is a comma, or a semicolon or tab when the file uses those instead
+ * (Excel writes semicolons in countries that use a decimal comma).
+ */
 
 export function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
@@ -6,6 +10,7 @@ export function parseCsv(text: string): string[][] {
   let field = '';
   let inQuotes = false;
   const src = text.replace(/^﻿/, ''); // Excel adds a byte-order mark
+  const separator = detectSeparator(src);
 
   for (let i = 0; i < src.length; i++) {
     const ch = src[i];
@@ -20,7 +25,7 @@ export function parseCsv(text: string): string[][] {
       }
     } else if (ch === '"' && field === '') {
       inQuotes = true;
-    } else if (ch === ',') {
+    } else if (ch === separator) {
       row.push(field);
       field = '';
     } else if (ch === '\n' || ch === '\r') {
@@ -38,6 +43,13 @@ export function parseCsv(text: string): string[][] {
     rows.push(row);
   }
   return rows.filter((r) => r.some((cell) => cell.trim() !== ''));
+}
+
+/** The most common of comma, semicolon and tab outside quotes in the first lines. */
+function detectSeparator(src: string): string {
+  const head = src.split(/\r?\n/, 10).join('\n').replace(/"[^"]*"/g, '');
+  const count = (sep: string) => head.split(sep).length - 1;
+  return [';', '\t'].reduce((best, sep) => (count(sep) > count(best) ? sep : best), ',');
 }
 
 function escapeField(value: string): string {

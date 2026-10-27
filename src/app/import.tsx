@@ -18,9 +18,9 @@ import { formatDuration } from '@/lib/duration';
 import { readPickedFile } from '@/lib/files';
 import { formatMoney } from '@/lib/money';
 import { computeShift } from '@/lib/shift-math';
-import { IMPORT_FIELDS, buildImportDrafts, guessMapping, type ImportField, type ImportMapping } from '@/lib/transfer';
+import { IMPORT_FIELDS, buildImportDrafts, guessMapping, splitHeader, type ImportField, type ImportMapping } from '@/lib/transfer';
 
-type Loaded = { fileName: string; headers: string[]; rows: string[][] };
+type Loaded = { fileName: string; headers: string[]; rows: string[][]; firstLine: number };
 type Result = { imported: number; duplicates: number; skipped: number };
 
 const CSV_TYPES = ['text/csv', 'text/comma-separated-values', 'application/csv', 'application/vnd.ms-excel', 'text/plain'];
@@ -56,12 +56,12 @@ export default function ImportScreen() {
     if (picked.canceled || !picked.assets?.[0]) return;
     const asset = picked.assets[0];
     try {
-      const [headers, ...rows] = parseCsv(await readPickedFile(asset));
-      if (!headers || rows.length === 0) {
+      const { headers, rows, firstLine } = splitHeader(parseCsv(await readPickedFile(asset)));
+      if (headers.length === 0 || rows.length === 0) {
         setError('That file has no rows to import. Export a CSV from your old app and try again.');
         return;
       }
-      setFile({ fileName: asset.name, headers, rows });
+      setFile({ fileName: asset.name, headers, rows, firstLine });
       setMapping(guessMapping(headers));
       setEditing(null);
     } catch (e) {
@@ -69,7 +69,7 @@ export default function ImportScreen() {
     }
   };
 
-  const preview = file && mapping && mapping.date !== null ? buildImportDrafts(file.rows, mapping) : null;
+  const preview = file && mapping && mapping.date !== null ? buildImportDrafts(file.rows, mapping, file.firstLine) : null;
   const fallback = positions.find((p) => p.id === fallbackId) ?? null;
   const usesPositionColumns = mapping?.job != null || mapping?.position != null;
 
@@ -79,7 +79,7 @@ export default function ImportScreen() {
     setError(null);
     try {
       const { imported, duplicates } = await importShifts(db, preview.drafts, fallback, {
-        useImportedWage: mapping.wage !== null,
+        useImportedWage: mapping.wage !== null || mapping.wagesEarned !== null,
       });
       setResult({ imported, duplicates, skipped: preview.skipped.length });
       track({ name: 'import_completed', rows: imported });
@@ -126,8 +126,13 @@ export default function ImportScreen() {
         ) : (
           <>
             <ThemedText type="small" themeColor="textSecondary">
-              Export your history as a CSV from your old tip app (or a spreadsheet), then pick the file here. Nothing is
-              saved until you tap Import.
+              Export your history as a CSV from your old tip app (or a spreadsheet), then pick the file here. Tipbook
+              matches the columns by name, such as cash and card tips, tip-outs, hours or start and end times, wages and
+              sales, and you can change any match. Nothing is saved until you tap Import.
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              Can’t find the export? In most tip apps it’s under Settings or Reports, as Export or Backup; some email the
+              file to you. In Excel, Numbers or Google Sheets, save or download the sheet as CSV.
             </ThemedText>
             <Button title={file ? `Choose a different file` : 'Choose CSV file'} variant={file ? 'secondary' : 'primary'} onPress={pickFile} />
           </>

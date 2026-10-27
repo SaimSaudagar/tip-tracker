@@ -4,7 +4,9 @@ import {
   buildImportDrafts,
   guessMapping,
   parseFlexibleDate,
+  parseImportTime,
   shiftsToCsv,
+  splitHeader,
   type ExportShift,
 } from '@/lib/transfer';
 
@@ -35,6 +37,10 @@ const exportShift = (overrides: Partial<ExportShift> = {}): ExportShift => ({
   date: '2026-10-25',
   jobName: 'Olive & Vine',
   positionName: 'Server',
+  period: 'pm',
+  startTime: '17:00',
+  endTime: '23:30',
+  breakMinutes: 0,
   minutesWorked: 390,
   hourlyWageCents: 213,
   cashTipsCents: 8000,
@@ -56,6 +62,10 @@ describe('export', () => {
       '2026-10-25',
       'Olive & Vine',
       'Server',
+      'Dinner',
+      '17:00',
+      '23:30',
+      '',
       '6.5',
       '2.13',
       '80',
@@ -88,7 +98,19 @@ describe('export', () => {
   });
 
   it('round-trips through import', () => {
-    const shifts = [exportShift(), exportShift({ date: '2026-10-26', salesCents: null, covers: null, notes: null, minutesWorked: 0 })];
+    const shifts = [
+      exportShift(),
+      exportShift({
+        date: '2026-10-26',
+        salesCents: null,
+        covers: null,
+        notes: null,
+        minutesWorked: 0,
+        period: null,
+        startTime: null,
+        endTime: null,
+      }),
+    ];
     const [header, ...rows] = parseCsv(shiftsToCsv(shifts));
     const { drafts, skipped } = buildImportDrafts(rows, guessMapping(header));
     expect(skipped).toEqual([]);
@@ -102,6 +124,10 @@ describe('export', () => {
         tipInCents: s.tipInCents,
         tipOutCents: s.tipOutCents,
         serviceChargeCents: s.serviceChargeCents,
+        period: s.period,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        breakMinutes: s.breakMinutes,
         salesCents: s.salesCents,
         covers: s.covers,
         jobName: s.jobName,
@@ -172,5 +198,92 @@ describe('import', () => {
 
   it.each(['13/25/2026', '2/30/2026', 'tomorrow', '', '2026-13-01'])('rejects date %p', (input) => {
     expect(parseFlexibleDate(input)).toBeNull();
+  });
+
+  it.each([
+    ['10/25/2026 5:00 PM', '2026-10-25'],
+    ['2026-10-25 17:00', '2026-10-25'],
+    ['Oct 25, 2026, 5 pm', '2026-10-25'],
+  ])('reads the date out of date-and-time %p', (input, iso) => {
+    expect(parseFlexibleDate(input)).toBe(iso);
+  });
+});
+
+describe('import from other apps and spreadsheets', () => {
+  it.each([
+    ['5:00 PM', '17:00'],
+    ['5pm', '17:00'],
+    ['11:30 a.m.', '11:30'],
+    ['17:00', '17:00'],
+    ['23:45:00', '23:45'],
+    ['10/25/2026 5:15 PM', '17:15'],
+    ['2026-10-25T17:00:00', '17:00'],
+    ['2026-10-25T17:00:00Z', '17:00'],
+  ])('reads time %p', (input, time) => {
+    expect(parseImportTime(input)).toBe(time);
+  });
+
+  it.each(['', '17', '10/25/2020', '25:00', 'soon'])('rejects time %p', (input) => {
+    expect(parseImportTime(input)).toBeNull();
+  });
+
+  it('maps other common header names', () => {
+    expect(
+      guessMapping(['Date', 'Location', 'Total Hours', 'Base Pay', 'CC Tips', 'Non-cash tips', 'Tips Out', 'Shift']),
+    ).toMatchObject({ date: 0, job: 1, hours: 2, wagesEarned: 3, card: 4, tipOut: 6, period: 7, wage: null });
+    expect(guessMapping(['Clock In', 'Clock Out', 'Cash'])).toMatchObject({ start: 0, end: 1, date: 0, cash: 2 });
+  });
+
+  it('works out hours from start and end times, across midnight and minus the break', () => {
+    const mapping = guessMapping(['Date', 'Time in', 'Time out', 'Break', 'Cash tips']);
+    const { drafts, skipped } = buildImportDrafts(
+      [
+        ['10/24/2026', '6:00 PM', '1:30 AM', '30', '210'],
+        ['10/25/2026', '11:00', '15:00', '', '90'],
+      ],
+      mapping,
+    );
+    expect(skipped).toEqual([]);
+    expect(drafts.map((d) => [d.startTime, d.endTime, d.breakMinutes, d.minutesWorked])).toEqual([
+      ['18:00', '01:30', 30, 420],
+      ['11:00', '15:00', 0, 240],
+    ]);
+  });
+
+  it('takes the date from a date-and-time start column and the rate from wages paid', () => {
+    const mapping = guessMapping(['Start', 'End', 'Wages', 'Tips']);
+    const { drafts } = buildImportDrafts([['2026-10-25T17:00:00', '2026-10-25T23:00:00', '12.78', '$180.00']], mapping);
+    expect(drafts[0]).toMatchObject({ date: '2026-10-25', minutesWorked: 360, hourlyWageCents: 213, cashTipsCents: 18000 });
+  });
+
+  it('reads a semicolon file with decimal commas, a title line and a totals row', () => {
+    const text = [
+      'My tips export',
+      '',
+      'Date;Hours;Cash tips;Card tips;Tip-out;Shift',
+      '10/23/2026;6,5;80,00;1.120,50;15;Dinner',
+      '10/24/2026;4;45,5;0;0;Lunch',
+      'Total;10,5;125,50;1.120,50;15;',
+    ].join('\n');
+    const { headers, rows, firstLine } = splitHeader(parseCsv(text));
+    expect(headers[0]).toBe('Date');
+    const { drafts, skipped } = buildImportDrafts(rows, guessMapping(headers), firstLine);
+    expect(skipped).toEqual([]);
+    expect(drafts.map((d) => [d.minutesWorked, d.cashTipsCents, d.cardTipsCents, d.tipOutCents, d.period])).toEqual([
+      [390, 8000, 112050, 1500, 'pm'],
+      [240, 4550, 0, 0, 'am'],
+    ]);
+  });
+
+  it('reads tab-separated files', () => {
+    expect(parseCsv('Date\tCash\n10/25/2026\t40\n')).toEqual([
+      ['Date', 'Cash'],
+      ['10/25/2026', '40'],
+    ]);
+  });
+
+  it('says which time could not be read', () => {
+    const { skipped } = buildImportDrafts([['10/25/2026', 'noon-ish', '9pm']], guessMapping(['Date', 'Start', 'End']));
+    expect(skipped).toEqual([{ line: 2, reason: 'Unreadable start time "noon-ish"' }]);
   });
 });
